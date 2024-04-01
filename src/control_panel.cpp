@@ -5337,32 +5337,38 @@ SK_ImGui_ControlPanel (void)
             ( active ? ImColor (1.00f, 1.00f, 1.00f).Value
                      : ImColor (0.73f, 0.73f, 0.73f).Value ) );
 
-          if ( ImGui::DragFloat ( label, &target_mag,
+          if ( ImGui::DragFloat ( label, &target,
                                       1.0f, 24.0f, 166.0f, target > 0 ?
                           ( active ? "%6.3f fps  (Limit Engaged)" :
                                      "%6.3f fps  (~Window State)" )
                                                                   :
                                                            target < 0 ?
-                                             "%6.3f fps  (Graphing Only)"
+                      std::format ( "{:6.3f} fps  (Graphing Only)",
+                                    target_mag           ).c_str ()
                                                                   :
                                              "VSYNC Rate (No Preference)" )
              )
           {
-            target =
-              ( ( target < 0.0f ) ? (-1.0f * target_mag) :
-                                             target_mag    );
-
             if (target > 10.0f || target == 0.0f)
+            {
               cp->ProcessCommandFormatted ("%s %f", command, target);
+            }
+
             else if (target < 0.0f)
             {
               float graph_target = target;
               cp->ProcessCommandFormatted ("%s 0.0", command);
                     target = graph_target;
             }
+
             else
+            {
               target = bBackgroundFPS ? target_orig_bg : target_orig;
+            }
+
+            target_mag = fabs (target);
           }
+
           ImGui::PopStyleColor ();
 
           if (ImGui::IsItemHovered ( ))
