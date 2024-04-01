@@ -5207,7 +5207,8 @@ SK_ImGui_ControlPanel (void)
                bool changed  = false;
 
         // Don't apply this number if it's < 10; that does very undesirable things
-        float target_orig = __target_fps;
+        float target_orig_bg = __target_fps_bg;
+        float target_orig    = __target_fps;
 
         bool limit = (__target_fps > 0.0f);
 
@@ -5227,10 +5228,6 @@ SK_ImGui_ControlPanel (void)
 
           config.render.framerate.target_fps = __target_fps;
         }
-
-        bool bg_limit =
-              ( limit &&
-          ( __target_fps_bg != 0.0f ) );
 
         if (limit)
         {
@@ -5253,48 +5250,60 @@ SK_ImGui_ControlPanel (void)
 
             ImGui::EndTooltip ();
           }
+        }
 
-          if (advanced)
+        bool bg_limit = (__target_fps_bg > 0.0f);
+
+        if (advanced)
+        {
+          if (ImGui::Checkbox ("Background", &bg_limit))
           {
-            if (ImGui::Checkbox ("Background", &bg_limit))
+            if (__target_fps_bg != 0.0f) // Negative zero... it exists and we don't want it.
             {
-              if (bg_limit) __target_fps_bg = __target_fps;
-              else          __target_fps_bg =         0.0f;
-
-              config.render.framerate.target_fps_bg = __target_fps_bg;
+              __target_fps_bg = -__target_fps_bg;
             }
 
-            if (ImGui::IsItemHovered ())
+            if (__target_fps_bg == 0.0f)
             {
-              static bool unity =
-                rb.windows.unity;
-
-              ImGui::BeginTooltip ();
-              ImGui::Text (
-                "Optional secondary limit applies when the game is running"
-                " in the background." );
-
-              if (unity)
-              {
-                ImGui::Separator   (    );
-                ImGui::Spacing     (    );
-                ImGui::BulletText  ( "This is a Unity engine game and "
-                                     "requires special attention." );
-                ImGui::Spacing     (    );
-                ImGui::TreePush    ( "" );
-                ImGui::TextColored ( ImColor (.62f, .62f, .62f),
-                                     "\tRefer to the Following Setting:" );
-                ImGui::Spacing     (    );
-                ImGui::TreePush    ( "" );
-                ImGui::TextColored ( ImColor (1.f, 1.f, 1.f),
-                                       "\tWindow Management > Input/Output"
-                                       " Behavior > Continue Rendering" );
-                ImGui::TreePop     (    );
-                ImGui::TreePop     (    );
-              }
-
-              ImGui::EndTooltip ();
+              __target_fps_bg = static_cast <float> (
+                SK_GetCurrentRenderBackend ().windows.device.getDevCaps ().res.refresh
+              );
             }
+
+            config.render.framerate.target_fps_bg = __target_fps_bg;
+          }
+
+          if (ImGui::IsItemHovered ())
+          {
+            static bool unity =
+              rb.windows.unity;
+
+            ImGui::BeginTooltip ();
+            ImGui::Text (
+              "Optional secondary limit applies when the game is running"
+              " in the background."
+            );
+
+            if (unity)
+            {
+              ImGui::Separator   (    );
+              ImGui::Spacing     (    );
+              ImGui::BulletText  ( "This is a Unity engine game and "
+                                   "requires special attention." );
+              ImGui::Spacing     (    );
+              ImGui::TreePush    ( "" );
+              ImGui::TextColored ( ImColor (.62f, .62f, .62f),
+                                   "\tRefer to the Following Setting:" );
+              ImGui::Spacing     (    );
+              ImGui::TreePush    ( "" );
+              ImGui::TextColored ( ImColor (1.f, 1.f, 1.f),
+                                     "\tWindow Management > Input/Output"
+                                     " Behavior > Continue Rendering" );
+              ImGui::TreePop     (    );
+              ImGui::TreePop     (    );
+            }
+
+            ImGui::EndTooltip ();
           }
         }
 
@@ -5319,6 +5328,8 @@ SK_ImGui_ControlPanel (void)
         {
           static auto cp =
             SK_GetCommandProcessor ();
+
+          bool bBackgroundFPS = (! strcmp (command, "BackgroundFPS"));
 
           float target_mag = fabs (target);
 
@@ -5350,7 +5361,7 @@ SK_ImGui_ControlPanel (void)
                     target = graph_target;
             }
             else
-              target = target_orig;
+              target = bBackgroundFPS ? target_orig_bg : target_orig;
           }
           ImGui::PopStyleColor ();
 
@@ -5382,6 +5393,7 @@ SK_ImGui_ControlPanel (void)
           if (ImGui::BeginPopup      ("FactoredFramerateMenu"))
           {
             static bool bFirstFrame = true; // Don't auto-apply on first frame
+            static bool bVRRBiasBG  = false;
             static bool bVRRBias    = false;
 
             static auto lastRefresh = 0.0;
@@ -5390,12 +5402,13 @@ SK_ImGui_ControlPanel (void)
 
             static std::string        strFractList ("", 1024);
             static std::vector <double> dFractList;
-            static int                  iFractSel  = 0;
-            static auto                *pLastLabel = command;
-                   auto                 itemWidth  =
+            static int                  iFractSelBG = 0;
+            static int                  iFractSel   = 0;
+            static auto                *pLastLabel  = command;
+                   auto                 itemWidth   =
               ImGui::CalcTextSize (std::format ("1:1 ({:.10f})", realRefresh).c_str ()).x;
 
-            bool activateSelection = (__target_fps > 0.0f);
+            bool activateSelection = ((bBackgroundFPS ? __target_fps_bg : __target_fps) > 0.0f);
             bool resetSelection    = 
               (lastRefresh != realRefresh);
 
@@ -5420,11 +5433,13 @@ SK_ImGui_ControlPanel (void)
                   dRefresh = realRefresh / denom;
                 }
 
+                bool bVRR_Bias = bBackgroundFPS ? bVRRBiasBG : bVRRBias;
+
                 double dBiasedRefresh =
-                             dRefresh - (!bVRRBias ? 0.0f :
+                             dRefresh - (!bVRR_Bias ? 0.0f :
                              dRefresh * dRefresh) / (3600.0);
 
-                if (bVRRBias)
+                if (bVRR_Bias)
                   dBiasedRefresh -= 0.005 * dBiasedRefresh;
 
                 strFractList += (
@@ -5440,7 +5455,15 @@ SK_ImGui_ControlPanel (void)
                 if ( target_mag < dBiasedRefresh + 0.75 &&
                      target_mag > dBiasedRefresh - 0.75 )
                 {
-                  iFractSel = idx;
+                  if (bBackgroundFPS)
+                  {
+                    iFractSelBG = idx;
+                  }
+
+                  else
+                  {
+                    iFractSel = idx;
+                  }
                 }
 
                 idx++; denom++;
@@ -5451,22 +5474,74 @@ SK_ImGui_ControlPanel (void)
               strFractList += "\0\0";
             }
 
-            iFractSel =
-              std::min (static_cast <int> (dFractList.size ()),
-                                           iFractSel);
-
-            static int                      iLastFractSel =iFractSel;
-            if (iFractSel != std::exchange (iLastFractSel, iFractSel) || (resetSelection && activateSelection))
+            if (bBackgroundFPS)
             {
-              if (bFirstFrame == false)
+              iFractSelBG =
+                std::min (static_cast <int> (dFractList.size ()),
+                                             iFractSelBG);
+
+              static int                        iLastFractSelBG =iFractSelBG;
+              if (iFractSelBG != std::exchange (iLastFractSelBG, iFractSelBG) || (resetSelection && activateSelection))
               {
-                SK_GetCommandProcessor ()->ProcessCommandFormatted (
-                  "TargetFPS %f", static_cast <float> (dFractList [iFractSel])
-                );
+                if (bFirstFrame == false)
+                {
+                  SK_GetCommandProcessor ()->ProcessCommandFormatted (
+                    "BackgroundFPS %f", static_cast <float> (dFractList [iFractSelBG])
+                  );
+                }
+              }
+            }
+
+            else
+            {
+              iFractSel =
+                std::min (static_cast <int> (dFractList.size ()),
+                                             iFractSel);
+
+              static int                      iLastFractSel =iFractSel;
+              if (iFractSel != std::exchange (iLastFractSel, iFractSel) || (resetSelection && activateSelection))
+              {
+                if (bFirstFrame == false)
+                {
+                  SK_GetCommandProcessor ()->ProcessCommandFormatted (
+                    "TargetFPS %f", static_cast <float> (dFractList [iFractSel])
+                  );
+                }
               }
             }
 
             bFirstFrame = false;
+
+            if (bBackgroundFPS)
+            {
+              ImGui::PushItemWidth (itemWidth);
+
+              if ( ImGui::Combo ( "Refresh Rate Factors",
+                               &iFractSelBG, strFractList.data () ) )
+              {
+                cp->ProcessCommandFormatted (
+                  "%s %f", command, static_cast <float> (dFractList [iFractSelBG])
+                );
+              }
+
+              ImGui::PopItemWidth ();
+
+              if (ImGui::Checkbox ("VRR Bias", &bVRRBiasBG))
+              {
+                lastRefresh = 0.0f;
+              }
+
+              if (bVRRBiasBG)
+              {
+                ImGui::SameLine ();
+                ImGui::TextUnformatted ("\t(Reflex - 0.5% FPS)");
+              }
+
+              ImGui::EndPopup ();
+              ImGui::PopID    ();
+
+              return;
+            }
 
 
             extern int __SK_LatentSyncSkip;
@@ -5703,16 +5778,14 @@ SK_ImGui_ControlPanel (void)
                                             "TargetFPS",
                         (SK_IsGameWindowActive () || (! bg_limit)) );
 
-        if (limit)
+        if (advanced)
         {
-          if (advanced && bg_limit)
-          {
-            _LimitSlider (
-              __target_fps_bg, "###Background_FPS",
-                                  "BackgroundFPS", (! SK_IsGameWindowActive ())
-            );
-          }
+          _LimitSlider (
+            __target_fps_bg, "###Background_FPS",
+                                "BackgroundFPS", (! SK_IsGameWindowActive ())
+          );
         }
+
         ImGui::EndGroup ();
 
         if (advanced)
