@@ -1363,6 +1363,15 @@ D3D11Dev_CreateTexture2D1_Override (
   if (pDesc == nullptr)
     return E_INVALIDARG;
 
+  // Workaround for dgVoodoo CreateTexture2D1 glitches (black triangles)
+  if ( ( config.apis.translated != SK_RenderAPI::None ) ||
+       ( SK_GetDLLRole       () &  DLL_ROLE::Glide    ) ||
+       ( SK_GetDLLRole       () &  DLL_ROLE::DDraw    ) ||
+       ( SK_GetDLLRole       () &  DLL_ROLE::D3D8     ) )
+  {
+    return S_OK;
+  }
+
   auto hCallingMod =
     SK_GetCallingDLL ();
 
