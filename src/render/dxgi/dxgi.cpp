@@ -9567,9 +9567,23 @@ SK::DXGI::Shutdown (void)
   }
 #endif
 
+  if (config.compatibility.clear_hook_cache_on_exit)
+  {
+    iSK_INI* pINI =
+      SK_GetDLLConfig ();
+
+    SK_LOGs0 ( L"Hook Cache",
+               L"Clearing injection address cache..." );
+
+    pINI->remove_section (L"DXGI.Hooks");
+    pINI->remove_section (L"D3D11.Hooks");
+
+    pINI->write (pINI->get_filename ());
+  }
+
   // Video capture software usually lets one frame through before @#$%'ing
   //   up the Present (...) hook.
-  if (SK_GetFramesDrawn () < 2)
+  else if (SK_GetFramesDrawn () < 2)
   {
     SK_LOGs0 ( L"Hook Cache",
                L" !!! No frames drawn using DXGI backend; purging "

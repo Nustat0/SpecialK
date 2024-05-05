@@ -1158,6 +1158,7 @@ struct sk_config_t
 
   struct compatibility_s {
     bool     rehook_loadlibrary       = false;
+    bool     clear_hook_cache_on_exit = false;
     bool     disable_nv_bloat         = false;
     bool     init_while_suspended     =  true;
     bool     impersonate_debugger     = false; // Can disable games' crash handlers

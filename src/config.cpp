@@ -1100,6 +1100,7 @@ struct {
 
 struct {
   sk::ParameterBool*      rehook_loadlibrary      = nullptr;
+  sk::ParameterBool*      clear_hook_cache        = nullptr;
   sk::ParameterBool*      disable_nv_bloat        = nullptr;
   sk::ParameterBool*      using_wine              = nullptr;
   sk::ParameterBool*      allow_dxdiagn           = nullptr;
@@ -1685,6 +1686,7 @@ auto DeclKeybind =
 
     ConfigEntry (compatibility.disable_nv_bloat,         L"Disable All NVIDIA BloatWare (GeForce Experience)",         dll_ini,         L"Compatibility.General", L"DisableBloatWare_NVIDIA"),
     ConfigEntry (compatibility.rehook_loadlibrary,       L"Rehook LoadLibrary When RTSS/Steam/ReShade hook it",        dll_ini,         L"Compatibility.General", L"RehookLoadLibrary"),
+    ConfigEntry (compatibility.clear_hook_cache,         L"Clear DXGI/D3D11/D3D9 hook cache on exit",                  dll_ini,         L"Compatibility.General", L"ClearHookCacheOnExit"),
     ConfigEntry (compatibility.using_wine,               L"Disable Functionality Not Compatible With WINE",            dll_ini,         L"Compatibility.General", L"UsingWINE"),
     ConfigEntry (compatibility.allow_dxdiagn,            L"Disable Unnecessary DxDiagnostic BLOAT in Some Games",      dll_ini,         L"Compatibility.General", L"AllowDxDiagn"),
 #ifdef _M_IX86
@@ -3691,6 +3693,7 @@ auto DeclKeybind =
   compatibility.async_init->load         (config.compatibility.init_on_separate_thread);
   compatibility.disable_nv_bloat->load   (config.compatibility.disable_nv_bloat);
   compatibility.rehook_loadlibrary->load (config.compatibility.rehook_loadlibrary);
+  compatibility.clear_hook_cache->load   (config.compatibility.clear_hook_cache_on_exit);
   compatibility.using_wine->load         (config.compatibility.using_wine);
   compatibility.allow_dxdiagn->load      (config.compatibility.allow_dxdiagn);
 
@@ -5601,6 +5604,7 @@ SK_SaveConfig ( std::wstring name,
   compatibility.async_init->store             (config.compatibility.init_on_separate_thread);
   compatibility.disable_nv_bloat->store       (config.compatibility.disable_nv_bloat);
   compatibility.rehook_loadlibrary->store     (config.compatibility.rehook_loadlibrary);
+  compatibility.clear_hook_cache->store       (config.compatibility.clear_hook_cache_on_exit);
   compatibility.using_wine->store             (config.compatibility.using_wine);
   compatibility.allow_dxdiagn->store          (config.compatibility.allow_dxdiagn);
 
