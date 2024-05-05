@@ -2724,6 +2724,18 @@ SK_ShutdownCore (const wchar_t* backend)
     config_name = L"SpecialK";
   }
 
+  if (config.compatibility.clear_hook_cache_on_exit)
+  {
+    iSK_INI* pINI =
+      SK_GetDLLConfig ();
+
+    pINI->remove_section ( L"DXGI.Hooks"  );
+    pINI->remove_section ( L"D3D11.Hooks" );
+    pINI->remove_section ( L"D3D9.Hooks"  );
+
+    pINI->write (pINI->get_filename ());
+  }
+
   if (sk::NVAPI::app_name != L"ds3t.exe")
   {
     dll_log->LogEx       (true,  L"[ SpecialK ] Saving user preferences to"

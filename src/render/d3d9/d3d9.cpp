@@ -1230,20 +1230,8 @@ SK::D3D9::Shutdown (void)
       tex_mgr.Shutdown ();
   }
 
-  if (config.compatibility.clear_hook_cache_on_exit)
-  {
-    iSK_INI* pINI =
-      SK_GetDLLConfig ();
 
-    SK_LOGs0 ( L"Hook Cache",
-               L"Clearing injection address cache..." );
-
-    pINI->remove_section (L"D3D9.Hooks");
-
-    pINI->write (pINI->get_filename ());
-  }
-
-  else if (SK_GetFramesDrawn () < 2)
+  if (SK_GetFramesDrawn () < 2)
   {
     SK_LOGs0 ( L"Hook Cache",
       L" !!! No frames drawn using D3D9 backend; "
