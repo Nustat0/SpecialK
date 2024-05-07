@@ -5890,21 +5890,31 @@ SK_ImGui_ControlPanel (void)
 
             if (bLatentSync)
             {
-              ImGui::TreePush ("###LatentSync");
+              extern bool SK_LatentSync_SupportsFrameSkipping (SK_RenderAPI api);
 
-              double dRefresh =
-                rb.getActiveRefreshRate ();
-
-              int iMaxAboveRefreshMode = 4;
-
-              std::string strModeList = strFractList;
-              int           iMode     = std::max (iMaxAboveRefreshMode - 1, 0); // 1:1
+              double dRefresh = rb.getActiveRefreshRate ();
 
               int iMultiplier = static_cast <int> (
                 std::round (
                   static_cast <double> (__target_fps) / dRefresh
                 )
               );
+
+              if (SK_LatentSync_SupportsFrameSkipping (rb.api) && iMultiplier >= 2)
+              {
+                ImGui::SameLine ();
+                ImGui::Checkbox (
+                  "Skip Frames",
+                  &config.render.framerate.latent_sync.skip_frames
+                );
+              }
+
+              ImGui::TreePush ("###LatentSync");
+
+              int iMaxAboveRefreshMode = 4;
+
+              std::string strModeList = strFractList;
+              int           iMode     = std::max (iMaxAboveRefreshMode - 1, 0); // 1:1
 
               // 2x..
               if (iMultiplier >= 2)

@@ -841,6 +841,7 @@ struct {
       sk::ParameterFloat*   max_auto_bias         = nullptr;
       sk::ParameterStringW* auto_bias_target      = nullptr;
       sk::ParameterInt*     tearing_mode          = nullptr;
+      sk::ParameterBool*    skip_frames           = nullptr;
     } latent_sync;
   } framerate;
 
@@ -1784,6 +1785,8 @@ auto DeclKeybind =
                                           max_auto_bias, L"Maximum percentage to bias towards low input latency",      dll_ini,         L"FrameRate.LatentSync",  L"MaxAutoBias"),
     ConfigEntry (render.framerate.latent_sync.
                                            tearing_mode, L"Tearing mode: Always On/Off, Adaptive (Prefer On/Off)",     dll_ini,         L"FrameRate.LatentSync",  L"TearingMode"),
+    ConfigEntry (render.framerate.latent_sync.
+                                            skip_frames, L"Enable frame skipping in 2x.. mode",                        dll_ini,         L"FrameRate.LatentSync",  L"SkipFrames"),
 
     ConfigEntry (render.framerate.allow_dwm_tearing,     L"Enable DWM Tearing (Windows 10+)",                          dll_ini,         L"Render.DXGI",           L"AllowTearingInDWM"),
     ConfigEntry (render.framerate.drop_late_frames,      L"Enable Flip Model to Render (and drop) frames at rates >"
@@ -3933,6 +3936,7 @@ auto DeclKeybind =
   }
 
   render.framerate.latent_sync.tearing_mode->load (config.render.framerate.latent_sync.tearing_mode);
+  render.framerate.latent_sync.skip_frames->load  (config.render.framerate.latent_sync.skip_frames);
 
   render.osd.draw_in_vidcap->load            (config.render.osd. draw_in_vidcap);
 
@@ -6059,6 +6063,7 @@ SK_SaveConfig ( std::wstring name,
     }
 
     render.framerate.latent_sync.tearing_mode->store (config.render.framerate.latent_sync.tearing_mode);
+    render.framerate.latent_sync.skip_frames->store  (config.render.framerate.latent_sync.skip_frames);
 
     texture.d3d9.clamp_lod_bias->store            (config.textures.clamp_lod_bias);
 

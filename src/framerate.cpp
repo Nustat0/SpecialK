@@ -586,14 +586,31 @@ SK_ImGui_LatentSyncConfig (void)
 
       ImGui::Separator ();
 
-      ImGui::Combo (
-        "Tearing Mode",
-        &config.render.framerate.latent_sync.tearing_mode,
-        "Always On\0"
-        "Always Off\0"
-        "Adaptive (Prefer On)\0"
-        "Adaptive (Prefer Off)\0\0"
-      );
+      if  (
+            ImGui::Combo (
+              "Tearing Mode",
+              &config.render.framerate.latent_sync.tearing_mode,
+              "Always On\0"
+              "Always Off\0"
+              "Adaptive (Prefer On)\0"
+              "Adaptive (Prefer Off)\0\0"
+            )
+          )
+      {
+        switch (config.render.framerate.latent_sync.tearing_mode)
+        {
+          case SK_TearingMode::LatentSync_AlwaysOn:
+          case SK_TearingMode::LatentSync_AdaptiveOn:
+            config.render.framerate.latent_sync.skip_frames = false;
+            break;
+          case SK_TearingMode::LatentSync_AlwaysOff:
+          case SK_TearingMode::LatentSync_AdaptiveOff:
+            config.render.framerate.latent_sync.skip_frames = true;
+            break;
+          default:
+            break;
+        }
+      }
 
       if (ImGui::IsItemHovered ())
       {
@@ -625,7 +642,9 @@ SK_ImGui_LatentSyncConfig (void)
               SK_TearingMode::LatentSync_AdaptiveOff;
 
           bool bSupportsFrameSkipping =
-            SK_LatentSync_SupportsFrameSkipping (rb.api);
+            ( config.render.framerate.latent_sync.skip_frames ||
+              !bIsTearingModeAdaptiveOff                       ) &&
+            ( SK_LatentSync_SupportsFrameSkipping (rb.api)     );
 
           int iBufferCount =
             config.render.framerate.buffer_count;
@@ -2304,7 +2323,9 @@ SK::Framerate::Limiter::wait (void)
         )
       );
 
-      if ((! SK_LatentSync_SupportsFrameSkipping (rb.api)) || __SK_LatentSyncSkip < 2)
+      if ( (! config.render.framerate.latent_sync.skip_frames ) ||
+           (! SK_LatentSync_SupportsFrameSkipping (rb.api)    ) ||
+           (__SK_LatentSyncSkip < 2                           ) )
       {
         __SK_LatentSyncSkip = 0;
       }
@@ -2312,9 +2333,8 @@ SK::Framerate::Limiter::wait (void)
       switch (config.render.framerate.latent_sync.tearing_mode)
       {
         case SK_TearingMode::LatentSync_AlwaysOn:
-        case SK_TearingMode::LatentSync_AdaptiveOn:
-          __SK_LatentSyncSkip = 0;
         case SK_TearingMode::LatentSync_AlwaysOff:
+        case SK_TearingMode::LatentSync_AdaptiveOn:
         case SK_TearingMode::LatentSync_AdaptiveOff:
           _ManageTearing (
             static_cast <SK_TearingMode> (
