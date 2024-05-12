@@ -2377,7 +2377,7 @@ SK_DXGI_PresentBase ( IDXGISwapChain         *This,
          config.render.framerate.target_fps_bg < rb.getActiveRefreshRate () / 2.0f &&
          (! SK_IsGameWindowActive ()) )
     {
-      if ( SK_GetFramesDrawn () > 30 && rb.displays [rb.active_display].nvapi.vrr_enabled &&
+      if ( SK_GetFramesDrawn () > 30 && rb.displays [rb.active_display].nvapi.vrr_enabled == 1 &&
            ( config.window.background_render ||
              config.window.always_on_top == SmartAlwaysOnTop ) )
       {
