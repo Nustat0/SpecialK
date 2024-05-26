@@ -1214,7 +1214,9 @@ SK_ImGui_MouseProc    (int code, WPARAM wParam, LPARAM lParam);
 
 void SK_AdjustClipRect (void);
 
-int WINAPI SK_ShowCursor (BOOL bShow);
+int     WINAPI SK_ShowCursor        (   BOOL bShow  );
+BOOL    WINAPI SK_SendMsgShowCursor (   BOOL bShow  );
+HCURSOR WINAPI SK_SendMsgSetCursor  (HCURSOR hCursor);
 
 bool SK_ImGui_ExemptOverlaysFromKeyboardCapture (void);
 bool SK_ImGui_IsMouseRelevant                   (void);
@@ -1274,5 +1276,7 @@ std::wstring* SK_HID_GetGamepadButtonBinding    (UINT idx);
 void          SK_HID_AssignGamepadButtonBinding (UINT idx, const wchar_t* wszKeyName, UINT vKey);
 
 extern HidD_GetAttributes_pfn SK_HidD_GetAttributes;
+
+extern void SK_Bluetooth_InitPowerMgmt (void);
 
 #endif /* __SK__INPUT_H__ */
