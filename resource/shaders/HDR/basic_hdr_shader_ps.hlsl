@@ -77,12 +77,13 @@ SK_ProcessColor4 ( float4 color,
   // This looks weird because power-law EOTF does not work as intended on negative colors, and
   //   we may very well have negative colors on WCG SDR input.
   //
+  float eotf = sdrContentEOTF;
+
   float4 out_color =
     float4 (
       ( strip_eotf && func != sRGB_to_Linear ) ?
-                       sdrContentEOTF != -2.2f ?    sign (color.rgb) * pow (abs (color.rgb),
-                       sdrContentEOTF) : RemoveSRGBCurve (color.rgb) :
-                                                          color.rgb,
+                                 eotf != -2.2f ?    sign (color.rgb) * pow (abs (color.rgb),
+                                 eotf) : RemoveSRGBCurve (color.rgb) :           color.rgb,
                                                           color.a
     );
 
@@ -153,7 +154,7 @@ FinalOutput (float4 vColor)
       clamp (
         LinearToPQ (REC709toREC2020 (vColor.rgb), 125.0f),
                                                0.0, 1.0 );
-    
+
     vColor.a = 1.0;
   }
 
@@ -211,35 +212,40 @@ main (PS_INPUT input) : SV_TARGET
     texMainScene.Sample ( sampler0,
                           input.uv );
 
-  // For scRGB Inverse Tonemapping (luminance scale > 1.0 or Perceptual Boost),
-  //   clamp to Rec 709
-  if (input.color.x >= 1.0f + FLT_EPSILON || pqBoostParams.x > 0.0f)
-  {
-    hdr_color.rgb =
-      max (0.0f, hdr_color.rgb);
-  }
-
   float3 orig_color =
     abs (hdr_color.rgb);
 
-  if ((hdr_color.r > 1.115f  &&
-       hdr_color.g > 1.115f  &&
-       hdr_color.b > 1.115f) ||
-      (hdr_color.r > 1.5f    ||
-       hdr_color.g > 1.5f    ||
-       hdr_color.b > 1.5f))
+  // For scRGB Inverse Tonemapping (luminance scale > 1.0 or Perceptual Boost),
+  //   clamp to Rec 2020
+  if (input.color.x >= 1.0f + FLT_EPSILON || pqBoostParams.x > 0.0f)
   {
-    float fLuma =
-      Luminance (hdr_color.rgb);
+    float3 rec2020_color =
+      max (0.0f, REC709toREC2020 (hdr_color.rgb));
 
-    if (fLuma > 1.0f)
+    hdr_color.rgb = rec2020_color;
+
+    if (tonemapOverbrightBits)
     {
-      float3 fNormalColor =
-        normalize (hdr_color.rgb);
+      float fLuminance =
+        LuminanceRec2020 (rec2020_color);
 
-      hdr_color.rgb =                    fNormalColor +
-        NeutralTonemap (hdr_color.rgb - (fNormalColor * fLuma));
-    };
+      if (fLuminance > 1.0f)
+      {
+        float3 vNormalizedColor =
+          (rec2020_color.rgb / fLuminance);
+
+#if 1
+        hdr_color.rgb =                       vNormalizedColor +
+          NeutralTonemap (rec2020_color.rgb - vNormalizedColor) / 2.5f;
+#else
+        hdr_color.rgb =    vNormalizedColor +
+         ((hdr_color.rgb - vNormalizedColor) / (1.0f + (hdr_color.rgb - vNormalizedColor))) / 2.0f;
+#endif
+      }
+    }
+
+    hdr_color.rgb =
+      REC2020toREC709 (hdr_color.rgb);
   }
 
 #ifdef INCLUDE_NAN_MITIGATION
@@ -277,7 +283,7 @@ main (PS_INPUT input) : SV_TARGET
       getNonNanSample (hdr_color, input.uv);
 
   hdr_color =
-    clamp (hdr_color, 0.0, 125.0);
+    clamp (hdr_color, 0.0, float_MAX);
 #endif
 #endif
 
@@ -410,7 +416,7 @@ main (PS_INPUT input) : SV_TARGET
     {
       hdr_color.rgb  *= float3 (125.0, 125.0, 125.0);
       hdr_color.rgb   =
-        min (hdr_color.rgb, 125.0f);
+        min (hdr_color.rgb, float_MAX);
 
       if (input.color.y != 1.0)
       {

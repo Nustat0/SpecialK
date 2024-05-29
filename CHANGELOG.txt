@@ -1,4 +1,25 @@
-﻿24.5.26.4
+﻿24.5.28
+=======
+ + Perform overbright processing in Rec 2020 and eliminate Rec 709 clamp
+     on input if luminance scale > 1.0
+
+24.5.27.2
+=========
+ + Add HDR Overbright Bit Tonemapping back as a per-profile INI setting
+
+24.5.27.1
+=========
+ + Added support for "Any" Role or Architecture to DLL import INI records
+ + If "Role" or "Architecture" are missing from a DLL import, they assume "Any"
+ + Removed case sensitivity from DLL import config entries
+ + Removed HDR Overbright Bits Tonemapping
+
+24.5.27
+=======
+ + Added GPU clockrate to HDR Processing time since the time to execute varies
+     due to power management under low GPU load...
+
+24.5.26.4
 =========
  + Added experimental Overbright Bits tonemapping for HDR games that qualify.
      >> The feature is always on and has no configuration at the moment.
