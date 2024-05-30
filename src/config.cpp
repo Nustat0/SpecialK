@@ -251,6 +251,7 @@ SK_GetCurrentGameID (void)
           { L"wrath-sdl.exe",                          SK_GAME_ID::WrathAeonOfRuin              },
           { L"dd2.exe",                                SK_GAME_ID::DragonsDogma                 },
           { L"Harold Halibut.exe",                     SK_GAME_ID::HaroldHalibut                },
+          { L"KingdomCome.exe",                        SK_GAME_ID::KingdomComeDeliverance       },
         };
 
     first_check  = false;
@@ -2420,6 +2421,9 @@ auto DeclKeybind =
         config.textures.cache.ignore_nonmipped = true; // Invalid use of immutable textures
         break;
 
+      case SK_GAME_ID::KingdomComeDeliverance:
+        config.textures.cache.ignore_nonmipped = true;
+        break;
 
       case SK_GAME_ID::DragonsDogma2:
         config.nvidia.dlss.compat.extra_pixels = -2;
@@ -2480,7 +2484,9 @@ auto DeclKeybind =
         // Maximize compatibility with 3rd party injectors that corrupt hooks
         //config.render.dxgi.slow_state_cache    = false;
         //SK_DXGI_SlowStateCache                 = config.render.dxgi.slow_state_cache;
-        config.render.dxgi.scaling_mode        = DXGI_MODE_SCALING_UNSPECIFIED;
+        config.render.dxgi.scaling_mode         = DXGI_MODE_SCALING_UNSPECIFIED;
+        config.render.dxgi.fake_fullscreen_mode = true;
+        config.window.background_render         = true;
 
         // Prevent VRR disable when game plays cutscenes
         config.render.framerate.sync_interval_clamp  =     1;
@@ -2739,7 +2745,9 @@ auto DeclKeybind =
         break;
 
       case SK_GAME_ID::Sekiro:
+        config.window.activate_at_start           = true;
         config.render.dxgi.fake_fullscreen_mode   = true;
+        config.window.background_render           = true;
         config.input.gamepad.xinput.placehold [0] = true;
         config.input.gamepad.xinput.placehold [1] = true;
         config.input.gamepad.xinput.placehold [2] = true;
@@ -3081,6 +3089,7 @@ auto DeclKeybind =
       case SK_GAME_ID::YakuzaLikeADragonGaiden:
       {
         config.render.dxgi.fake_fullscreen_mode   = true;
+        config.window.background_render           = true;
         config.render.dxgi.hooks.
                             create_swapchain4hwnd = false;
       }
@@ -3325,10 +3334,13 @@ auto DeclKeybind =
         config.render.framerate.drop_late_flips      =  true;
         config.render.framerate.flip_discard         =  true;
         config.input.gamepad.disable_hid             =  true;
+        config.input.gamepad.xinput.emulate          =  true;
+        config.input.gamepad.xinput.placehold [0]    =  true;
         config.input.gamepad.xinput.auto_slot_assign =  true;
         config.threads.enable_file_io_trace          =  true;
         config.steam.preload_overlay                 = false; // Set to false because of loss of rumble
-        config.window.background_render              = false;
+        config.window.background_render              =  true;
+        config.render.dxgi.fake_fullscreen_mode      =  true;
 
         SK_D3D11_DeclHUDShader_Vtx (0x3e464f00);
 

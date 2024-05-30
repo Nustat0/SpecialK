@@ -1,4 +1,24 @@
-﻿24.5.28
+﻿24.5.30.1
+=========
+ + Disable game-specific plug-in for Sekiro
+ + Add "background render" option for all games configured to use
+     fake fullscreen by default.
+ + Activate game windows when engaging Fake Fullscreen
+ + Prevent games like Cyberpunk 2077 from minimizing themselves in an
+     endless loop at startup.
+
+24.5.30
+=======
+ + Default Fake Fullscreen mode in NieR: Replicant and NieR: Automata
+ + Disable texture caching for non-mipped textures in Kingdom Come...
+
+24.5.29
+=======
+ + Vectorized NaN / Infinity checks in HDR shaders for better performance
+ + Precompute Perceptual Quantization coefficient reciprocals for faster
+     scRGB <--> HDR10 transformation
+
+24.5.28
 =======
  + Perform overbright processing in Rec 2020 and eliminate Rec 709 clamp
      on input if luminance scale > 1.0
