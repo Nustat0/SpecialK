@@ -1613,6 +1613,7 @@ enum class SK_GAME_ID
   GranblueFantasyRelink,        // granblue_fantasy_relink.exe
   WrathAeonOfRuin,              // wrath-sdl.exe
   HaroldHalibut,                // Harold Halibut.exe
+  KingdomComeDeliverance,       // KingdomCome.exe
 
   UNKNOWN_GAME               = 0xffff
 };
