@@ -1614,6 +1614,7 @@ enum class SK_GAME_ID
   WrathAeonOfRuin,              // wrath-sdl.exe
   HaroldHalibut,                // Harold Halibut.exe
   KingdomComeDeliverance,       // KingdomCome.exe
+  GodOfWar,                     // GoW.exe
 
   UNKNOWN_GAME               = 0xffff
 };
