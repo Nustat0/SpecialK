@@ -67,14 +67,7 @@ SK_ProcessColor4 ( float4 color,
                    int    strip_eotf = 1 )
 {
 #ifdef INCLUDE_NAN_MITIGATION
-  if (AnyIsInfOrNan (color))
-  {
-    color = float4
-      ( (! IsNan (color.r)) * IsInf (color.r) ? sign (color.r) * float_MAX : color.r,
-        (! IsNan (color.g)) * IsInf (color.g) ? sign (color.g) * float_MAX : color.g,
-        (! IsNan (color.b)) * IsInf (color.b) ? sign (color.b) * float_MAX : color.b,
-        (! IsNan (color.a)) * IsInf (color.a) ? sign (color.a) * float_MAX : color.a );
-  }
+  color = SanitizeFP (color);
 #endif
 
   // This looks weird because power-law EOTF does not work as intended on negative colors, and
@@ -173,21 +166,14 @@ main (PS_INPUT input) : SV_TARGET
   {
     case TONEMAP_COPYRESOURCE:
     {
-        float4 ret =
-        texMainScene.Sample(sampler0,
-                              input.uv);
+      float4 ret =
+        texMainScene.Sample ( sampler0,
+                              input.uv );
 
 #ifdef INCLUDE_NAN_MITIGATION
-      if (AnyIsInfOrNan (ret))
-      {
-        // A UNORM RenderTarget would return this instead of NaN,
-        //   and the game is expecting UNORM render targets :)
-        return
-          float4 ( (! IsNan (ret.r)) * IsInf (ret.r) ? sign (ret.r) * float_MAX : ret.r,
-                   (! IsNan (ret.g)) * IsInf (ret.g) ? sign (ret.g) * float_MAX : ret.g,
-                   (! IsNan (ret.b)) * IsInf (ret.b) ? sign (ret.b) * float_MAX : ret.b,
-                   (! IsNan (ret.a)) * IsInf (ret.a) ? sign (ret.a) * float_MAX : ret.a );
-      }
+      // A UNORM RenderTarget would return this instead of NaN,
+      //   and the game is expecting UNORM render targets :)
+      ret = SanitizeFP (ret);
 #endif
         return ret;
       }
@@ -200,14 +186,7 @@ main (PS_INPUT input) : SV_TARGET
         texMainScene.Sample ( sampler0,
                                 input.uv );
 
-      if (AnyIsInfOrNan (color))
-      {
-        return
-          float4 ( (! IsNan (color.r)) * IsInf (color.r) ? sign (color.r) * float_MAX : color.r,
-                   (! IsNan (color.g)) * IsInf (color.g) ? sign (color.g) * float_MAX : color.g,
-                   (! IsNan (color.b)) * IsInf (color.b) ? sign (color.b) * float_MAX : color.b,
-                   (! IsNan (color.a)) * IsInf (color.a) ? sign (color.a) * float_MAX : color.a );
-      }
+      color = SanitizeFP (color);
 
       return color;
     } break;
@@ -228,7 +207,7 @@ main (PS_INPUT input) : SV_TARGET
   float3 orig_color =
     abs (hdr_color.rgb);
 
-  if (tonemapOverbrightBits && any (abs (hdr_color.rgb) > 1.0f))
+  if (tonemapOverbrightBits && any (orig_color > 1.0f))
   {
     float3 rec2020_color =
       max (0.0f, REC709toREC2020 (hdr_color.rgb));
@@ -457,67 +436,41 @@ main (PS_INPUT input) : SV_TARGET
 
   if (pqBoostParams.x > 0.1f)
   {
-    float pb_params [4] =
-    {
-      pqBoostParams.x,
-      pqBoostParams.y,
-      pqBoostParams.z,
-      pqBoostParams.w
-    };
-
-    float3 new_color;
-
-    if (colorBoost == 0.0)
-    {
-      float fLuma =
-        Luminance (hdr_color.rgb);
-
-      new_color =
-        PQToLinear (
-          LinearToPQ ( float3 (fLuma, fLuma, fLuma),
-                       pb_params [0] ) *
-                       pb_params [2], pb_params [1]
-                   ) / pb_params [3];
-
-      new_color =
-        hdr_color.rgb * (new_color / fLuma);
-    }
-
-    else if (colorBoost != 1.0)
-    {
-      float fLuma =
-        Luminance (hdr_color.rgb);
-
-      float3 new_color0 =
-        PQToLinear (
-          LinearToPQ ( float3 (fLuma, fLuma, fLuma),
-                       pb_params [0] ) *
-                       pb_params [2], pb_params [1]
-                   ) / pb_params [3];
-
-      new_color0 =
-        hdr_color.rgb * (new_color0 / fLuma);
-
-      float3 new_color1 =
-        PQToLinear (
-          LinearToPQ ( hdr_color.rgb,
-                       pb_params [0] ) *
-                       pb_params [2], pb_params [1]
-                   ) / pb_params [3];
-
-      new_color =
-        lerp (new_color0, new_color1, float3 (colorBoost, colorBoost, colorBoost));
-    }
+    const float pb_param_0 = pqBoostParams.x;
+    const float pb_param_1 = pqBoostParams.y;
+    const float pb_param_2 = pqBoostParams.z;
+    const float pb_param_3 = pqBoostParams.w;
     
-    else
+    float fLuma =
+      Rec709_to_XYZ (hdr_color.rgb).y;
+
+    float3 new_color  = 0.0f,
+           new_color0 = 0.0f,
+           new_color1 = 0.0f;
+
+    if (colorBoost < 1.0)
     {
-      new_color =
+      new_color0 =
+       PQToLinear (
+          LinearToPQ ( fLuma,
+                       pb_param_0 ) *
+                       pb_param_2, pb_param_1
+                   ) / pb_param_3;
+    }
+
+    if (colorBoost > 0.0)
+    {
+      new_color1 =
         PQToLinear (
           LinearToPQ ( hdr_color.rgb,
-                       pb_params [0] ) *
-                       pb_params [2], pb_params [1]
-                   ) / pb_params [3];
+                       pb_param_0 ) *
+                       pb_param_2, pb_param_1
+                   ) / pb_param_3;
     }
+
+    new_color =
+      lerp (hdr_color.rgb * new_color0 / fLuma,
+                            new_color1, colorBoost);
 
 #ifdef INCLUDE_NAN_MITIGATION
     if (! AnyIsNan (  new_color))
@@ -557,7 +510,7 @@ main (PS_INPUT input) : SV_TARGET
   }
 
   fLuma =
-    max (Luminance (hdr_color.rgb), 0.0);
+    max (Rec709_to_XYZ (hdr_color.rgb).y, 0.0f);
 
   if ( visualFunc.x >= VISUALIZE_REC709_GAMUT &&
        visualFunc.x <  VISUALIZE_GRAYSCALE )
@@ -638,8 +591,11 @@ main (PS_INPUT input) : SV_TARGET
     float3 vColor =
       float3 (0.0f, 0.0f, 0.0f);
 
-    if ( Luminance (hdr_color.rgb) / (hdrLuminance_MaxLocal / 80.0f) >= (1.0f - input.uv.y) - 0.0125 &&
-         Luminance (hdr_color.rgb) / (hdrLuminance_MaxLocal / 80.0f) <= (1.0f - input.uv.y) + 0.0125 )
+    float fLuma =
+      max (Rec709_to_XYZ (hdr_color.rgb).y, 0.0f);
+
+    if ( fLuma / (hdrLuminance_MaxLocal / 80.0f) >= (1.0f - input.uv.y) - 0.0125 &&
+         fLuma / (hdrLuminance_MaxLocal / 80.0f) <= (1.0f - input.uv.y) + 0.0125 )
     {
       vColor.rgb =
         ( hdrLuminance_MaxAvg / 80.0f );
@@ -809,7 +765,7 @@ main (PS_INPUT input) : SV_TARGET
 
       // 1: Calculate luminance in nits.
       // Input is in scRGB. First convert to Y from CIEXYZ, then scale by whitepoint of 80 nits.
-      float nits = dot (float3 (0.2126f, 0.7152f, 0.0722f), hdr_color.rgb) * 80.0f;
+      float nits = max (Rec709_to_XYZ (hdr_color.rgb).y, 0.0) * 80.0f;
 
       // 2: Determine which gradient segment will be used.
       // Only one of useSegmentN will be 1 (true) for a given nits value.
@@ -897,8 +853,8 @@ main (PS_INPUT input) : SV_TARGET
 
     color_out =
       float4 (
-        Clamp_scRGB_StripNaN (color_out.rgb),
-                    saturate (hdr_color.a)
+        Clamp_scRGB (SanitizeFP (color_out.rgb)),
+                       saturate (hdr_color.a)
              );
 
     // Keep pure black pixels as-per scRGB's limited ability to
