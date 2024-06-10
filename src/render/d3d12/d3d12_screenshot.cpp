@@ -1723,12 +1723,40 @@ SK_D3D12_ProcessScreenshotQueueEx ( SK_ScreenshotStage stage_ = SK_ScreenshotSta
                 static const XMVECTORF32 c_MaxNitsFor2084 =
                   { 10000.0f, 10000.0f, 10000.0f, 1.f };
 
-                static const XMMATRIX c_from2020to709 =
+                static const XMMATRIX c_from2020to709 = // Transposed
                 {
-                  { 1.6604910f,  -0.1245505f, -0.0181508f, 0.f },
-                  { -0.5876411f,  1.1328999f, -0.1005789f, 0.f },
-                  { -0.0728499f, -0.0083494f,  1.1187297f, 0.f },
-                  { 0.f,          0.f,         0.f,        1.f }
+                  {  1.66096379471340f,   -0.124477196529907f,   -0.0181571579858552f, 0.0f },
+                  { -0.588112737547978f,   1.13281946828499f,    -0.100666415661988f,  0.0f },
+                  { -0.0728510571654192f, -0.00834227175508652f,  1.11882357364784f,   0.0f },
+                  {  0.0f,                 0.0f,                  0.0f,                1.0f }
+                };
+
+                static const XMMATRIX c_from709to2020 = // Transposed
+                {
+                  { 0.627225305694944f,  0.0690418812810714f, 0.0163911702607078f, 0.0f },
+                  { 0.329476882715808f,  0.919605681354755f,  0.0880887513437058f, 0.0f },
+                  { 0.0432978115892484f, 0.0113524373641739f, 0.895520078395586f,  0.0f },
+                  { 0.0f,                0.0f,                0.0f,                1.0f }
+                };
+
+                auto ToneMapACESFilmic = [](XMVECTOR x) -> XMVECTOR
+                {
+                  static const XMVECTOR a = XMVectorReplicate (2.51f);
+                  static const XMVECTOR b = XMVectorReplicate (0.03f);
+                  static const XMVECTOR c = XMVectorReplicate (2.43f);
+                  static const XMVECTOR d = XMVectorReplicate (0.59f);
+                  static const XMVECTOR e = XMVectorReplicate (0.14f);
+
+                  XMVECTOR vOut =
+                    XMVectorSaturate (
+                      XMVectorDivide ( XMVectorMultiply    (x, XMVectorMultiplyAdd (a, x, b)),
+                                       XMVectorMultiplyAdd (x, XMVectorMultiplyAdd (c, x, d), e)
+                                     )
+                                     );
+
+                  XMVectorSetW (vOut, 1.0f);
+
+                  return vOut;
                 };
 
                 HRESULT hr = S_OK;
@@ -1827,17 +1855,6 @@ SK_D3D12_ProcessScreenshotQueueEx ( SK_ScreenshotStage stage_ = SK_ScreenshotSta
                   final_sdr.Initialize (meta);
 
                 hr = S_OK;
-
-                static const XMVECTORF32 s_luminance_2020 =
-                  { 0.2627f,   0.678f,    0.0593f,   0.f };
-
-                static const XMMATRIX c_from709to2020 = // Transposed
-                {
-                  { 0.627225305694944f,  0.0690418812810714f, 0.0163911702607078f, 0.0f },
-                  { 0.329476882715808f,  0.919605681354755f,  0.0880887513437058f, 0.0f },
-                  { 0.0432978115892484f, 0.0113524373641739f, 0.895520078395586f,  0.0f },
-                  { 0.0f,                0.0f,                0.0f,                1.0f }
-                };
 
                 static const XMMATRIX c_from709toXYZ = // Transposed
                 {
@@ -1942,6 +1959,18 @@ SK_D3D12_ProcessScreenshotQueueEx ( SK_ScreenshotStage stage_ = SK_ScreenshotSta
                   extern float _cLerpScale;
                   extern float _cSdrPower;
 
+                  // After tonemapping, re-normalize the image to preserve peak white,
+                  //   this is important in cases where the maximum luminance was < 1000 nits
+                  XMVECTOR maxTonemappedRGB = g_XMZero;
+
+                  DirectX::TexMetadata  tonemapped_metadata = un_srgb.GetMetadata ();
+                  DirectX::ScratchImage tonemapped_image;
+                    tonemapped_image.Initialize2D (
+                      tonemapped_metadata.format,
+                      tonemapped_metadata.width,
+                      tonemapped_metadata.height, 1, 1
+                    );
+
                   hr =               un_srgb.GetImageCount () == 1 ?
                     TransformImage ( un_srgb.GetImages     (),
                                      un_srgb.GetImageCount (),
@@ -1950,55 +1979,74 @@ SK_D3D12_ProcessScreenshotQueueEx ( SK_ScreenshotStage stage_ = SK_ScreenshotSta
                     {
                       UNREFERENCED_PARAMETER(y);
 
-                      const XMVECTORF32 c_SdrPower =
-                        { _cSdrPower, _cSdrPower, _cSdrPower, 1.f };
+                      extern float __SK_HDR_Exp;
 
-                      XMVECTOR maxLumExp =
-                        XMVectorMultiply ( maxCLL,
-                                           maxCLL );
+                      const XMVECTORF32 c_SdrPower =
+                        { __SK_HDR_Exp == 1.0f ? .719f : _cSdrPower,
+                          __SK_HDR_Exp == 1.0f ? .719f : _cSdrPower,
+                          __SK_HDR_Exp == 1.0f ? .719f : _cSdrPower, 1.f };
 
                       for (size_t j = 0; j < width; ++j)
                       {
                         XMVECTOR value = inPixels [j];
-                        XMVECTOR luma  = 
-                          XMVectorReplicate (
-                            XMVectorMax (XMVector3Transform (value, c_from709toXYZ), g_XMZero).m128_f32 [1]
-                          );
+
+                        XMVECTOR maxcomp = XMVectorMax (value, g_XMZero);
+
+                        float fMaxComp =
+                          std::max ({0.0f, XMVectorGetX (maxRGB), XMVectorGetY (maxRGB), XMVectorGetZ (maxRGB)});
+
+                        if (fMaxComp > 0.0f)
+                        {
+                          value =
+                            XMVectorDivide (value, XMVectorReplicate (fMaxComp));
+                        }
+
+                        else fMaxComp = 1.0f;
+
+                        if (_cLerpScale != 1.0)
+                        {
+                          value =
+                            XMVectorDivide (value, XMVectorReplicate (_cLerpScale));
+                        }
+
+                        else
+                        {
+                          value =
+                            XMVectorDivide (value, XMVectorMultiply (XMVectorPow (XMVectorReplicate (XMVectorGetY (maxLum) / 12.5f), XMVectorReplicate (_cSdrPower)), XMVectorReplicate (10.0f)));
+                        }
+
+                        static const XMVECTOR vMaxFP16 = XMVectorSet (65504.0f, 65504.0f, 65504.0f, 65504.0f);
 
                         value =
-                          XMVectorMax (value, g_XMZero);
+                          XMVectorPow (XMVectorMultiply (XMVectorReplicate (fMaxComp), XMVectorSaturate (XMVector3Transform (ToneMapACESFilmic (XMVectorClamp (XMVector3Transform (value, c_from709to2020), g_XMZero, vMaxFP16)), c_from2020to709))), XMVectorReplicate (_cSdrPower));
 
-                        XMVECTOR numerator =
-                          XMVectorAdd (
-                            g_XMOne,
-                              XMVectorDivide (
-                                luma, maxLumExp
-                              )
-                          );
+                        maxTonemappedRGB = XMVectorMax (maxTonemappedRGB, value);
 
-                        XMVECTOR scale0 =
-                          XMVectorDivide (
-                            numerator, XMVectorAdd (
-                              g_XMOne, luma
-                            )
-                          );
-
-                        XMVECTOR scale1 =
-                          XMVectorDivide (
-                            numerator, XMVectorAdd (
-                              g_XMOne, value
-                            )
-                          );
-
-                        value =
-                          XMVectorMultiply (value, XMVectorLerp (scale1, scale0, luma.m128_f32 [0] /
-                                                                               maxLum.m128_f32 [0] / _cLerpScale));
-
-                        outPixels [j] =
-                          XMVectorPow ( value, c_SdrPower );
+                        outPixels [j] = value;
                       }
-                    }, final_sdr
-                  ) : E_POINTER;
+                    }, tonemapped_image) : E_POINTER;
+
+                    float fMaxTonemappedRGB =
+                      std::max ({ 1.0f, XMVectorGetX (maxTonemappedRGB), XMVectorGetY (maxTonemappedRGB), XMVectorGetZ (maxTonemappedRGB) });
+
+                    maxTonemappedRGB = XMVectorReplicate (fMaxTonemappedRGB);
+
+                    hr =
+                    TransformImage ( tonemapped_image.GetImages     (),
+                                     tonemapped_image.GetImageCount (),
+                                     tonemapped_image.GetMetadata   (),
+                                     [&](XMVECTOR* outPixels, const XMVECTOR* inPixels, size_t width, size_t y)
+                    {
+                      UNREFERENCED_PARAMETER(y);
+                      
+                      for (size_t j = 0; j < width; ++j)
+                      {
+                        XMVECTOR value = inPixels [j];
+                      
+                        outPixels [j] = XMVectorDivide (value, maxTonemappedRGB);
+                      }
+                    },
+                  final_sdr );
 
                   extern UINT filterFlags; // Pending removal, this is to debug WIC
 
@@ -2343,10 +2391,10 @@ SK_D3D12_ProcessScreenshotQueueEx ( SK_ScreenshotStage stage_ = SK_ScreenshotSta
 
                         static const XMMATRIX c_from2020to709 = // Transposed
                         {
-                          {  1.6604910f, -0.5876411f, -0.0728499f, 0.f },
-                          { -0.1245505f,  1.1328999f, -0.0083494f, 0.f },
-                          { -0.0181508f, -0.1005789f,  1.1187297f, 0.f },
-                          {  0.f,         0.f,         0.f,        1.f }
+                          {  1.66096379471340f,   -0.124477196529907f,   -0.0181571579858552f, 0.0f },
+                          { -0.588112737547978f,   1.13281946828499f,    -0.100666415661988f,  0.0f },
+                          { -0.0728510571654192f, -0.00834227175508652f,  1.11882357364784f,   0.0f },
+                          {  0.0f,                 0.0f,                  0.0f,                1.0f }
                         };
 
                         static const XMMATRIX c_from709to2020 = // Transposed
