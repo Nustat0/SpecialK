@@ -1510,6 +1510,61 @@ SK_Display_ResolutionSelectUI (bool bMarkDirty)
                                                       "Off");
     }
 
+    if (SK_API_IsDXGIBased (rb.api))
+    {
+      if ( ( config.render.framerate.present_interval == SK_NoPreference &&
+                                  rb.present_interval >= 1                ) ||
+           ( config.render.framerate.present_interval >= 1                ) )
+      {
+        bool bAdaptiveVSync =
+          config.render.framerate.present_interval > 0 &&
+          config.render.framerate.target_fps > 0.0f    &&
+          config.render.framerate.adaptive_vsync;
+
+        ImGui::SameLine    ();
+        ImGui::SeparatorEx (ImGuiSeparatorFlags_Vertical);
+        ImGui::SameLine    ();
+
+        if (ImGui::Checkbox ("Adaptive", &bAdaptiveVSync))
+        {
+          config.render.framerate.adaptive_vsync = bAdaptiveVSync;
+
+          if (config.render.framerate.adaptive_vsync)
+          {
+            if (config.render.framerate.present_interval == SK_NoPreference)
+            {
+              config.render.framerate.present_interval = 1;
+            }
+
+            if (__target_fps == 0.0f)
+            {
+              SK_GetCommandProcessor ()->ProcessCommandFormatted (
+                "TargetFPS %f",
+                static_cast <float> (
+                  rb.getActiveRefreshRate () /
+                  config.render.framerate.present_interval
+                )
+              );
+            }
+
+            else if (__target_fps < 0.0f)
+            {
+              SK_GetCommandProcessor ()->ProcessCommandFormatted (
+                "TargetFPS %f", -__target_fps
+              );
+            }
+          }
+        }
+
+        if (ImGui::IsItemHovered ())
+        {
+          ImGui::BeginTooltip ();
+          ImGui::Text         ("Temporarily turns V-Sync -OFF- if FPS is unstable or Render Latency exceeds 1 frame");
+          ImGui::EndTooltip   ();
+        }
+      }
+    }
+
     if (SK_API_IsDirect3D9 (rb.api) && changed)
     {
       ImGui::BulletText ("Game Restart Required");
