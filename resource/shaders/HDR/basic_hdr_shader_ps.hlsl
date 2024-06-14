@@ -147,7 +147,6 @@ FinalOutput (float4 vColor)
 {
   // HDR10 -Output-, transform scRGB to HDR10
   if (visualFunc.y == 1)
-  if (visualFunc.y == 1)
   {
     vColor.rgb =
       saturate ( // PQ is not defined for negative inputs
@@ -272,6 +271,11 @@ main (PS_INPUT input) : SV_TARGET
   float  max_rgb_comp  =
     max (1.0, max (hdr_color_abs.r, max (hdr_color_abs.g, hdr_color_abs.b)));
 
+  // Normalize things so that values > 1.0 are not fed into de-gamma.
+  //
+  //   Games that have gamma are SDR and should never have had values > 1.0
+  //     in the first place!
+  //
   hdr_color.rgb /= max_rgb_comp;
 
   hdr_color.rgb =
@@ -322,7 +326,7 @@ main (PS_INPUT input) : SV_TARGET
       //input.color.x /= xyz_color.y;
 
       // Hard Clamp (Perceptual Boost will not boost beyond target)
-      hdr_color.rgb /= xyz_color.y;
+      hdr_color.rgb = (hdr_color.rgb / xyz_color.y);
 #endif
     }
 #else
@@ -388,8 +392,12 @@ main (PS_INPUT input) : SV_TARGET
   if (uiToneMapper != TONEMAP_HDR10_to_scRGB)
 #endif
   {
-    if ( input.color.x < 0.0125f - FLT_EPSILON ||
-         input.color.x > 0.0125f + FLT_EPSILON )
+    //
+    // Middle-Gray Contrast (has not worked as intended in years, should be removed!)
+    //
+    if ( sdrLuminance_NonStd != 1.25f &&
+         (input.color.x < 0.0125f - FLT_EPSILON ||
+          input.color.x > 0.0125f + FLT_EPSILON) )
     {
       hdr_color.rgb = LinearToLogC (hdr_color.rgb);
       hdr_color.rgb = Contrast     (hdr_color.rgb,
@@ -468,42 +476,62 @@ main (PS_INPUT input) : SV_TARGET
     float fLuma =
       Rec709_to_XYZ (hdr_color.rgb).y;
 
-    hdr_color.rgb = max (Rec709toAP0_D65 (hdr_color.rgb), 0.0f);
+    hdr_color.rgb = max (Rec709_to_XYZ (hdr_color.rgb), 0.0f);
 
-    float3 new_color  = 0.0f,
-           new_color0 = 0.0f,
+    float4 new_color = 0.0f;
+    float3 new_color0 = 0.0f,
            new_color1 = 0.0f;
 
-    if (colorBoost < 1.0)
+    if (colorBoost == 0.0 || colorBoost == 1.0)
     {
-      new_color0 =
-       PQToLinear (
-          LinearToPQ ( fLuma,
-                       pb_param_0 ) *
-                       pb_param_2, pb_param_1
-                   ) / pb_param_3;
+      // Optimized for no color boost
+      if (colorBoost == 0.0)
+      {
+        new_color0 =
+          ( PQToLinear (
+              LinearToPQ ( fLuma,
+                           pb_param_0 ) *
+                           pb_param_2, pb_param_1
+                       ) / pb_param_3 ).xxx;
+      }
+
+      // Optimized for full color boost
+      if (colorBoost == 1.0)
+      {
+        new_color1 =
+          PQToLinear (
+            LinearToPQ ( hdr_color.rgb,
+                         pb_param_0 ) *
+                         pb_param_2, pb_param_1
+                     ) / pb_param_3;
+      }
+
+      new_color.rgb =
+        lerp (hdr_color.rgb * new_color0 / fLuma,
+                              new_color1, colorBoost);
     }
 
-    if (colorBoost > 0.0)
+    // Optimization for both at the same time.
+    else
     {
-      new_color1 =
-        PQToLinear (
-          LinearToPQ ( hdr_color.rgb,
-                       pb_param_0 ) *
-                       pb_param_2, pb_param_1
-                   ) / pb_param_3;
-    }
+      new_color =
+         PQToLinear (
+            LinearToPQ ( float4 (hdr_color.rgb, fLuma),
+                         pb_param_0 ) *
+                         pb_param_2, pb_param_1
+                     ) / pb_param_3;
 
-    new_color =
-      lerp (hdr_color.rgb * new_color0 / fLuma,
-                            new_color1, colorBoost);
+      new_color.rgb =
+        lerp (hdr_color.rgb * new_color.www / fLuma,
+                              new_color.rgb, colorBoost);
+    }
 
 #ifdef INCLUDE_NAN_MITIGATION
     if (! AnyIsNan (  new_color))
 #endif
-      hdr_color.rgb = new_color;
+      hdr_color.rgb = new_color.rgb;
 
-    hdr_color.rgb = AP0_D65toRec709 (hdr_color.rgb);
+    hdr_color.rgb = XYZ_to_Rec709 (hdr_color.rgb);
   }
 
 #ifdef INCLUDE_HDR10
