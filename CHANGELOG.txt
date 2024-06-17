@@ -1,4 +1,31 @@
-﻿24.6.14.3
+﻿24.6.16
+=======
+ + Integrated SKIV's HDR->SDR screenshot tonemapping algorithm and apply
+     it to all HDR content, whether inverse tonemapped using SK or native.
+
+24.6.15.3
+=========
+ + Switch to WIC's scanline adaptive PNG encoder optimization for better
+     data compression rates while being completely lossless unlike SK's
+       previous compression optimization strategy.
+
+24.6.15.2
+=========
+ + Fixed various cursor management issues when using the new snipping tool.
+ + Added gray translucent overlay while snipping mode is active.
+
+24.6.15.1
+=========
+ + Made screenshot snipping into a dedicated keybind, you must click
+     to begin the selection after pressing the keybind. The selection
+       rectangle will only show up when clicked.
+
+24.6.15
+=======
+ + Added support for snipping clipboard-only screenshots (HDR or SDR) using
+     the mouse. Press the clipboard-only binding twice to use fullscreen.
+
+24.6.14.3
 =========
  + Optimized Perceptual/Color Boost perf. slightly for values > 0% and < 100%
 
