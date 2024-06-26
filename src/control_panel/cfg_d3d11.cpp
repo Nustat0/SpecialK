@@ -924,7 +924,7 @@ SK::ControlPanel::D3D11::Draw (void)
         }
 #endif
 
-        if ( ( config.render.framerate.present_interval == SK_NoPreference &&
+        /*if ( ( config.render.framerate.present_interval == SK_NoPreference &&
                                     rb.present_interval >= 1                ) ||
              ( config.render.framerate.present_interval >= 1                ) )
         {
@@ -972,7 +972,7 @@ SK::ControlPanel::D3D11::Draw (void)
           }
         }
 
-        else if (SK_DXGI_SupportsTearing ())
+        else */if (SK_DXGI_SupportsTearing ())
         {
           bool tearing_pref = config.render.dxgi.allow_tearing;
 
@@ -983,9 +983,10 @@ SK::ControlPanel::D3D11::Draw (void)
             // Latent Sync
             if (config.render.framerate.present_interval == 0 && config.render.framerate.target_fps > 0.0f)
             {
-              config.render.framerate.latent_sync.tearing_mode =
-                config.render.dxgi.allow_tearing ? SK_TearingMode::LatentSync_AlwaysOn
-                                                 : SK_TearingMode::LatentSync_AlwaysOff;
+              config.render.framerate.tearing_mode =
+                config.render.dxgi.allow_tearing
+                  ? SK_TearingMode::AlwaysOn
+                  : SK_TearingMode::AlwaysOff;
             }
 
             _ResetLimiter ();
