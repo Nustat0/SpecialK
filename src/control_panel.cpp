@@ -1376,7 +1376,7 @@ SK_Display_ResolutionSelectUI (bool bMarkDirty)
 
     bool app_interval_changed = (
       config.render.framerate.present_interval ==
-      SK_NoPreference
+        SK_NoPreference
     ) && (
       std::exchange (
         last_app_interval,
@@ -1389,7 +1389,7 @@ SK_Display_ResolutionSelectUI (bool bMarkDirty)
     // 0-4 to  -1: no_override_label         -> current_no_override_state
     bool sk_interval_changed_no_preference = (
       config.render.framerate.present_interval !=
-      last_sk_interval
+        last_sk_interval
     ) && (
       std::min (
         std::exchange (

@@ -612,6 +612,7 @@ SK_ImGui_LatentSyncConfig (void)
         ImGui::Separator    ();
         ImGui::BulletText   ("If GPU load is very high, you may need to disable tearing");
         ImGui::BulletText   ("Disabling tearing will add between 0 and 1 refresh cycles of latency, depending on GPU load");
+        ImGui::BulletText   ("Low Latency mode temporarily lowers FPS limit if Render Latency exceeds 1 frame");
         if (! bIsD3D9)
         {
           ImGui::Separator  ();
@@ -805,7 +806,9 @@ SK_ImGui_LatentSyncConfig (void)
         static bool bAsyncInitOrig  =
           config.compatibility.init_on_separate_thread;
 
-        if (config.render.framerate.tearing_mode != iTearingModeOrig)
+        if ( (                     iTearingModeOrig == SK_TearingMode::AlwaysOn ||
+               config.render.framerate.tearing_mode == SK_TearingMode::AlwaysOn  ) &&
+             ( config.render.framerate.tearing_mode != iTearingModeOrig          ) )
         {
           if (SK_IsInjected () && config.compatibility.init_on_separate_thread)
           {
@@ -2407,7 +2410,14 @@ SK::Framerate::Limiter::wait (void)
                 );
               }
 
+              else if (fTargetFPS != __target_fps)
+              {
+                fTargetFPS = __target_fps;
+              }
+
               bReduceRenderLatencyAndWait = false;
+
+              fTempTargetFPS = 0.0f;
             }
           }
         } break;

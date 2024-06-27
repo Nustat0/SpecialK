@@ -2944,9 +2944,11 @@ SK_DXGI_PresentBase ( IDXGISwapChain         *This,
 
     if (config.render.framerate.target_fps > 0.0f)
     {
-      if ( config.render.framerate.present_interval > 0 &&
-           /*config.render.framerate.adaptive_vsync       &&*/
-           config.render.framerate.turn_vsync_off       )
+      // Adaptive VSync
+      if  ( config.render.framerate.present_interval > 0 &&
+            config.render.framerate.turn_vsync_off       &&
+            config.render.framerate.tearing_mode ==
+              SK_TearingMode::AdaptiveOff                )
       {
         interval = 0;
       }
