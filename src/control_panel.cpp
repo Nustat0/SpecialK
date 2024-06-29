@@ -5824,8 +5824,17 @@ SK_ImGui_ControlPanel (void)
             static std::vector <double> dFractList;
             static int                  iFractSel  = 0;
             static auto                *pLastLabel = command;
-                   auto                 itemWidth  =
-              ImGui::CalcTextSize (std::format ("1:1 ({:.10f})", realRefresh).c_str ()).x;
+                   auto                 itemWidth  = std::max (
+                    ImGui::CalcTextSize (
+                      "Always Off (Low Latency)"
+                    ).x,
+                    ImGui::CalcTextSize (
+                      std::format (
+                        "1:1 ({:.10f})",
+                        realRefresh
+                      ).c_str ()
+                    ).x
+                   );
 
             bool activateSelection = (__target_fps > 0.0f);
             bool resetSelection    = 
@@ -6073,6 +6082,64 @@ SK_ImGui_ControlPanel (void)
                 );
               }
               ImGui::TreePop  (  );
+            }
+
+            else if ( ( config.render.framerate.present_interval == SK_NoPreference &&
+                                             rb.present_interval >= 1                ) ||
+                      ( config.render.framerate.present_interval >= 1                ) )
+            {
+              int iTearingMode = 0;
+
+              bool bIsD3D9 =
+                SK_API_IsDirect3D9 (rb.api);
+
+              switch (config.render.framerate.tearing_mode)
+              {
+                case  SK_TearingMode::AlwaysOn:
+                case  SK_TearingMode::AdaptiveOn:
+                  config.render.framerate.tearing_mode =
+                      SK_TearingMode::AlwaysOff;
+                case  SK_TearingMode::AdaptiveOff:
+                  if (bIsD3D9)
+                  {
+                    config.render.framerate.tearing_mode =
+                      SK_TearingMode::AlwaysOff;
+                  }
+                case  SK_TearingMode::AlwaysOff_LowLatency:
+                  if (config.render.framerate.target_fps <= 0.0f)
+                  {
+                    config.render.framerate.tearing_mode =
+                      SK_TearingMode::AlwaysOff;
+                  }
+                case  SK_TearingMode::AlwaysOff:
+                  break;
+                default:
+                  config.render.framerate.tearing_mode =
+                      SK_TearingMode::AlwaysOff;
+                  break;
+              }
+
+              ImGui::PushItemWidth (itemWidth);
+
+              if  (
+                    ImGui::Combo (
+                      "Tearing Mode",
+                      &iTearingMode,
+                      bIsD3D9 ? (
+                        "Always Off\0"
+                        "Always Off (Low Latency)\0\0"
+                      ) : (
+                        "Always Off\0"
+                        "Always Off (Low Latency)\0"
+                        "Adaptive V-Sync\0\0"
+                      )
+                    )
+                  )
+              {
+                // TODO...
+              }
+
+              ImGui::PopItemWidth ();
             }
 
             if (config.render.framerate.present_interval != 0)
