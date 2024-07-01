@@ -803,8 +803,7 @@ SK_ImGui_LatentSyncConfig (void)
         static int iTearingModeOrig =
           config.render.framerate.tearing_mode;
 
-        static bool bAsyncInitOrig  =
-          config.compatibility.init_on_separate_thread;
+        static bool bDisabledAsyncInit = false;
 
         if ( (                     iTearingModeOrig == SK_TearingMode::AlwaysOn ||
                config.render.framerate.tearing_mode == SK_TearingMode::AlwaysOn  ) &&
@@ -813,6 +812,8 @@ SK_ImGui_LatentSyncConfig (void)
           if (SK_IsInjected () && config.compatibility.init_on_separate_thread)
           {
             config.compatibility.init_on_separate_thread = false;
+
+            bDisabledAsyncInit = true;
           }
 
           if (! bIsInvalidTearingMode)
@@ -829,9 +830,11 @@ SK_ImGui_LatentSyncConfig (void)
           }
         }
 
-        else
+        else if (bDisabledAsyncInit)
         {
-          config.compatibility.init_on_separate_thread = bAsyncInitOrig;
+          config.compatibility.init_on_separate_thread = true;
+
+          bDisabledAsyncInit = false;
         }
       }
 

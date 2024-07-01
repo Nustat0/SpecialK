@@ -6080,6 +6080,11 @@ SK_ImGui_ControlPanel (void)
               ImGui::TreePop  (  );
             }
 
+            static bool bWasLatentSyncTearing =
+              bLatentSync                          &&
+              config.render.framerate.tearing_mode ==
+                SK_TearingMode::AlwaysOn;
+
             if (config.render.framerate.present_interval != 0)
             {
               bool bShowTearingModes = ! (
@@ -6223,6 +6228,38 @@ SK_ImGui_ControlPanel (void)
                   }
                   ImGui::EndGroup     ();
                   ImGui::EndTooltip   ();
+                }
+
+                if (bIsD3D9)
+                {
+                  static bool bDisabledAsyncInit = false;
+
+                  if (bWasLatentSyncTearing)
+                  {
+                    if (SK_IsInjected () && config.compatibility.init_on_separate_thread)
+                    {
+                      config.compatibility.init_on_separate_thread = false;
+
+                      bDisabledAsyncInit = true;
+                    }
+
+                    ImGui::SameLine    ();
+                    ImGui::TextColored (ImColor (1.0f, 1.0f, 0.0f), ICON_FA_EXCLAMATION_TRIANGLE);
+
+                    if (ImGui::IsItemHovered ())
+                    {
+                      ImGui::BeginTooltip ();
+                      ImGui::Text         ("Game Restart Required");
+                      ImGui::EndTooltip   ();
+                    }
+                  }
+
+                  else if (bDisabledAsyncInit)
+                  {
+                    config.compatibility.init_on_separate_thread = true;
+
+                    bDisabledAsyncInit = false;
+                  }
                 }
               }
 
