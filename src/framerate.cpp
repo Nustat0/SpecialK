@@ -2261,14 +2261,14 @@ SK::Framerate::Limiter::wait (void)
                 {
                   if (fWaitSeconds == 0.0f)
                   {
+                    bResetTargetFPS = false;
+
                     if (fTargetFPS != __target_fps)
                     {
                       fTargetFPS = __target_fps;
                     }
 
                     fTempTargetFPS = fTargetFPS - 1.0f;
-
-                    bResetTargetFPS = false;
 
                     SK_GetCommandProcessor ()->ProcessCommandFormatted (
                       "TargetFPS %f",
@@ -2282,9 +2282,9 @@ SK::Framerate::Limiter::wait (void)
                     {
                       bReduceRenderLatencyAndWait = false;
 
-                      fTargetFPS = __target_fps;
-
                       fTempTargetFPS = 0.0f;
+
+                      fTargetFPS = __target_fps;
 
                       return;
                     }

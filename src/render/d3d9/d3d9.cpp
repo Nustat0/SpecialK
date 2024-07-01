@@ -1398,6 +1398,7 @@ SK_D3D9_SetFPSTarget ( D3DPRESENT_PARAMETERS* pPresentationParameters,
     int presentationInterval =
       config.render.framerate.present_interval;
 
+    // Latent VSync...
     if  ( ( config.render.framerate.present_interval == 0 &&
             config.render.framerate.target_fps   >   0.0f &&
             pPresentationParameters->Windowed    == FALSE  ) &&

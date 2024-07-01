@@ -2953,6 +2953,7 @@ SK_DXGI_PresentBase ( IDXGISwapChain         *This,
         interval = 0;
       }
 
+      // Latent VSync...
       else if ( config.render.framerate.present_interval == 0 &&
                !config.render.dxgi.allow_tearing              &&
                 rb.isTrueFullscreen ()                        )
