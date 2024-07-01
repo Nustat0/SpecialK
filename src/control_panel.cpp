@@ -5824,17 +5824,13 @@ SK_ImGui_ControlPanel (void)
             static std::vector <double> dFractList;
             static int                  iFractSel  = 0;
             static auto                *pLastLabel = command;
-                   auto                 itemWidth  = std::max (
-                    ImGui::CalcTextSize (
-                      "Always Off (Low Latency)       "
-                    ).x,
+                   auto                 itemWidth  =
                     ImGui::CalcTextSize (
                       std::format (
                         "1:1 ({:.10f})",
                         realRefresh
                       ).c_str ()
-                    ).x
-                   );
+                    ).x;
 
             bool activateSelection = (__target_fps > 0.0f);
             bool resetSelection    = 
@@ -6086,6 +6082,21 @@ SK_ImGui_ControlPanel (void)
 
             if (config.render.framerate.present_interval != 0)
             {
+              bool bShowTearingModes = ! (
+                config.render.framerate.present_interval == SK_NoPreference &&
+                                     rb.present_interval == 0
+              );
+
+              if (bShowTearingModes)
+              {
+                itemWidth = std::max (
+                  ImGui::CalcTextSize (
+                    "Always Off (Low Latency)       "
+                  ).x,
+                  itemWidth
+                );
+              }
+
               ImGui::PushItemWidth (itemWidth);
 
               if ( ImGui::Combo ( "Refresh Rate Factors",
@@ -6096,8 +6107,7 @@ SK_ImGui_ControlPanel (void)
                 );
               }
 
-              if (! ( config.render.framerate.present_interval == SK_NoPreference &&
-                                           rb.present_interval == 0                ) )
+              if (bShowTearingModes)
               {
                 bool bIsD3D9 =
                   SK_API_IsDirect3D9 (rb.api);
