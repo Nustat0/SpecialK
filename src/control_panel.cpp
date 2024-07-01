@@ -6080,10 +6080,12 @@ SK_ImGui_ControlPanel (void)
               ImGui::TreePop  (  );
             }
 
-            static bool bWasLatentSyncTearing =
-              bLatentSync                          &&
-              config.render.framerate.tearing_mode ==
-                SK_TearingMode::AlwaysOn;
+            static bool bWasTearingEnabled =
+              (!bLatentSync                              &&
+                config.render.framerate.present_interval == 0 ) ||
+              ( bLatentSync                              &&
+                config.render.framerate.tearing_mode     ==
+                  SK_TearingMode::AlwaysOn                    );
 
             if (config.render.framerate.present_interval != 0)
             {
@@ -6117,42 +6119,38 @@ SK_ImGui_ControlPanel (void)
                 bool bIsD3D9 =
                   SK_API_IsDirect3D9 (rb.api);
 
-                switch (config.render.framerate.tearing_mode)
+                int iTearingMode = 0; // "Always Off"
+
+                if ( config.render.framerate.present_interval == SK_NoPreference ||
+                     config.render.framerate.target_fps       <= 0.0f            )
                 {
-                  case  SK_TearingMode::AlwaysOn:
-                  case  SK_TearingMode::AdaptiveOn:
-                    config.render.framerate.tearing_mode =
-                        SK_TearingMode::AlwaysOff;
-                  case  SK_TearingMode::AdaptiveOff:
-                    if (bIsD3D9)
-                    {
-                      config.render.framerate.tearing_mode =
-                        SK_TearingMode::AlwaysOff;
-                    }
-                  case  SK_TearingMode::AlwaysOff_LowLatency:
-                    if ( config.render.framerate.present_interval == SK_NoPreference ||
-                         config.render.framerate.target_fps       <= 0.0f            )
-                    {
-                      config.render.framerate.tearing_mode =
-                        SK_TearingMode::AlwaysOff;
-                    }
-                  case  SK_TearingMode::AlwaysOff:
-                    break;
-                  default:
-                    config.render.framerate.tearing_mode =
-                        SK_TearingMode::AlwaysOff;
-                    break;
+                  config.render.framerate.tearing_mode =
+                          SK_TearingMode::AlwaysOff;
                 }
 
-                static const std::unordered_map <int, int> iTearingModeMap {
-                  { SK_TearingMode::AlwaysOff,            0 },
-                  { SK_TearingMode::AlwaysOff_LowLatency, 1 },
-                  { SK_TearingMode::AdaptiveOff,          2 }
-                };
-
-                int iTearingMode = iTearingModeMap.count (config.render.framerate.tearing_mode) != 0
-                  ? iTearingModeMap.at (config.render.framerate.tearing_mode)
-                  : 0;
+                else
+                {
+                  switch (config.render.framerate.tearing_mode)
+                  {
+                    case  SK_TearingMode::AlwaysOff_LowLatency:
+                      iTearingMode = 1;
+                      break;
+                    case  SK_TearingMode::AdaptiveOff:
+                      if (! bIsD3D9)
+                      {
+                        iTearingMode = 2;
+                        break;
+                      }
+                      config.render.framerate.tearing_mode =
+                          SK_TearingMode::AlwaysOff;
+                    case  SK_TearingMode::AlwaysOff:
+                      break;
+                    default:
+                      config.render.framerate.tearing_mode =
+                          SK_TearingMode::AlwaysOff;
+                      break;
+                  }
+                }
 
                 if  (
                       ImGui::Combo (
@@ -6234,7 +6232,7 @@ SK_ImGui_ControlPanel (void)
                 {
                   static bool bDisabledAsyncInit = false;
 
-                  if (bWasLatentSyncTearing)
+                  if (bWasTearingEnabled)
                   {
                     if (SK_IsInjected () && config.compatibility.init_on_separate_thread)
                     {

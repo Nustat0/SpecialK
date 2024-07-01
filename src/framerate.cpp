@@ -2447,12 +2447,6 @@ SK::Framerate::Limiter::wait (void)
     {
       switch (config.render.framerate.tearing_mode)
       {
-        case  SK_TearingMode::AlwaysOn:
-        case  SK_TearingMode::AdaptiveOn:
-          config.render.framerate.tearing_mode =
-              SK_TearingMode::AlwaysOff;
-        case  SK_TearingMode::AlwaysOff:
-          break;
         case  SK_TearingMode::AdaptiveOff:
           if (SK_API_IsDirect3D9 (rb.api))
           {
@@ -2466,6 +2460,7 @@ SK::Framerate::Limiter::wait (void)
               config.render.framerate.tearing_mode
             )
           );
+        case  SK_TearingMode::AlwaysOff:
           break;
         default:
           config.render.framerate.tearing_mode =
