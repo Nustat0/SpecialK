@@ -2171,13 +2171,15 @@ SK::Framerate::Limiter::wait (void)
 
       auto _ToggleTearing = [&](bool bEnableTearing) -> void
       {
-        // Adaptive VSync
-        if ( config.render.framerate.present_interval > 0 &&
-             tearingMode == SK_TearingMode::AdaptiveOff   )
+        if (config.render.framerate.present_interval > 0)
         {
           config.render.framerate.turn_vsync_off = bEnableTearing;
 
-          config.render.dxgi.allow_tearing = true;
+          // Adaptive VSync
+          if (tearingMode == SK_TearingMode::AdaptiveOff)
+          {
+            config.render.dxgi.allow_tearing = true;
+          }
         }
 
         else
