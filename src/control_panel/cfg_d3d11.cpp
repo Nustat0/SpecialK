@@ -937,7 +937,19 @@ SK::ControlPanel::D3D11::Draw (void)
             ? config.render.framerate.turn_vsync_off
             : config.render.dxgi.allow_tearing;
 
-          if (ImGui::Checkbox ("Enable Tearing", &tearing_pref))
+          if (bIsAdaptiveVSync)
+          {
+            ImGui::BeginDisabled ();
+          }
+
+          if  (
+                ImGui::Checkbox (
+                  bIsAdaptiveVSync
+                    ? "Enable Tearing (Adaptive V-Sync)"
+                    : "Enable Tearing",
+                  &tearing_pref
+                )
+              )
           {
             if (! bIsAdaptiveVSync)
             {
@@ -955,6 +967,11 @@ SK::ControlPanel::D3D11::Draw (void)
 
               _ResetLimiter ();
             }
+          }
+
+          if (bIsAdaptiveVSync)
+          {
+            ImGui::EndDisabled ();
           }
 
           if (ImGui::IsItemHovered ())

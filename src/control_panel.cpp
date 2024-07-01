@@ -5826,7 +5826,7 @@ SK_ImGui_ControlPanel (void)
             static auto                *pLastLabel = command;
                    auto                 itemWidth  = std::max (
                     ImGui::CalcTextSize (
-                      "Always Off (Low Latency)"
+                      "Always Off (Low Latency)   "
                     ).x,
                     ImGui::CalcTextSize (
                       std::format (
@@ -6196,8 +6196,8 @@ SK_ImGui_ControlPanel (void)
                 ImGui::EndGroup     ();
                 ImGui::SameLine     (0.0f, 0.0f);
                 ImGui::BeginGroup   ();
-                ImGui::BulletText   (" : temporarily lowers FPS limit if Render Latency exceeds 1 frame");
-                ImGui::BulletText   (" : temporarily turns V-Sync -OFF- if FPS is unstable or Render Latency exceeds 1 frame");
+                ImGui::Text         (" : temporarily lowers FPS limit if Render Latency exceeds 1 frame");
+                ImGui::Text         (" : temporarily turns V-Sync -OFF- if FPS is unstable or Render Latency exceeds 1 frame");
                 ImGui::EndGroup     ();
                 ImGui::EndTooltip   ();
               }
