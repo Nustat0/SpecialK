@@ -2208,6 +2208,9 @@ SK::Framerate::Limiter::wait (void)
             rb.presentation.mode == SK_PresentMode::Composed_Copy_CPU_GDI      ||
             rb.presentation.mode == SK_PresentMode::Composed_Flip;
 
+          bool bIsTrueFullscreen =
+            rb.isTrueFullscreen ();
+
           bool bIsRenderLatencyAboveOneFrame = false;
 
           // 2x.. mode with Tearing Off and "PreRenderLimit > 1" would constantly
@@ -2243,14 +2246,13 @@ SK::Framerate::Limiter::wait (void)
 
           static float fTempTargetFPS = 0.0f;
 
-          if ( bIsRenderLatencyAboveOneFrame &&
-              !bIsComposedPresent            &&
-              !bIsFpsUnstable                )
+          if ( ( bIsRenderLatencyAboveOneFrame && !bIsComposedPresent ) &&
+              !( bIsFpsUnstable                && !bIsTrueFullscreen  ) )
           {
             static float fWaitSeconds = 0.0f;
 
             if ( tearingMode == SK_TearingMode::AlwaysOff_LowLatency ||
-                 rb.isTrueFullscreen ()                              )
+                 bIsTrueFullscreen                                   )
             {
               // Toggling VSync Off -> On is not a reliable way to reduce
               // Render Latency in FSE, resetting frame limiter is better
