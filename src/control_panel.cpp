@@ -6084,125 +6084,6 @@ SK_ImGui_ControlPanel (void)
               ImGui::TreePop  (  );
             }
 
-            else if ( ( config.render.framerate.present_interval == SK_NoPreference &&
-                                             rb.present_interval >= 1                ) ||
-                      ( config.render.framerate.present_interval >= 1                ) )
-            {
-              bool bIsD3D9 =
-                SK_API_IsDirect3D9 (rb.api);
-
-              switch (config.render.framerate.tearing_mode)
-              {
-                case  SK_TearingMode::AlwaysOn:
-                case  SK_TearingMode::AdaptiveOn:
-                  config.render.framerate.tearing_mode =
-                      SK_TearingMode::AlwaysOff;
-                case  SK_TearingMode::AdaptiveOff:
-                  if (bIsD3D9)
-                  {
-                    config.render.framerate.tearing_mode =
-                      SK_TearingMode::AlwaysOff;
-                  }
-                case  SK_TearingMode::AlwaysOff_LowLatency:
-                  if ( config.render.framerate.present_interval == SK_NoPreference ||
-                       config.render.framerate.target_fps       <= 0.0f            )
-                  {
-                    config.render.framerate.tearing_mode =
-                      SK_TearingMode::AlwaysOff;
-                  }
-                case  SK_TearingMode::AlwaysOff:
-                  break;
-                default:
-                  config.render.framerate.tearing_mode =
-                      SK_TearingMode::AlwaysOff;
-                  break;
-              }
-
-              static const std::unordered_map <int, int> iTearingModeMap {
-                { SK_TearingMode::AlwaysOff,            0 },
-                { SK_TearingMode::AlwaysOff_LowLatency, 1 },
-                { SK_TearingMode::AdaptiveOff,          2 }
-              };
-
-              int iTearingMode = iTearingModeMap.count (config.render.framerate.tearing_mode) != 0
-                ? iTearingModeMap.at (config.render.framerate.tearing_mode)
-                : 0;
-
-              ImGui::PushItemWidth (itemWidth);
-
-              if  (
-                    ImGui::Combo (
-                      "Tearing Mode",
-                      &iTearingMode,
-                      bIsD3D9 ? (
-                        "Always Off\0"
-                        "Always Off (Low Latency)\0\0"
-                      ) : (
-                        "Always Off\0"
-                        "Always Off (Low Latency)\0"
-                        "Adaptive V-Sync\0\0"
-                      )
-                    )
-                  )
-              {
-                switch (iTearingMode)
-                {
-                  case 1:
-                    config.render.framerate.tearing_mode = SK_TearingMode::AlwaysOff_LowLatency;
-                    break;
-                  case 2:
-                    config.render.framerate.tearing_mode = SK_TearingMode::AdaptiveOff;
-                    break;
-                  default:
-                    config.render.framerate.tearing_mode = SK_TearingMode::AlwaysOff;
-                    break;
-                }
-
-                if (config.render.framerate.tearing_mode != SK_TearingMode::AlwaysOff)
-                {
-                  if (config.render.framerate.present_interval == SK_NoPreference)
-                  {
-                    config.render.framerate.present_interval = 1;
-                  }
-
-                  if (__target_fps == 0.0f)
-                  {
-                    SK_GetCommandProcessor ()->ProcessCommandFormatted (
-                      "TargetFPS %f",
-                      static_cast <float> (
-                        rb.getActiveRefreshRate () /
-                        config.render.framerate.present_interval
-                      )
-                    );
-                  }
-
-                  else if (__target_fps < 0.0f)
-                  {
-                    SK_GetCommandProcessor ()->ProcessCommandFormatted (
-                      "TargetFPS %f", -__target_fps
-                    );
-                  }
-                }
-              }
-
-              ImGui::PopItemWidth ();
-
-              if (ImGui::IsItemHovered ())
-              {
-                ImGui::BeginTooltip ();
-                ImGui::BeginGroup   ();
-                ImGui::BulletText   ("Always Off (Low Latency)");
-                ImGui::BulletText   ("Adaptive V-Sync");
-                ImGui::EndGroup     ();
-                ImGui::SameLine     (0.0f, 0.0f);
-                ImGui::BeginGroup   ();
-                ImGui::Text         (" : temporarily lowers FPS limit if Render Latency exceeds 1 frame");
-                ImGui::Text         (" : temporarily turns V-Sync -OFF- if FPS is unstable or Render Latency exceeds 1 frame");
-                ImGui::EndGroup     ();
-                ImGui::EndTooltip   ();
-              }
-            }
-
             if (config.render.framerate.present_interval != 0)
             {
               ImGui::PushItemWidth (itemWidth);
@@ -6213,6 +6094,126 @@ SK_ImGui_ControlPanel (void)
                 cp->ProcessCommandFormatted (
                   "%s %f", command, static_cast <float> (dFractList [iFractSel])
                 );
+              }
+
+              if (! ( config.render.framerate.present_interval == SK_NoPreference &&
+                                           rb.present_interval == 0                ) )
+              {
+                bool bIsD3D9 =
+                  SK_API_IsDirect3D9 (rb.api);
+
+                switch (config.render.framerate.tearing_mode)
+                {
+                  case  SK_TearingMode::AlwaysOn:
+                  case  SK_TearingMode::AdaptiveOn:
+                    config.render.framerate.tearing_mode =
+                        SK_TearingMode::AlwaysOff;
+                  case  SK_TearingMode::AdaptiveOff:
+                    if (bIsD3D9)
+                    {
+                      config.render.framerate.tearing_mode =
+                        SK_TearingMode::AlwaysOff;
+                    }
+                  case  SK_TearingMode::AlwaysOff_LowLatency:
+                    if ( config.render.framerate.present_interval == SK_NoPreference ||
+                         config.render.framerate.target_fps       <= 0.0f            )
+                    {
+                      config.render.framerate.tearing_mode =
+                        SK_TearingMode::AlwaysOff;
+                    }
+                  case  SK_TearingMode::AlwaysOff:
+                    break;
+                  default:
+                    config.render.framerate.tearing_mode =
+                        SK_TearingMode::AlwaysOff;
+                    break;
+                }
+
+                static const std::unordered_map <int, int> iTearingModeMap {
+                  { SK_TearingMode::AlwaysOff,            0 },
+                  { SK_TearingMode::AlwaysOff_LowLatency, 1 },
+                  { SK_TearingMode::AdaptiveOff,          2 }
+                };
+
+                int iTearingMode = iTearingModeMap.count (config.render.framerate.tearing_mode) != 0
+                  ? iTearingModeMap.at (config.render.framerate.tearing_mode)
+                  : 0;
+
+                if  (
+                      ImGui::Combo (
+                        "Tearing Mode",
+                        &iTearingMode,
+                        bIsD3D9 ? (
+                          "Always Off\0"
+                          "Always Off (Low Latency)\0\0"
+                        ) : (
+                          "Always Off\0"
+                          "Always Off (Low Latency)\0"
+                          "Adaptive V-Sync\0\0"
+                        )
+                      )
+                    )
+                {
+                  switch (iTearingMode)
+                  {
+                    case 1:
+                      config.render.framerate.tearing_mode = SK_TearingMode::AlwaysOff_LowLatency;
+                      break;
+                    case 2:
+                      config.render.framerate.tearing_mode = SK_TearingMode::AdaptiveOff;
+                      break;
+                    default:
+                      config.render.framerate.tearing_mode = SK_TearingMode::AlwaysOff;
+                      break;
+                  }
+
+                  if (config.render.framerate.tearing_mode != SK_TearingMode::AlwaysOff)
+                  {
+                    if (config.render.framerate.present_interval == SK_NoPreference)
+                    {
+                      config.render.framerate.present_interval = 1;
+                    }
+
+                    if (__target_fps == 0.0f)
+                    {
+                      SK_GetCommandProcessor ()->ProcessCommandFormatted (
+                        "TargetFPS %f",
+                        static_cast <float> (
+                          rb.getActiveRefreshRate () /
+                          config.render.framerate.present_interval
+                        )
+                      );
+                    }
+
+                    else if (__target_fps < 0.0f)
+                    {
+                      SK_GetCommandProcessor ()->ProcessCommandFormatted (
+                        "TargetFPS %f", -__target_fps
+                      );
+                    }
+                  }
+                }
+
+                if (ImGui::IsItemHovered ())
+                {
+                  ImGui::BeginTooltip ();
+                  ImGui::BeginGroup   ();
+                  ImGui::BulletText   ("Always Off (Low Latency)");
+                  if (! bIsD3D9)
+                  {
+                    ImGui::BulletText ("Adaptive V-Sync");
+                  }
+                  ImGui::EndGroup     ();
+                  ImGui::SameLine     (0.0f, 0.0f);
+                  ImGui::BeginGroup   ();
+                  ImGui::Text         (" : temporarily lowers FPS limit if Render Latency exceeds 1 frame");
+                  if (! bIsD3D9)
+                  {
+                    ImGui::Text       (" : temporarily turns V-Sync -OFF- if FPS is unstable or Render Latency exceeds 1 frame");
+                  }
+                  ImGui::EndGroup     ();
+                  ImGui::EndTooltip   ();
+                }
               }
 
               ImGui::PopItemWidth ();
