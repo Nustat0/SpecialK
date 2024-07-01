@@ -2173,18 +2173,20 @@ SK::Framerate::Limiter::wait (void)
       {
         if (config.render.framerate.present_interval > 0)
         {
-          config.render.framerate.turn_vsync_off = bEnableTearing;
-
           // Adaptive VSync
           if (tearingMode == SK_TearingMode::AdaptiveOff)
           {
+            config.render.framerate.turn_vsync_off =
+              bEnableTearing;
+
             config.render.dxgi.allow_tearing = true;
           }
         }
 
         else
         {
-          config.render.dxgi.allow_tearing = bEnableTearing;
+            config.render.dxgi.allow_tearing =
+              bEnableTearing;
         }
       };
 
