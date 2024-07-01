@@ -5826,7 +5826,7 @@ SK_ImGui_ControlPanel (void)
             static auto                *pLastLabel = command;
                    auto                 itemWidth  = std::max (
                     ImGui::CalcTextSize (
-                      "Always Off (Low Latency)     "
+                      "Always Off (Low Latency)      "
                     ).x,
                     ImGui::CalcTextSize (
                       std::format (
