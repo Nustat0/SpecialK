@@ -969,11 +969,6 @@ SK::ControlPanel::D3D11::Draw (void)
             }
           }
 
-          if (bIsAdaptiveVSync)
-          {
-            ImGui::EndDisabled ();
-          }
-
           if (ImGui::IsItemHovered (ImGuiHoveredFlags_AllowWhenDisabled))
           {
             ImGui::BeginTooltip ();
@@ -981,6 +976,11 @@ SK::ControlPanel::D3D11::Draw (void)
             ImGui::Separator    ();
             ImGui::BulletText   ("Presentation Interval 0 will turn VSYNC off");
             ImGui::EndTooltip   ();
+          }
+
+          if (bIsAdaptiveVSync)
+          {
+            ImGui::EndDisabled ();
           }
         }
       }
