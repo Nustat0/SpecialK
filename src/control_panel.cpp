@@ -6080,12 +6080,15 @@ SK_ImGui_ControlPanel (void)
               ImGui::TreePop  (  );
             }
 
-            static bool bWasTearingEnabled =
-              (!bLatentSync                              &&
+            bool bIsD3D9 =
+              SK_API_IsDirect3D9 (rb.api);
+
+            static bool bWasTearingD3D9 = bIsD3D9        &&
+            ( (!bLatentSync                              &&
                 config.render.framerate.present_interval == 0 ) ||
               ( bLatentSync                              &&
                 config.render.framerate.tearing_mode     ==
-                  SK_TearingMode::AlwaysOn                    );
+                  SK_TearingMode::AlwaysOn                    ) );
 
             if (config.render.framerate.present_interval != 0)
             {
@@ -6116,9 +6119,6 @@ SK_ImGui_ControlPanel (void)
 
               if (bShowTearingModes)
               {
-                bool bIsD3D9 =
-                  SK_API_IsDirect3D9 (rb.api);
-
                 int iTearingMode = 0; // "Always Off"
 
                 if ( config.render.framerate.present_interval == SK_NoPreference ||
@@ -6228,35 +6228,21 @@ SK_ImGui_ControlPanel (void)
                   ImGui::EndTooltip   ();
                 }
 
-                if (bIsD3D9)
+                if (bWasTearingD3D9)
                 {
-                  static bool bDisabledAsyncInit = false;
-
-                  if (bWasTearingEnabled)
+                  if (SK_IsInjected () && config.compatibility.init_on_separate_thread)
                   {
-                    if (SK_IsInjected () && config.compatibility.init_on_separate_thread)
-                    {
-                      config.compatibility.init_on_separate_thread = false;
-
-                      bDisabledAsyncInit = true;
-                    }
-
-                    ImGui::SameLine    ();
-                    ImGui::TextColored (ImColor (1.0f, 1.0f, 0.0f), ICON_FA_EXCLAMATION_TRIANGLE);
-
-                    if (ImGui::IsItemHovered ())
-                    {
-                      ImGui::BeginTooltip ();
-                      ImGui::Text         ("Game Restart Required");
-                      ImGui::EndTooltip   ();
-                    }
+                    config.compatibility.init_on_separate_thread = false;
                   }
 
-                  else if (bDisabledAsyncInit)
-                  {
-                    config.compatibility.init_on_separate_thread = true;
+                  ImGui::SameLine    ();
+                  ImGui::TextColored (ImColor (1.0f, 1.0f, 0.0f), ICON_FA_EXCLAMATION_TRIANGLE);
 
-                    bDisabledAsyncInit = false;
+                  if (ImGui::IsItemHovered ())
+                  {
+                    ImGui::BeginTooltip ();
+                    ImGui::Text         ("Game Restart Required");
+                    ImGui::EndTooltip   ();
                   }
                 }
               }
