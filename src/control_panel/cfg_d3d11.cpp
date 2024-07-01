@@ -974,7 +974,7 @@ SK::ControlPanel::D3D11::Draw (void)
             ImGui::EndDisabled ();
           }
 
-          if (ImGui::IsItemHovered ())
+          if (ImGui::IsItemHovered (ImGuiHoveredFlags_AllowWhenDisabled))
           {
             ImGui::BeginTooltip ();
             ImGui::Text         ("Enables True VSYNC -OFF- in Windowed Mode");
