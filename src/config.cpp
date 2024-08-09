@@ -853,6 +853,7 @@ struct {
       sk::ParameterBool*    auto_bias             = nullptr;
       sk::ParameterFloat*   max_auto_bias         = nullptr;
       sk::ParameterStringW* auto_bias_target      = nullptr;
+      sk::ParameterBool*    skip_frames           = nullptr;
     } latent_sync;
   } framerate;
 
@@ -1798,6 +1799,8 @@ auto DeclKeybind =
                                        auto_bias_target, L"Target input latency (in milliseconds or %) for auto-bias", dll_ini,         L"FrameRate.LatentSync",  L"AutoBiasTarget"),
     ConfigEntry (render.framerate.latent_sync.
                                           max_auto_bias, L"Maximum percentage to bias towards low input latency",      dll_ini,         L"FrameRate.LatentSync",  L"MaxAutoBias"),
+    ConfigEntry (render.framerate.latent_sync.
+                                            skip_frames, L"Enable frame skipping in 2x.. mode",                        dll_ini,         L"FrameRate.LatentSync",  L"SkipFrames"),
 
     ConfigEntry (render.framerate.allow_dwm_tearing,     L"Enable DWM Tearing (Windows 10+)",                          dll_ini,         L"Render.DXGI",           L"AllowTearingInDWM"),
     ConfigEntry (render.framerate.drop_late_frames,      L"Enable Flip Model to Render (and drop) frames at rates >"
@@ -3979,6 +3982,9 @@ auto DeclKeybind =
     }
   }
 
+  render.framerate.latent_sync.skip_frames
+                                    ->load   (config.render.framerate.latent_sync.skip_frames);
+
   render.osd.draw_in_vidcap->load            (config.render.osd. draw_in_vidcap);
 
   if (render.osd.hdr_luminance->load         (config.render.osd.hdr_luminance))
@@ -6107,6 +6113,8 @@ SK_SaveConfig ( std::wstring name,
       lstrcatW                                             (wszPercent, L"%");
       render.framerate.latent_sync.auto_bias_target->store (wszPercent);
     }
+
+    render.framerate.latent_sync.skip_frames->store (config.render.framerate.latent_sync.skip_frames);
 
     texture.d3d9.clamp_lod_bias->store              (config.textures.clamp_lod_bias);
 

@@ -673,21 +673,38 @@ SK_ImGui_LatentSyncConfig (void)
 
       ImGui::Separator ();
 
-      ImGui::Combo (
-        "Tearing Mode",
-        &config.render.framerate.tearing_mode,
-        bIsD3D9 ? (
-          "Always On\0"
-          "Always Off\0"
-          "Always Off (Low Latency)\0\0"
-        ) : (
-          "Always On\0"
-          "Always Off\0"
-          "Always Off (Low Latency)\0"
-          "Adaptive (Prefer On)\0"
-          "Adaptive (Prefer Off)\0\0"
-        )
-      );
+      if  (
+            ImGui::Combo (
+              "Tearing Mode",
+              &config.render.framerate.tearing_mode,
+              bIsD3D9 ? (
+                "Always On\0"
+                "Always Off\0"
+                "Always Off (Low Latency)\0\0"
+              ) : (
+                "Always On\0"
+                "Always Off\0"
+                "Always Off (Low Latency)\0"
+                "Adaptive (Prefer On)\0"
+                "Adaptive (Prefer Off)\0\0"
+              )
+            )
+          )
+      {
+        if (SK_LatentSync_SupportsFrameSkipping (rb.api))
+        {
+          switch (config.render.framerate.tearing_mode)
+          {
+            case SK_TearingMode::AlwaysOn:
+            case SK_TearingMode::AdaptiveOn:
+              config.render.framerate.latent_sync.skip_frames = false;
+              break;
+            default:
+              config.render.framerate.latent_sync.skip_frames = true;
+              break;
+          }
+        }
+      }
 
       if (ImGui::IsItemHovered ())
       {
@@ -724,8 +741,12 @@ SK_ImGui_LatentSyncConfig (void)
           config.render.framerate.tearing_mode ==
             SK_TearingMode::AdaptiveOff;
 
-        bool bSupportsFrameSkipping    =
-          SK_LatentSync_SupportsFrameSkipping (rb.api);
+        bool bSupportsFrameSkipping    =    (
+          SK_LatentSync_SupportsFrameSkipping (rb.api)
+        ) && (
+          config.render.framerate.latent_sync.skip_frames ||
+          !bIsTearingModeAdaptiveOff
+        );
 
         int iBufferCount      =
           config.render.framerate.buffer_count;
@@ -2390,9 +2411,6 @@ SK::Framerate::Limiter::wait (void)
       {
         // Prefer tearing, only disable tearing if FPS is unstable
         case SK_TearingMode::AdaptiveOn:
-        {
-          __SK_LatentSyncSkip = 0;
-        }
 
         // Prefer no tearing, only enable tearing if FPS is unstable or Render Latency exceeds 1 frame
         case SK_TearingMode::AdaptiveOff:
@@ -2839,8 +2857,6 @@ SK::Framerate::Limiter::wait (void)
             case SK_TearingMode::AlwaysOn:
             {
               _ToggleTearing (true);
-
-              __SK_LatentSyncSkip = 0;
             } break;
 #if 1
             // TODO: remove this case when VRR status is detectable on all vendors (see previous #if)
@@ -2909,7 +2925,9 @@ SK::Framerate::Limiter::wait (void)
         )
       );
 
-      if ((! SK_LatentSync_SupportsFrameSkipping (rb.api)) || __SK_LatentSyncSkip < 2)
+      if ( (! config.render.framerate.latent_sync.skip_frames ) ||
+           (! SK_LatentSync_SupportsFrameSkipping (rb.api)    ) ||
+           (__SK_LatentSyncSkip < 2                           ) )
       {
         __SK_LatentSyncSkip = 0;
       }
