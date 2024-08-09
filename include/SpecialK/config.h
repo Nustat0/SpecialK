@@ -125,15 +125,22 @@ struct sk_config_t
     SK_QpcTicksPerMs = SK_QpcFreq / 1000LL;
     SK_PerfFreq      = SK_QpcFreq;
 
-    PROCESSOR_POWER_INFORMATION pwi [64] = { };
+    PROCESSOR_POWER_INFORMATION pwi   [64] = { };
+    int                         cpuid [ 4] = { }; // Store eax,ebx,ecx,edx
 
     // Setup TSC-based timing instead of QPC when applicable
     //   (i.e. CPU has invariant timestamps)
     if ( 0x0 ==
            CallNtPowerInformation (ProcessorInformation, nullptr, 0, pwi, sizeof (pwi)) )
     {
-      int      cpuid [4] = { };
+      ZeroMemory (cpuid, sizeof (int) * 4);
+
+#ifndef SK_BUILT_BY_CLANG
       __cpuid (cpuid, 0x80000007);
+#else
+      __llvm_cpuid (0x80000007, cpuid [0], cpuid [1],
+                                cpuid [1], cpuid [2]);
+#endif
 
       SK_TscFreq =
         (1000ULL * 1000ULL * pwi [0].MaxMhz);
@@ -153,8 +160,16 @@ struct sk_config_t
         SK_PerfFreqInTsc = SK_QpcFreqInTsc;
     }
 
-    int      cpuid [4] = { };
-    __cpuid (cpuid, 0x80000001);
+    ZeroMemory (cpuid, sizeof (int) * 4);
+
+#ifndef SK_BUILT_BY_CLANG
+      __cpuid (cpuid, 0x80000001);
+#else
+      __llvm_cpuid (0x80000001, cpuid [0], cpuid [1],
+                                cpuid [1], cpuid [2]);
+#endif
+
+    
 
     // MWAITX = ECX Bit 29 (8000_0001h)
     SK_CPU_HasMWAITX = (cpuid [2] & (1 << 28)) != 0;
@@ -226,6 +241,13 @@ struct sk_config_t
       BYTE toggle [4]     = { VK_CONTROL, VK_SHIFT, 'O',          0 };
       BYTE shrink [4]     = { VK_CONTROL, VK_SHIFT, VK_OEM_MINUS, 0 };
       BYTE expand [4]     = { VK_CONTROL, VK_SHIFT, VK_OEM_PLUS,  0 };
+      SK_ConfigSerializedKeybind
+        console_toggle = {
+          SK_Keybind {
+            "Toggle SK's Command Console", L"Ctrl+Shift+Tab",
+             true, true, false, VK_TAB
+          }, L"ConsoleToggle"
+        };
     } keys;
 
     bool   remember_state = false;
@@ -809,7 +831,6 @@ struct sk_config_t
     // OSD Render Stats
     bool      show                 = false;
     struct keybinds_s {
-      //BYTE    toggle [4]         = { VK_CONTROL, VK_SHIFT, 'R', 0 };
       SK_ConfigSerializedKeybind
         hud_toggle = {
           SK_Keybind {
@@ -1625,6 +1646,8 @@ enum class SK_GAME_ID
   HaroldHalibut,                // Harold Halibut.exe
   KingdomComeDeliverance,       // KingdomCome.exe
   GodOfWar,                     // GoW.exe
+  TalosPrinciple2,              // Talos2-Win64-Shipping.exe
+  CrashBandicootNSaneTrilogy,   // CrashBandicootNSaneTrilogy.exe
 
   UNKNOWN_GAME               = 0xffff
 };

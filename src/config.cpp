@@ -252,7 +252,9 @@ SK_GetCurrentGameID (void)
           { L"dd2.exe",                                SK_GAME_ID::DragonsDogma                 },
           { L"Harold Halibut.exe",                     SK_GAME_ID::HaroldHalibut                },
           { L"KingdomCome.exe",                        SK_GAME_ID::KingdomComeDeliverance       },
-          { L"GoW.exe",                                SK_GAME_ID::GodOfWar                     }
+          { L"GoW.exe",                                SK_GAME_ID::GodOfWar                     },
+          { L"Talos2-Win64-Shipping.exe",              SK_GAME_ID::TalosPrinciple2              },
+          { L"CrashBandicootNSaneTrilogy.exe",         SK_GAME_ID::CrashBandicootNSaneTrilogy   },
         };
 
     first_check  = false;
@@ -1552,6 +1554,7 @@ auto DeclKeybind =
     ConfigEntry (screenshots.png.store_hdr,              L"Use HDR PNG file format for HDR screenshots",               osd_ini,         L"Screenshot.HDR",        L"StorePNG"),
     ConfigEntry (screenshots.allow_hdr_clipboard,        L"Use HDR for Windows Clipboard screenshots",                 osd_ini,         L"Screenshot.HDR",        L"AllowClipboardHDR"),
     Keybind ( &config.render.keys.hud_toggle,            L"Toggle Game's HUD",                                         osd_ini,         L"Game.HUD"),
+    Keybind ( &config.osd.keys.console_toggle,           L"Toggle SK's Command Console",                               osd_ini,         L"OSD.System"),
     Keybind ( &config.screenshots.game_hud_free_keybind, L"Take a screenshot without the HUD",                         osd_ini,         L"Screenshot.System"),
     Keybind ( &config.screenshots.sk_osd_free_keybind,   L"Take a screenshot without SK's OSD",                        osd_ini,         L"Screenshot.System"),
     Keybind ( &config.screenshots.
@@ -2437,6 +2440,7 @@ auto DeclKeybind =
 
       case SK_GAME_ID::KingdomComeDeliverance:
         config.textures.cache.ignore_nonmipped = true;
+        config.textures.d3d11.cache            = false; // Fix grass artifacts
         break;
 
       case SK_GAME_ID::DragonsDogma2:
@@ -3681,6 +3685,21 @@ auto DeclKeybind =
       {
         // Prevent crashes in the Steam and GOG versions of the game
         config.compatibility.allow_dxdiagn = false;
+      } break;
+
+      case SK_GAME_ID::TalosPrinciple2:
+      {
+        // Speed-up initialization by skipping these APIs
+        //   (why the game loads their DLLs is anyone's guess)
+        config.apis.d3d9.hook   = false;
+        config.apis.d3d9ex.hook = false;
+        config.apis.OpenGL.hook = false;
+      } break;
+
+      case SK_GAME_ID::CrashBandicootNSaneTrilogy:
+      {
+        // Requires synchronous init or the game will get GDI Copy
+        config.compatibility.init_on_separate_thread = false;
       } break;
     }
   }
@@ -5119,6 +5138,7 @@ auto DeclKeybind =
     config.screenshots.use_avif = false;
 
   LoadKeybind (&config.render.keys.hud_toggle);
+  LoadKeybind (&config.osd.keys.console_toggle);
   LoadKeybind (&config.screenshots.game_hud_free_keybind);
   LoadKeybind (&config.screenshots.sk_osd_free_keybind);
   LoadKeybind (&config.screenshots.sk_osd_insertion_keybind);
