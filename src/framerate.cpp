@@ -2347,6 +2347,8 @@ SK::Framerate::Limiter::wait (void)
         }
       }
 
+      bool bIsNewACTION = false;
+
       switch (iTearingMode)
       {
         // Prefer tearing, only disable tearing if FPS is unstable
@@ -2457,15 +2459,14 @@ SK::Framerate::Limiter::wait (void)
           {
             if (! bIsTearingModeAdaptiveOn)
             {
-              bool bAbortAction = false,
-                   bIsNewAction = false;
+              bool bAbortACTION = false;
 
               static int         iLastTearingMode = iTearingMode;
 
               if (std::exchange (iLastTearingMode,  iTearingMode) !=
                                                     iTearingMode)
               {
-                bAbortAction = true;
+                bAbortACTION = true;
               }
 
               static bool        bWasTrueFullscreen = bIsTrueFullscreen;
@@ -2473,14 +2474,14 @@ SK::Framerate::Limiter::wait (void)
               if (std::exchange (bWasTrueFullscreen,  bIsTrueFullscreen) !=
                                                       bIsTrueFullscreen)
               {
-                bAbortAction = true;
+                bAbortACTION = true;
               }
 
               bool bIsAboveRefresh = std::round (
                 fps / rb.getActiveRefreshRate ()
               ) >= 2.0;
 
-              if (! bAbortAction)
+              if (! bAbortACTION)
               {
                 auto _IsHighRenderLatency = [&]() -> bool
                 {
@@ -2568,21 +2569,135 @@ SK::Framerate::Limiter::wait (void)
                   bIsFpsUnstable
                 );
 
-                bool bIgnoreHighVariation   =   (
-                  config.render.framerate.enforcement_policy == 2
-                ) || (
-                  config.nvidia.reflex.use_limiter
-                ) || (
-                  config.fps.timing_method ==
-                    SK_FrametimeMeasures_NewFrameBegin
-                ) || (
+                bool bIgnoreHighVariation = (
                   bIsFpsUnstable
                 );
+
+                if (! bIgnoreHighVariation)
+                {
+                  if (! (bIsTearingModeAdaptiveOff && bIsAboveRefresh))
+                  {
+                    bIgnoreHighVariation = (
+                      config.render.framerate.enforcement_policy == 2
+                    ) || (
+                      config.nvidia.reflex.use_limiter
+                    ) || (
+                      config.fps.timing_method ==
+                        SK_FrametimeMeasures_NewFrameBegin
+                    );
+                  }
+                }
+
+                auto _ChangeACTION = [&]() -> bool
+                {
+                  if (bIsAboveRefresh)
+                  {
+                    if (iACTION == ACTION_HighVariation)
+                    {
+                      return false;
+                    }
+
+                    if ( !bIgnoreHighVariation &&
+                              _IsHighVariation () )
+                    {
+                      bIsNewACTION = true;
+                           iACTION =
+                            ACTION_HighVariation;
+
+                      return true;
+                    }
+
+                    if (iACTION == ACTION_HighRenderLatency)
+                    {
+                      return false;
+                    }
+
+                    if ( !bIgnoreHighRenderLatency &&
+                              _IsHighRenderLatency () )
+                    {
+                      bIsNewACTION = true;
+                           iACTION =
+                            ACTION_HighRenderLatency;
+
+                      return true;
+                    }
+
+                    if (iACTION == ACTION_StuckInputLatency)
+                    {
+                      return false;
+                    }
+
+                    if ( !bIgnoreStuckInputLatency &&
+                              _IsStuckInputLatency () )
+                    {
+                      bIsNewACTION = true;
+                           iACTION =
+                            ACTION_StuckInputLatency;
+
+                      return true;
+                    }
+                  }
+
+                  else
+                  {
+                    if (iACTION == ACTION_HighRenderLatency)
+                    {
+                      return false;
+                    }
+
+                    if ( !bIgnoreHighRenderLatency &&
+                              _IsHighRenderLatency () )
+                    {
+                      bIsNewACTION = true;
+                           iACTION =
+                            ACTION_HighRenderLatency;
+
+                      return true;
+                    }
+
+                    if (iACTION == ACTION_StuckInputLatency)
+                    {
+                      return false;
+                    }
+
+                    if ( !bIgnoreStuckInputLatency &&
+                              _IsStuckInputLatency () )
+                    {
+                      bIsNewACTION = true;
+                           iACTION =
+                            ACTION_StuckInputLatency;
+
+                      return true;
+                    }
+
+                    if (iACTION == ACTION_HighVariation)
+                    {
+                      return false;
+                    }
+
+                    if ( !bIgnoreHighVariation &&
+                              _IsHighVariation () )
+                    {
+                      bIsNewACTION = true;
+                           iACTION =
+                            ACTION_HighVariation;
+
+                      return true;
+                    }
+                  }
+
+                  return false;
+                };
 
                 switch (iACTION)
                 {
                   case ACTION_HighRenderLatency:
                   {
+                    if (_ChangeACTION ())
+                    {
+                      break;
+                    }
+
                     if ( bIgnoreHighRenderLatency ||
                             !_IsHighRenderLatency () )
                     {
@@ -2591,25 +2706,35 @@ SK::Framerate::Limiter::wait (void)
                         reset (true);
                       }
 
-                      bAbortAction = true;
+                      bAbortACTION = true;
                     }
                   } break;
 
                   case ACTION_StuckInputLatency:
                   {
+                    if (_ChangeACTION ())
+                    {
+                      break;
+                    }
+
                     if ( bIgnoreStuckInputLatency ||
                             !_IsStuckInputLatency () )
                     {
-                      bAbortAction = true;
+                      bAbortACTION = true;
                     }
                   } break;
 
                   case ACTION_HighVariation:
                   {
+                    if (_ChangeACTION ())
+                    {
+                      break;
+                    }
+
                     if ( bIgnoreHighVariation ||
                             !_IsHighVariation () )
                     {
-                      bAbortAction = true;
+                      bAbortACTION = true;
                     }
                   } break;
 
@@ -2626,35 +2751,14 @@ SK::Framerate::Limiter::wait (void)
                       break;
                     }
 
-                    if      ( !bIgnoreHighRenderLatency &&
-                                   _IsHighRenderLatency () )
-                    {
-                      iACTION = ACTION_HighRenderLatency;
-                    }
-
-                    else if ( !bIgnoreStuckInputLatency &&
-                                   _IsStuckInputLatency () )
-                    {
-                      iACTION = ACTION_StuckInputLatency;
-                    }
-
-                    else if ( !bIgnoreHighVariation &&
-                                   _IsHighVariation () )
-                    {
-                      iACTION = ACTION_HighVariation;
-                    }
-
-                    if (iACTION != ACTION_None)
-                    {
-                      bIsNewAction = true;
-                    }
+                    _ChangeACTION ();
                   } break;
                 }
               }
 
-              if (! (iACTION == ACTION_None || bAbortAction))
+              if (! (iACTION == ACTION_None || bAbortACTION))
               {
-                if (! bIsNewAction)
+                if (! bIsNewACTION)
                 {
                   double dMaxWaitSeconds = 1.5;
 
@@ -2681,7 +2785,7 @@ SK::Framerate::Limiter::wait (void)
                       {
                         if (fTempTargetFPS > 0.0f && fTempTargetFPS != __target_fps)
                         {
-                          bAbortAction = true;
+                          bAbortACTION = true;
 
                           break;
                         }
@@ -2766,14 +2870,19 @@ SK::Framerate::Limiter::wait (void)
 
                     [[unlikely]] default:
                     {
-                      bAbortAction = true;
+                      bAbortACTION = true;
                     } break;
                   }
                 }
 
-                if (! bAbortAction)
+                if (! bAbortACTION)
                 {
                   dWaitSeconds = 0.0;
+
+                  if (bIsNewACTION && fTempTargetFPS > 0.0f)
+                  {
+                    bAbortACTION = true;
+                  }
 
                   switch (iACTION)
                   {
@@ -2784,12 +2893,20 @@ SK::Framerate::Limiter::wait (void)
                       {
                         _ToggleTearing (false);
 
-                        if (fTargetFPS != __target_fps)
+                        if (fTempTargetFPS == __target_fps)
                         {
-                          fTargetFPS = __target_fps;
+                          fTempTargetFPS -= 1.0f;
                         }
 
-                        fTempTargetFPS = fTargetFPS - 1.0f;
+                        else
+                        {
+                          if (fTargetFPS != __target_fps)
+                          {
+                            fTargetFPS = __target_fps;
+                          }
+
+                          fTempTargetFPS = fTargetFPS - 1.0f;
+                        }
 
                         SK_GetCommandProcessor ()->ProcessCommandFormatted (
                           "TargetFPS %f", __target_fps = fTempTargetFPS
@@ -2821,11 +2938,11 @@ SK::Framerate::Limiter::wait (void)
 
                     [[unlikely]] default:
                     {
-                      bAbortAction = true;
+                      bAbortACTION = true;
                     } break;
                   }
 
-                  if (! bAbortAction)
+                  if (! bAbortACTION)
                   {
                     return;
                   }
@@ -2834,15 +2951,21 @@ SK::Framerate::Limiter::wait (void)
             }
           }
 
-          _ToggleTearing (
-            ( bIsTearingModeAdaptiveOn  && !bIsFpsUnstable ) ||
-            ( bIsTearingModeAdaptiveOff &&  bIsFpsUnstable )
-          );
+          if (! bIsNewACTION)
+          {
+            _ToggleTearing (
+              ( bIsTearingModeAdaptiveOn  && !bIsFpsUnstable ) ||
+              ( bIsTearingModeAdaptiveOff &&  bIsFpsUnstable )
+            );
+          }
         }
 
         default:
         {
-          iACTION = ACTION_None;
+          if (! bIsNewACTION)
+          {
+            iACTION = ACTION_None;
+          }
 
           if (__target_fps == fTempTargetFPS)
           {
