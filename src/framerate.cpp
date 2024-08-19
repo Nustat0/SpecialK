@@ -1157,6 +1157,11 @@ class SK_FramerateLimiter_CfgProxy : public SK_IVariableListener {
         *static_cast <float *> (val);
 
       __target_fps = config.render.framerate.target_fps;
+
+      if (__target_fps <= 0.0f)
+      {
+        __target_fps_temp = 0.0f;
+      }
     }
 
     if ( static_cast <float *> (var->getValuePointer ()) == &__target_fps_bg )
@@ -1752,8 +1757,6 @@ SK::Framerate::Limiter::try_wait (void)
     {
       if (__target_fps <= 0.0f)
       {
-        __target_fps_temp = 0.0f;
-
         return false;
       }
     }
@@ -1885,8 +1888,6 @@ SK::Framerate::Limiter::wait (void)
   if (tracks_window && __target_fps <= 0.0f)
   {
     SK_FPU_SetControlWord (_MCW_PC, &fpu_cw_orig);
-
-    __target_fps_temp = 0.0f;
 
     return;
   }
