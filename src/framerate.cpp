@@ -65,8 +65,9 @@ bool                        SK_TscInvariant   = false;
 bool                        SK_CPU_HasMWAITX  = false;
 SK::Framerate::EventCounter SK::Framerate::events;
 
-float __target_fps    = 0.0;
-float __target_fps_bg = 0.0;
+float __target_fps      = 0.0;
+float __target_fps_bg   = 0.0;
+float __target_fps_temp = 0.0;
 
 enum class SK_LimitApplicationSite {
   BeforeBufferSwap,
@@ -1812,14 +1813,18 @@ SK::Framerate::Limiter::wait (void)
 
   if (! background)
   {
-    set_limit ( __target_fps );
+    set_limit ( __target_fps_temp > 0.0f ?
+                __target_fps_temp        :
+                __target_fps            );
   }
 
   else if (tracks_window)
   {
-    set_limit ( (__target_fps_bg > 0.0f) ?
-                 __target_fps_bg         :
-                 __target_fps           );
+    set_limit ( __target_fps_bg   > 0.0f ?
+                __target_fps_bg          :
+                __target_fps_temp > 0.0f ?
+                __target_fps_temp        :
+                __target_fps            );
   }
 
 
@@ -2254,11 +2259,8 @@ SK::Framerate::Limiter::wait (void)
                            ACTION_StuckInputLatency = 3,
                            ACTION_FpsBecameStable   = 4;
       static int iACTION = ACTION_None;
-      bool  bIsNewACTION = false;
 
-      static float  fTargetFPS     = __target_fps,
-                    fTempTargetFPS =   0.0f;
-      static double dWaitSeconds   =   0.0;
+      static double dWaitSeconds = 0.0;
 
       auto _ToggleTearing = [&](bool bEnableTearing) -> void
       {
@@ -2421,7 +2423,8 @@ SK::Framerate::Limiter::wait (void)
               reset (true);
             }
 
-            iACTION = ACTION_None;
+            iACTION =
+             ACTION_None;
 
             dWaitSeconds = 0.0;
 
@@ -2464,6 +2467,7 @@ SK::Framerate::Limiter::wait (void)
             if (! bIsTearingModeAdaptiveOn)
             {
               bool
+                bIsNewACTION = false,
                 bAbortACTION = false;
 
               static int         iLastTearingMode = iTearingMode;
@@ -2717,7 +2721,8 @@ SK::Framerate::Limiter::wait (void)
 
                   default:
                   {
-                    iACTION = ACTION_None;
+                    iACTION =
+                     ACTION_None;
 
                     if ( ( config.render.framerate.present_interval == 0 &&
                            config.render.dxgi.allow_tearing               ) ||
@@ -2756,14 +2761,13 @@ SK::Framerate::Limiter::wait (void)
                     case ACTION_HighRenderLatency:
                     {
                       // Toggling VSync Off -> On is not a reliable way to reduce
-                      // Render Latency in FSE, resetting frame limiter is better
+                      // Render Latency in FSE, temporary frame limiter is better
                       if ( bIsTearingModeAlwaysOffLL ||
                            bIsTrueFullscreen         )
                       {
-                        if (fTempTargetFPS > 0.0f && fTempTargetFPS != __target_fps)
+                        if (__target_fps_temp >= __target_fps)
                         {
                           bAbortACTION = true;
-
                           break;
                         }
 
@@ -2771,14 +2775,12 @@ SK::Framerate::Limiter::wait (void)
 
                         dWaitSeconds += _FrametimeSeconds ();
 
-                        if (fTempTargetFPS > 0.0f && dWaitSeconds >= dMaxWaitSeconds)
+                        if ( __target_fps_temp > 0.0f &&
+                                  dWaitSeconds >=
+                               dMaxWaitSeconds        )
                         {
-                          fTempTargetFPS = 0.0f;
-                          dWaitSeconds   = 0.0;
-
-                          SK_GetCommandProcessor ()->ProcessCommandFormatted (
-                            "TargetFPS %f", __target_fps = fTargetFPS
-                          );
+                          __target_fps_temp = 0.0f;
+                               dWaitSeconds = 0.0;
                         }
 
                         if (dWaitSeconds < dMaxWaitSeconds)
@@ -2854,12 +2856,8 @@ SK::Framerate::Limiter::wait (void)
 
                 if (! bAbortACTION)
                 {
-                  dWaitSeconds = 0.0;
-
-                  if (fTempTargetFPS > 0.0f)
-                  {
-                    bAbortACTION = true;
-                  }
+                  __target_fps_temp = 0.0f
+                       dWaitSeconds = 0.0;
 
                   switch (iACTION)
                   {
@@ -2870,30 +2868,9 @@ SK::Framerate::Limiter::wait (void)
                       {
                         _ToggleTearing (false);
 
-                        bAbortACTION = (false);
-
-                        if (fTempTargetFPS == __target_fps)
-                        {
-                          fTempTargetFPS -= 1.0f;
-                        }
-
-                        else
-                        {
-                          if (fTargetFPS != __target_fps)
-                          {
-                            fTargetFPS = __target_fps;
-                          }
-
-                          fTempTargetFPS = fTargetFPS - 1.0f;
-                        }
-
-                        fTempTargetFPS = std::max (
-                          fTempTargetFPS,
-                          1.0f
-                        );
-
-                        SK_GetCommandProcessor ()->ProcessCommandFormatted (
-                          "TargetFPS %f", __target_fps = fTempTargetFPS
+                        __target_fps_temp = std::max (
+                          __target_fps - 1.0f,
+                          1.0f // Bruh...
                         );
                       }
 
@@ -2923,8 +2900,6 @@ SK::Framerate::Limiter::wait (void)
                     [[unlikely]] default:
                     {
                       bAbortACTION = true;
-                      bIsNewACTION =
-                      false;
                     } break;
                   }
 
@@ -2937,33 +2912,21 @@ SK::Framerate::Limiter::wait (void)
             }
           }
 
-          if (! bIsNewACTION)
-          {
-            _ToggleTearing (
-              ( bIsTearingModeAdaptiveOff &&
-                  bIsUnstableFPS           ) ||
-              ( bIsTearingModeAdaptiveOn  &&
-                ! bIsUnstableFPS           )
-            );
-          }
+          _ToggleTearing (
+            ( bIsTearingModeAdaptiveOff &&
+                bIsUnstableFPS           ) ||
+            ( bIsTearingModeAdaptiveOn  &&
+              ! bIsUnstableFPS           )
+          );
         }
 
         default:
         {
-          if (! bIsNewACTION)
-          {
-            iACTION = ACTION_None;
-          }
+          iACTION =
+           ACTION_None;
 
-          if (__target_fps == fTempTargetFPS)
-          {
-            SK_GetCommandProcessor ()->ProcessCommandFormatted (
-              "TargetFPS %f", __target_fps = fTargetFPS
-            );
-          }
-
-          fTempTargetFPS = 0.0f;
-          dWaitSeconds   = 0.0;
+          __target_fps_temp = 0.0f;
+               dWaitSeconds = 0.0;
 
           switch (iTearingMode)
           {

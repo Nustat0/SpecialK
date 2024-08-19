@@ -810,6 +810,7 @@ extern int  __SK_LatentSyncSkip;
 
 extern float __target_fps;
 extern float __target_fps_bg;
+extern float __target_fps_temp;
 
 extern LONGLONG __SK_LatentSyncPostDelay;
 
