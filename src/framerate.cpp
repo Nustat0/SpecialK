@@ -2856,7 +2856,7 @@ SK::Framerate::Limiter::wait (void)
 
                 if (! bAbortACTION)
                 {
-                  __target_fps_temp = 0.0f
+                  __target_fps_temp = 0.0f;
                        dWaitSeconds = 0.0;
 
                   switch (iACTION)
