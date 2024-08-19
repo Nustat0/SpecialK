@@ -2387,6 +2387,10 @@ SK::Framerate::Limiter::wait (void)
           bool bIsTrueFullscreen =
             rb .isTrueFullscreen ();
 
+          bool bIsAboveRefresh = std::round (
+            fps / rb.getActiveRefreshRate ()
+          ) >= 2.0;
+
           if (iACTION == ACTION_FpsBecameStable)
           {
             if (bIsTrueFullscreen)
@@ -2399,8 +2403,11 @@ SK::Framerate::Limiter::wait (void)
             else
             {
               _ToggleTearing (
-                bIsTearingModeAdaptiveOn ||
-                bIsTearingModeAdaptiveOff
+                ( bIsTearingModeAdaptiveOff &&
+                  ( bIsAboveRefresh ||
+                    bIsFpsUnstable   )       ) ||
+                ( bIsTearingModeAdaptiveOn  &&
+                  ! bIsFpsUnstable           )
               );
             }
 
@@ -2413,8 +2420,6 @@ SK::Framerate::Limiter::wait (void)
 
             if (! bIsTearingModeAdaptiveOn)
             {
-              _ToggleTearing (false);
-
               reset (true);
             }
 
@@ -2440,8 +2445,9 @@ SK::Framerate::Limiter::wait (void)
             else
             {
               _ToggleTearing (
-                bIsTearingModeAdaptiveOn ||
-                bIsTearingModeAdaptiveOff
+                ( bIsTearingModeAdaptiveOff &&
+                  bIsAboveRefresh            ) ||
+                ( bIsTearingModeAdaptiveOn   )
               );
             }
 
@@ -2459,7 +2465,8 @@ SK::Framerate::Limiter::wait (void)
           {
             if (! bIsTearingModeAdaptiveOn)
             {
-              bool bAbortACTION = false;
+              bool
+                bAbortACTION = false;
 
               static int         iLastTearingMode = iTearingMode;
 
@@ -2476,10 +2483,6 @@ SK::Framerate::Limiter::wait (void)
               {
                 bAbortACTION = true;
               }
-
-              bool bIsAboveRefresh = std::round (
-                fps / rb.getActiveRefreshRate ()
-              ) >= 2.0;
 
               if (! bAbortACTION)
               {
@@ -2573,19 +2576,16 @@ SK::Framerate::Limiter::wait (void)
                   bIsFpsUnstable
                 );
 
-                if (! bIgnoreHighVariation)
+                if (! (bIgnoreHighVariation || bIsAboveRefresh))
                 {
-                  if (! (bIsTearingModeAdaptiveOff && bIsAboveRefresh))
-                  {
-                    bIgnoreHighVariation = (
-                      config.render.framerate.enforcement_policy == 2
-                    ) || (
-                      config.nvidia.reflex.use_limiter
-                    ) || (
-                      config.fps.timing_method ==
-                        SK_FrametimeMeasures_NewFrameBegin
-                    );
-                  }
+                  bIgnoreHighVariation = (
+                    config.render.framerate.enforcement_policy == 2
+                  ) || (
+                    config.nvidia.reflex.use_limiter
+                  ) || (
+                    config.fps.timing_method ==
+                      SK_FrametimeMeasures_NewFrameBegin
+                  );
                 }
 
                 auto _ChangeACTION = [&]() -> bool
@@ -2879,7 +2879,7 @@ SK::Framerate::Limiter::wait (void)
                 {
                   dWaitSeconds = 0.0;
 
-                  if (bIsNewACTION && fTempTargetFPS > 0.0f)
+                  if (fTempTargetFPS > 0.0f)
                   {
                     bAbortACTION = true;
                   }
@@ -2892,6 +2892,8 @@ SK::Framerate::Limiter::wait (void)
                            bIsTrueFullscreen         )
                       {
                         _ToggleTearing (false);
+
+                        bAbortACTION = (false);
 
                         if (fTempTargetFPS == __target_fps)
                         {
@@ -2907,6 +2909,11 @@ SK::Framerate::Limiter::wait (void)
 
                           fTempTargetFPS = fTargetFPS - 1.0f;
                         }
+
+                        fTempTargetFPS = std::max (
+                          fTempTargetFPS,
+                          1.0f
+                        );
 
                         SK_GetCommandProcessor ()->ProcessCommandFormatted (
                           "TargetFPS %f", __target_fps = fTempTargetFPS
@@ -2939,6 +2946,8 @@ SK::Framerate::Limiter::wait (void)
                     [[unlikely]] default:
                     {
                       bAbortACTION = true;
+                      bIsNewACTION =
+                      false;
                     } break;
                   }
 
@@ -2954,8 +2963,10 @@ SK::Framerate::Limiter::wait (void)
           if (! bIsNewACTION)
           {
             _ToggleTearing (
-              ( bIsTearingModeAdaptiveOn  && !bIsFpsUnstable ) ||
-              ( bIsTearingModeAdaptiveOff &&  bIsFpsUnstable )
+              ( bIsTearingModeAdaptiveOff &&
+                  bIsFpsUnstable           ) ||
+              ( bIsTearingModeAdaptiveOn  &&
+                ! bIsFpsUnstable           )
             );
           }
         }
