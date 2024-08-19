@@ -2239,26 +2239,26 @@ SK::Framerate::Limiter::wait (void)
         (1000.0 / get_limit           ()) -
                   effective_frametime ();
 
+      bool bIsUnstableFPS =
+        latency_avg.getInput () < 0.0;
+
+      // Disable frame skipping in 2x.. mode if FPS is unstable
+      if (bIsUnstableFPS)
+      {
+        __SK_LatentSyncSkip = 0;
+      }
+
       static constexpr int ACTION_None              = 0,
                            ACTION_HighVariation     = 1,
                            ACTION_HighRenderLatency = 2,
                            ACTION_StuckInputLatency = 3,
                            ACTION_FpsBecameStable   = 4;
-
       static int iACTION = ACTION_None;
+      bool  bIsNewACTION = false;
 
       static float  fTargetFPS     = __target_fps,
                     fTempTargetFPS =   0.0f;
-
       static double dWaitSeconds   =   0.0;
-
-      bool bIsFpsUnstable = latency_avg.getInput () < 0.0;
-
-      // Disable frame skipping in 2x.. mode if FPS is unstable
-      if (bIsFpsUnstable)
-      {
-        __SK_LatentSyncSkip = 0;
-      }
 
       auto _ToggleTearing = [&](bool bEnableTearing) -> void
       {
@@ -2347,8 +2347,6 @@ SK::Framerate::Limiter::wait (void)
         }
       }
 
-      bool bIsNewACTION = false;
-
       switch (iTearingMode)
       {
         // Prefer tearing, only disable tearing if FPS is unstable
@@ -2405,9 +2403,9 @@ SK::Framerate::Limiter::wait (void)
               _ToggleTearing (
                 ( bIsTearingModeAdaptiveOff &&
                   ( bIsAboveRefresh ||
-                    bIsFpsUnstable   )       ) ||
+                    bIsUnstableFPS   )       ) ||
                 ( bIsTearingModeAdaptiveOn  &&
-                  ! bIsFpsUnstable           )
+                  ! bIsUnstableFPS           )
               );
             }
 
@@ -2430,10 +2428,10 @@ SK::Framerate::Limiter::wait (void)
             return;
           }
 
-          static bool        bWasFpsUnstable = bIsFpsUnstable;
+          static bool        bWasFpsUnstable = bIsUnstableFPS;
 
-          if (std::exchange (bWasFpsUnstable,  bIsFpsUnstable) &&
-                                              !bIsFpsUnstable)
+          if (std::exchange (bWasFpsUnstable,  bIsUnstableFPS) &&
+                                              !bIsUnstableFPS)
           {
             if (bIsTrueFullscreen)
             {
@@ -2516,7 +2514,7 @@ SK::Framerate::Limiter::wait (void)
                     if (! SK_RenderBackend_V2::latency.stale)
                     {
                       return
-                        SK_RenderBackend_V2::latency.delays.PresentQueue > 1;
+                        ( SK_RenderBackend_V2::latency.delays.PresentQueue > 1 );
                     }
 
                     if (rb.presentation.avg_stats.display != 0.0)
@@ -2561,7 +2559,7 @@ SK::Framerate::Limiter::wait (void)
                 bool bIgnoreHighRenderLatency = (
                   bIsTearingModeAlwaysOff
                 ) || (
-                  bIsFpsUnstable
+                  bIsUnstableFPS
                 );
 
                 bool bIgnoreStuckInputLatency = (
@@ -2569,11 +2567,11 @@ SK::Framerate::Limiter::wait (void)
                 ) && (
                   bIsAboveRefresh
                 ) && (
-                  bIsFpsUnstable
+                  bIsUnstableFPS
                 );
 
                 bool bIgnoreHighVariation = (
-                  bIsFpsUnstable
+                  bIsUnstableFPS
                 );
 
                 if (! (bIgnoreHighVariation || bIsAboveRefresh))
@@ -2590,99 +2588,78 @@ SK::Framerate::Limiter::wait (void)
 
                 auto _ChangeACTION = [&]() -> bool
                 {
-                  if (bIsAboveRefresh)
+                  // Sorted by highest priority
+                  auto iACTIONS = bIsAboveRefresh ? (
+                    bIsTearingModeAdaptiveOff ? (
+                      std::array <int, 3> {
+                        ACTION_HighVariation,
+                        ACTION_HighRenderLatency,
+                        ACTION_StuckInputLatency
+                      }
+                    ) : (
+                      std::array <int, 3> {
+                        ACTION_HighRenderLatency,
+                        ACTION_HighVariation,
+                        ACTION_StuckInputLatency
+                      }
+                    )
+                  ) : (
+                    bIsTearingModeAdaptiveOff ? (
+                      std::array <int, 3> {
+                        ACTION_HighRenderLatency,
+                        ACTION_StuckInputLatency,
+                        ACTION_HighVariation
+                      }
+                    ) : (
+                      std::array <int, 3> {
+                        ACTION_HighRenderLatency,
+                        ACTION_HighVariation,
+                        ACTION_StuckInputLatency
+                      }
+                    )
+                  );
+
+                  for ( const auto& vACTION : iACTIONS )
                   {
-                    if (iACTION == ACTION_HighVariation)
+                    if ( iACTION == vACTION )
                     {
                       return false;
                     }
 
-                    if ( !bIgnoreHighVariation &&
-                              _IsHighVariation () )
+                    switch (vACTION)
                     {
-                      bIsNewACTION = true;
-                           iACTION =
-                            ACTION_HighVariation;
-
-                      return true;
-                    }
-
-                    if (iACTION == ACTION_HighRenderLatency)
-                    {
-                      return false;
-                    }
-
-                    if ( !bIgnoreHighRenderLatency &&
-                              _IsHighRenderLatency () )
-                    {
-                      bIsNewACTION = true;
-                           iACTION =
-                            ACTION_HighRenderLatency;
-
-                      return true;
-                    }
-
-                    if (iACTION == ACTION_StuckInputLatency)
-                    {
-                      return false;
-                    }
-
-                    if ( !bIgnoreStuckInputLatency &&
-                              _IsStuckInputLatency () )
-                    {
-                      bIsNewACTION = true;
-                           iACTION =
-                            ACTION_StuckInputLatency;
-
-                      return true;
-                    }
-                  }
-
-                  else
-                  {
-                    if (iACTION == ACTION_HighRenderLatency)
-                    {
-                      return false;
-                    }
-
-                    if ( !bIgnoreHighRenderLatency &&
-                              _IsHighRenderLatency () )
-                    {
-                      bIsNewACTION = true;
-                           iACTION =
-                            ACTION_HighRenderLatency;
-
-                      return true;
-                    }
-
-                    if (iACTION == ACTION_StuckInputLatency)
-                    {
-                      return false;
-                    }
-
-                    if ( !bIgnoreStuckInputLatency &&
-                              _IsStuckInputLatency () )
-                    {
-                      bIsNewACTION = true;
-                           iACTION =
-                            ACTION_StuckInputLatency;
-
-                      return true;
-                    }
-
-                    if (iACTION == ACTION_HighVariation)
-                    {
-                      return false;
-                    }
-
-                    if ( !bIgnoreHighVariation &&
-                              _IsHighVariation () )
-                    {
-                      bIsNewACTION = true;
-                           iACTION =
-                            ACTION_HighVariation;
-
-                      return true;
+                      case    ACTION_HighRenderLatency:
+                        if ( !bIgnoreHighRenderLatency &&
+                                  _IsHighRenderLatency () )
+                        {
+                          bIsNewACTION = true;
+                               iACTION =
+                                ACTION_HighRenderLatency;
+                          return true;
+                        }
+                        break;
+                      case    ACTION_StuckInputLatency:
+                        if ( !bIgnoreStuckInputLatency &&
+                                  _IsStuckInputLatency () )
+                        {
+                          bIsNewACTION = true;
+                               iACTION =
+                                ACTION_StuckInputLatency;
+                          return true;
+                        }
+                        break;
+                      case    ACTION_HighVariation:
+                        if ( !bIgnoreHighVariation &&
+                                  _IsHighVariation () )
+                        {
+                          bIsNewACTION = true;
+                               iACTION =
+                                ACTION_HighVariation;
+                          return true;
+                        }
+                        break;
+                      default:
+                        break;
                     }
                   }
 
@@ -2701,7 +2678,7 @@ SK::Framerate::Limiter::wait (void)
                     if ( bIgnoreHighRenderLatency ||
                             !_IsHighRenderLatency () )
                     {
-                      if (! bIsFpsUnstable)
+                      if (! bIsUnstableFPS)
                       {
                         reset (true);
                       }
@@ -2756,7 +2733,7 @@ SK::Framerate::Limiter::wait (void)
                 }
               }
 
-              if (! (iACTION == ACTION_None || bAbortACTION))
+              if (! ( bAbortACTION || iACTION == ACTION_None ) )
               {
                 if (! bIsNewACTION)
                 {
@@ -2831,7 +2808,7 @@ SK::Framerate::Limiter::wait (void)
                     {
                       if ( dWaitSeconds >= dMaxWaitSeconds &&
                            bIsTearingModeAdaptiveOff       &&
-                           bIsFpsUnstable                  )
+                           bIsUnstableFPS                  )
                       {
                         _ToggleTearing (true);
 
@@ -2964,9 +2941,9 @@ SK::Framerate::Limiter::wait (void)
           {
             _ToggleTearing (
               ( bIsTearingModeAdaptiveOff &&
-                  bIsFpsUnstable           ) ||
+                  bIsUnstableFPS           ) ||
               ( bIsTearingModeAdaptiveOn  &&
-                ! bIsFpsUnstable           )
+                ! bIsUnstableFPS           )
             );
           }
         }
