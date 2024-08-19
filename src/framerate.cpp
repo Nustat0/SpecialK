@@ -1750,7 +1750,10 @@ SK::Framerate::Limiter::try_wait (void)
   {
     if (SK_IsGameWindowActive () || __target_fps_bg == 0.0f)
     {
-      if (__target_fps <= 0.0f) {
+      if (__target_fps <= 0.0f)
+      {
+        __target_fps_temp = 0.0f;
+
         return false;
       }
     }
@@ -1882,6 +1885,8 @@ SK::Framerate::Limiter::wait (void)
   if (tracks_window && __target_fps <= 0.0f)
   {
     SK_FPU_SetControlWord (_MCW_PC, &fpu_cw_orig);
+
+    __target_fps_temp = 0.0f;
 
     return;
   }
