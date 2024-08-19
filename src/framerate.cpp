@@ -2913,10 +2913,8 @@ SK::Framerate::Limiter::wait (void)
           }
 
           _ToggleTearing (
-            ( bIsTearingModeAdaptiveOff &&
-                bIsUnstableFPS           ) ||
-            ( bIsTearingModeAdaptiveOn  &&
-              ! bIsUnstableFPS           )
+            ( bIsTearingModeAdaptiveOff &&  bIsUnstableFPS ) ||
+            ( bIsTearingModeAdaptiveOn  && !bIsUnstableFPS )
           );
         }
 
