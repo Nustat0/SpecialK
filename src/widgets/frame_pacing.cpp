@@ -895,9 +895,7 @@ SK_ImGui_DrawGraph_FramePacing (void)
 
   float& target =
     ( SK_IsGameWindowActive () || __target_fps_bg == 0.0f ) ?
-    ( __target_fps_temp > 0.0f  ? __target_fps_temp
-                                : __target_fps            ) :
-                                  __target_fps_bg;
+                  __target_fps  : __target_fps_bg;
 
   float target_frametime = ( target == 0.0f ) ?
                            ( 1000.0f   / (ffx ? 30.0f : 60.0f) ) :
