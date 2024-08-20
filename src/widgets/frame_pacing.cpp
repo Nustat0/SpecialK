@@ -1150,13 +1150,14 @@ SK_ImGui_DrawGraph_FramePacing (void)
       snprintf
         ( szAvg,
             511, (const char *)
-            u8"Avg milliseconds per-frame: %6.3f  (Target: %6.3f / %6.3f FPS)%s\n"
+            u8"Avg milliseconds per-frame: %6.3f  (Target: %6.3f)%s\n"
             u8"         Render latency:           %lu Frame%s | %3.1f / %3.1f ms |  %lu Hz \n\n\n\n"
             u8"Variation:  %9.5f ms    %5.1f FPS  ±  %3.1f frames",
                 sum / frames,
                   target_frametime,
-                  fabs (target),
-                  __target_fps_temp > 0.0f ? " [Temporary]" : "",
+                  __target_fps_temp > 0.0f
+                    ? std::format (" [{:6.3f}]", __target_fps_temp).c_str ()
+                    : "",
                       SK_RenderBackend_V2::latency.delays.PresentQueue,
                       SK_RenderBackend_V2::latency.delays.PresentQueue != 1 ?
                                                                        "s " : "  ",
@@ -1173,13 +1174,14 @@ SK_ImGui_DrawGraph_FramePacing (void)
       snprintf
         ( szAvg,
             511, (const char *)
-            u8"Avg milliseconds per-frame: %6.3f  (Target: %6.3f / %6.3f FPS)%s\n"
+            u8"Avg milliseconds per-frame: %6.3f  (Target: %6.3f)%s\n"
             u8"         Render latency:          %lu Frame%s | HW Flip Q |  %lu Hz \n\n\n\n"
             u8"Variation:  %9.5f ms    %5.1f FPS  ±  %3.1f frames",
                 sum / frames,
                   target_frametime,
-                  fabs (target),
-                  __target_fps_temp > 0.0f ? " [Temporary]" : "",
+                  __target_fps_temp > 0.0f
+                    ? std::format (" [{:6.3f}]", __target_fps_temp).c_str ()
+                    : "",
                       SK_RenderBackend_V2::latency.delays.PresentQueue,
                       SK_RenderBackend_V2::latency.delays.PresentQueue != 1 ?
                                                                        "s " : "  ",
@@ -1195,13 +1197,14 @@ SK_ImGui_DrawGraph_FramePacing (void)
     snprintf
       ( szAvg,
           511, (const char *)
-          u8"Avg milliseconds per-frame: %6.3f  (Target: %6.3f / %6.3f FPS)%s\n"
+          u8"Avg milliseconds per-frame: %6.3f  (Target: %6.3f)%s\n"
           u8"    Extreme frame times:     %6.3f min, %6.3f max\n\n\n\n"
           u8"Variation:  %9.5f ms    %5.1f FPS  ±  %3.1f frames",
               sum / frames,
                 target_frametime,
-                fabs (target),
-                __target_fps_temp > 0.0f ? " [Temporary]" : "",
+                __target_fps_temp > 0.0f
+                  ? std::format (" [{:6.3f}]", __target_fps_temp).c_str ()
+                  : "",
                   min, max,
             (double)max - (double)min,
                     1000.0f / (sum / frames),
