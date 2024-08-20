@@ -2706,7 +2706,7 @@ SK::Framerate::Limiter::wait (void)
                     }
 
                     // Avoid rapid Render Latency changes
-                    else if (dWaitSeconds <= 0.0)
+                    else if (dWaitSeconds < 0.0)
                     {
                       _ToggleTearing (false);
 
@@ -2717,7 +2717,7 @@ SK::Framerate::Limiter::wait (void)
                         return;
                       }
 
-                      dWaitSeconds = 0.0;
+                      bIsNewACTION = true;
                     }
                   } break;
 
@@ -2754,6 +2754,8 @@ SK::Framerate::Limiter::wait (void)
                                 ACTION_HighRenderLatency )
                     {
                       _ToggleTearing (false);
+
+                      dWaitSeconds = -_FrametimeSeconds ();
 
                       return;
                     }
