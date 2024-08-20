@@ -2639,8 +2639,8 @@ SK::Framerate::Limiter::wait (void)
                         {
                           bIsNewACTION = true;
                                iACTION =
-                                ACTION_HighVariation;
-                          return true;
+                               vACTION;
+                          return  true;
                         }
                         break;
                       case    ACTION_HighRenderLatency:
@@ -2649,8 +2649,8 @@ SK::Framerate::Limiter::wait (void)
                         {
                           bIsNewACTION = true;
                                iACTION =
-                                ACTION_HighRenderLatency;
-                          return true;
+                               vACTION;
+                          return  true;
                         }
                         break;
                       case    ACTION_StuckInputLatency:
@@ -2659,8 +2659,8 @@ SK::Framerate::Limiter::wait (void)
                         {
                           bIsNewACTION = true;
                                iACTION =
-                                ACTION_StuckInputLatency;
-                          return true;
+                               vACTION;
+                          return  true;
                         }
                         break;
                       default:
@@ -2697,7 +2697,7 @@ SK::Framerate::Limiter::wait (void)
                     if ( bIgnoreHighRenderLatency ||
                             !_IsHighRenderLatency () )
                     {
-                      if (! bIsUnstableFPS)
+                      if (dWaitSeconds >= 0.0)
                       {
                         reset (true);
                       }
@@ -2765,7 +2765,7 @@ SK::Framerate::Limiter::wait (void)
 
               if (! ( bAbortACTION || iACTION == ACTION_None ) )
               {
-                if (! bIsNewACTION)
+                if (! bIsNewACTION )
                 {
                   double dMaxWaitSeconds = 1.5;
 
@@ -2807,8 +2807,6 @@ SK::Framerate::Limiter::wait (void)
 
                     case ACTION_HighRenderLatency:
                     {
-                      // Toggling VSync Off -> On is not a reliable way to reduce
-                      // Render Latency in FSE, temporary frame limiter is better
                       if ( bIsTearingModeAlwaysOffLL ||
                            bIsTrueFullscreen         )
                       {
