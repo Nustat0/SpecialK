@@ -1156,7 +1156,7 @@ SK_ImGui_DrawGraph_FramePacing (void)
                 sum / frames,
                   target_frametime,
                   __target_fps_temp > 0.0f
-                    ? std::format (" [{:6.3f}]", __target_fps_temp).c_str ()
+                    ? std::format (" [{:6.3f} FPS]", __target_fps_temp).c_str ()
                     : "",
                       SK_RenderBackend_V2::latency.delays.PresentQueue,
                       SK_RenderBackend_V2::latency.delays.PresentQueue != 1 ?
@@ -1180,7 +1180,7 @@ SK_ImGui_DrawGraph_FramePacing (void)
                 sum / frames,
                   target_frametime,
                   __target_fps_temp > 0.0f
-                    ? std::format (" [{:6.3f}]", __target_fps_temp).c_str ()
+                    ? std::format (" [{:6.3f} FPS]", __target_fps_temp).c_str ()
                     : "",
                       SK_RenderBackend_V2::latency.delays.PresentQueue,
                       SK_RenderBackend_V2::latency.delays.PresentQueue != 1 ?
@@ -1203,7 +1203,7 @@ SK_ImGui_DrawGraph_FramePacing (void)
               sum / frames,
                 target_frametime,
                 __target_fps_temp > 0.0f
-                  ? std::format (" [{:6.3f}]", __target_fps_temp).c_str ()
+                  ? std::format (" [{:6.3f} FPS]", __target_fps_temp).c_str ()
                   : "",
                   min, max,
             (double)max - (double)min,

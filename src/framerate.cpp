@@ -1157,11 +1157,6 @@ class SK_FramerateLimiter_CfgProxy : public SK_IVariableListener {
         *static_cast <float *> (val);
 
       __target_fps = config.render.framerate.target_fps;
-
-      if (__target_fps <= 0.0f)
-      {
-        __target_fps_temp = 0.0f;
-      }
     }
 
     if ( static_cast <float *> (var->getValuePointer ()) == &__target_fps_bg )
@@ -3722,6 +3717,11 @@ SK::Framerate::Tick ( bool          wait,
     pLimiter->frame_history_snapshots;
 
   SK_ReleaseAssert (pLimiter != nullptr);
+
+  if (__target_fps <= 0.0f)
+  {
+    __target_fps_temp = 0.0f;
+  }
 
   // Should never happen, but better safe.
   if (pLimiter == nullptr)
