@@ -2479,6 +2479,14 @@ SK::Framerate::Limiter::wait (void)
                 bAbortACTION = true;
               }
 
+              static bool        bWasAboveRefresh = bIsAboveRefresh;
+
+              if (std::exchange (bWasAboveRefresh,  bIsAboveRefresh) !=
+                                                    bIsAboveRefresh)
+              {
+                bAbortACTION = true;
+              }
+
               static bool        bWasTrueFullscreen = bIsTrueFullscreen;
 
               if (std::exchange (bWasTrueFullscreen,  bIsTrueFullscreen) !=
