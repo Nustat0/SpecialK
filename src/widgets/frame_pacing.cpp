@@ -1156,7 +1156,7 @@ SK_ImGui_DrawGraph_FramePacing (void)
                 sum / frames,
                   target_frametime,
                   fabs (target),
-                  __target_fps_temp > 0.0f ? "[Temporary]" : "",
+                  __target_fps_temp > 0.0f ? " [Temporary]" : "",
                       SK_RenderBackend_V2::latency.delays.PresentQueue,
                       SK_RenderBackend_V2::latency.delays.PresentQueue != 1 ?
                                                                        "s " : "  ",
@@ -1179,7 +1179,7 @@ SK_ImGui_DrawGraph_FramePacing (void)
                 sum / frames,
                   target_frametime,
                   fabs (target),
-                  __target_fps_temp > 0.0f ? "[Temporary]" : "",
+                  __target_fps_temp > 0.0f ? " [Temporary]" : "",
                       SK_RenderBackend_V2::latency.delays.PresentQueue,
                       SK_RenderBackend_V2::latency.delays.PresentQueue != 1 ?
                                                                        "s " : "  ",
@@ -1201,7 +1201,7 @@ SK_ImGui_DrawGraph_FramePacing (void)
               sum / frames,
                 target_frametime,
                 fabs (target),
-                __target_fps_temp > 0.0f ? "[Temporary]" : "",
+                __target_fps_temp > 0.0f ? " [Temporary]" : "",
                   min, max,
             (double)max - (double)min,
                     1000.0f / (sum / frames),
