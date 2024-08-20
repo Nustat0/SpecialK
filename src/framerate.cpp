@@ -2230,7 +2230,7 @@ SK::Framerate::Limiter::wait (void)
           double avg     = 0.0,
                  samples = 0.0;
 
-          for (int i = 0; i < std::min (frames, _MAX_FRAMES); ++i)
+          for ( int i = 0; i < std::min (frames, _MAX_FRAMES); ++i )
           {
             ++samples; avg += input [i];
           }
@@ -2452,7 +2452,8 @@ SK::Framerate::Limiter::wait (void)
               );
             }
 
-            iACTION = ACTION_FpsBecameStable;
+            iACTION =
+             ACTION_FpsBecameStable;
 
             dWaitSeconds = 0.0;
 
@@ -2488,6 +2489,27 @@ SK::Framerate::Limiter::wait (void)
 
               if (! bAbortACTION)
               {
+                auto _IsHighVariation = [&]() -> bool
+                {
+                  float min = FLT_MAX,
+                        max = 0.0f;
+
+                  for ( const auto& val : SK_ImGui_Frames->getValues () )
+                  {
+                    if (val > max)
+                    {
+                      max = val;
+                    }
+
+                    if (val < min)
+                    {
+                      min = val;
+                    }
+                  }
+
+                  return (double)max - (double)min > 1.0;
+                };
+
                 auto _IsHighRenderLatency = [&]() -> bool
                 {
                   // Frametime graph becomes unstable in 2x.. non-tearing mode
@@ -2539,41 +2561,6 @@ SK::Framerate::Limiter::wait (void)
                     latency_avg.getInput () <  0.0;
                 };
 
-                auto _IsHighVariation   =   [&]() -> bool
-                {
-                  float min = FLT_MAX,
-                        max = 0.0f;
-
-                  for ( const auto& val : SK_ImGui_Frames->getValues () )
-                  {
-                    if (val > max)
-                    {
-                      max = val;
-                    }
-
-                    if (val < min)
-                    {
-                      min = val;
-                    }
-                  }
-
-                  return (double)max - (double)min > 1.0;
-                };
-
-                bool bIgnoreHighRenderLatency = (
-                  bIsTearingModeAlwaysOff
-                ) || (
-                  bIsUnstableFPS
-                );
-
-                bool bIgnoreStuckInputLatency = (
-                  bIsTearingModeAdaptiveOff
-                ) && (
-                  bIsAboveRefresh
-                ) && (
-                  bIsUnstableFPS
-                );
-
                 bool bIgnoreHighVariation = (
                   bIsUnstableFPS
                 );
@@ -2589,6 +2576,20 @@ SK::Framerate::Limiter::wait (void)
                       SK_FrametimeMeasures_NewFrameBegin
                   );
                 }
+
+                bool bIgnoreHighRenderLatency = (
+                  bIsTearingModeAlwaysOff
+                ) || (
+                  bIsUnstableFPS
+                );
+
+                bool bIgnoreStuckInputLatency = (
+                  bIsTearingModeAdaptiveOff
+                ) && (
+                  bIsAboveRefresh
+                ) && (
+                  bIsUnstableFPS
+                );
 
                 auto _ChangeACTION = [&]() -> bool
                 {
@@ -2632,6 +2633,16 @@ SK::Framerate::Limiter::wait (void)
 
                     switch (vACTION)
                     {
+                      case    ACTION_HighVariation:
+                        if ( !bIgnoreHighVariation &&
+                                  _IsHighVariation () )
+                        {
+                          bIsNewACTION = true;
+                               iACTION =
+                                ACTION_HighVariation;
+                          return true;
+                        }
+                        break;
                       case    ACTION_HighRenderLatency:
                         if ( !bIgnoreHighRenderLatency &&
                                   _IsHighRenderLatency () )
@@ -2652,16 +2663,6 @@ SK::Framerate::Limiter::wait (void)
                           return true;
                         }
                         break;
-                      case    ACTION_HighVariation:
-                        if ( !bIgnoreHighVariation &&
-                                  _IsHighVariation () )
-                        {
-                          bIsNewACTION = true;
-                               iACTION =
-                                ACTION_HighVariation;
-                          return true;
-                        }
-                        break;
                       default:
                         break;
                     }
@@ -2672,6 +2673,20 @@ SK::Framerate::Limiter::wait (void)
 
                 switch (iACTION)
                 {
+                  case ACTION_HighVariation:
+                  {
+                    if (_ChangeACTION ())
+                    {
+                      break;
+                    }
+
+                    if ( bIgnoreHighVariation ||
+                            !_IsHighVariation () )
+                    {
+                      bAbortACTION = true;
+                    }
+                  } break;
+
                   case ACTION_HighRenderLatency:
                   {
                     if (_ChangeACTION ())
@@ -2689,6 +2704,21 @@ SK::Framerate::Limiter::wait (void)
 
                       bAbortACTION = true;
                     }
+
+                    // Avoid rapid Render Latency changes
+                    else if (dWaitSeconds <= 0.0)
+                    {
+                      _ToggleTearing (false);
+
+                      dWaitSeconds -= _FrametimeSeconds ();
+
+                      if (std::abs (dWaitSeconds) < 1.0)
+                      {
+                        return;
+                      }
+
+                      dWaitSeconds = 0.0;
+                    }
                   } break;
 
                   case ACTION_StuckInputLatency:
@@ -2700,20 +2730,6 @@ SK::Framerate::Limiter::wait (void)
 
                     if ( bIgnoreStuckInputLatency ||
                             !_IsStuckInputLatency () )
-                    {
-                      bAbortACTION = true;
-                    }
-                  } break;
-
-                  case ACTION_HighVariation:
-                  {
-                    if (_ChangeACTION ())
-                    {
-                      break;
-                    }
-
-                    if ( bIgnoreHighVariation ||
-                            !_IsHighVariation () )
                     {
                       bAbortACTION = true;
                     }
@@ -2733,7 +2749,14 @@ SK::Framerate::Limiter::wait (void)
                       break;
                     }
 
-                    _ChangeACTION ();
+                    if ( _ChangeACTION () &&
+                               iACTION ==
+                                ACTION_HighRenderLatency )
+                    {
+                      _ToggleTearing (false);
+
+                      return;
+                    }
                   } break;
                 }
               }
@@ -2758,6 +2781,28 @@ SK::Framerate::Limiter::wait (void)
 
                   switch (iACTION)
                   {
+                    case ACTION_HighVariation:
+                    {
+                      if ( ( bIsTearingModeAdaptiveOff ) &&
+                           ( bIsAboveRefresh ||
+                             dWaitSeconds >=
+                             dMaxWaitSeconds           ) )
+                      {
+                        _ToggleTearing (true);
+
+                        return;
+                      }
+
+                      _ToggleTearing (false);
+
+                      dWaitSeconds += _FrametimeSeconds ();
+
+                      if (dWaitSeconds < dMaxWaitSeconds)
+                      {
+                        return;
+                      }
+                    } break;
+
                     case ACTION_HighRenderLatency:
                     {
                       // Toggling VSync Off -> On is not a reliable way to reduce
@@ -2791,7 +2836,9 @@ SK::Framerate::Limiter::wait (void)
 
                       else
                       {
-                        if (dWaitSeconds >= dMaxWaitSeconds)
+                        if ( bIsAboveRefresh ||
+                             dWaitSeconds >=
+                             dMaxWaitSeconds )
                         {
                           _ToggleTearing (true);
 
@@ -2808,29 +2855,10 @@ SK::Framerate::Limiter::wait (void)
 
                     case ACTION_StuckInputLatency:
                     {
-                      if ( dWaitSeconds >= dMaxWaitSeconds &&
-                           bIsTearingModeAdaptiveOff       &&
-                           bIsUnstableFPS                  )
-                      {
-                        _ToggleTearing (true);
-
-                        return;
-                      }
-
-                      _ToggleTearing (false);
-
-                      dWaitSeconds += _FrametimeSeconds ();
-
-                      if (dWaitSeconds < dMaxWaitSeconds)
-                      {
-                        return;
-                      }
-                    } break;
-
-                    case ACTION_HighVariation:
-                    {
                       if ( bIsTearingModeAdaptiveOff &&
-                           bIsAboveRefresh           )
+                           bIsUnstableFPS            &&
+                           dWaitSeconds >=
+                           dMaxWaitSeconds           )
                       {
                         _ToggleTearing (true);
 
@@ -2861,6 +2889,16 @@ SK::Framerate::Limiter::wait (void)
 
                   switch (iACTION)
                   {
+                    case ACTION_HighVariation:
+                    {
+                      _ToggleTearing (
+                        bIsTearingModeAdaptiveOff &&
+                        bIsAboveRefresh
+                      );
+
+                      reset (true);
+                    } break;
+
                     case ACTION_HighRenderLatency:
                     {
                       if ( bIsTearingModeAlwaysOffLL ||
@@ -2881,16 +2919,6 @@ SK::Framerate::Limiter::wait (void)
                     case ACTION_StuckInputLatency:
                     {
                       _ToggleTearing (false);
-
-                      reset (true);
-                    } break;
-
-                    case ACTION_HighVariation:
-                    {
-                      _ToggleTearing (
-                        bIsTearingModeAdaptiveOff &&
-                        bIsAboveRefresh
-                      );
 
                       reset (true);
                     } break;
