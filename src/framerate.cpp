@@ -2868,10 +2868,8 @@ SK::Framerate::Limiter::wait (void)
                       {
                         _ToggleTearing (false);
 
-                        __target_fps_temp = std::max (
-                          __target_fps - 1.0f,
-                          1.0f // Bruh...
-                        );
+                        __target_fps_temp =
+                        __target_fps - 1.0f;
                       }
 
                       else
