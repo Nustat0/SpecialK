@@ -2257,7 +2257,7 @@ SK::Framerate::Limiter::wait (void)
                            ACTION_HighVariation     = 1,
                            ACTION_HighRenderLatency = 2,
                            ACTION_StuckInputLatency = 3,
-                           ACTION_FpsBecameStable   = 4;
+                           ACTION_FrameBecameStable = 4;
       static int iACTION = ACTION_None;
 
       static double dWaitSeconds = 0.0;
@@ -2365,7 +2365,7 @@ SK::Framerate::Limiter::wait (void)
 #if 0
         // TODO: Enable this case when VRR status is detectable on all vendors
         // -
-        // ACTION_HighVariation and ACTION_StuckInputLatency should be ignored when VRR is active
+        // HighVariation/StuckInputLatency/FrameBecameStable should be ignored when VRR is active
         // To preserve old behaviour, we are keeping regular "Always Off" mode unaffected for now
 
         // No tearing, reset limiter if variation is too high or input latency is stuck at (-0.1, 0.0) ms
@@ -2394,7 +2394,7 @@ SK::Framerate::Limiter::wait (void)
             fps / rb.getActiveRefreshRate ()
           ) >= 2.0;
 
-          if (iACTION == ACTION_FpsBecameStable)
+          if (iACTION == ACTION_FrameBecameStable)
           {
             if (bIsTrueFullscreen)
             {
@@ -2458,7 +2458,7 @@ SK::Framerate::Limiter::wait (void)
             }
 
             iACTION =
-             ACTION_FpsBecameStable;
+             ACTION_FrameBecameStable;
 
             dWaitSeconds = 0.0;
 
@@ -2606,8 +2606,8 @@ SK::Framerate::Limiter::wait (void)
 
                 auto _ChangeACTION = [&]() -> bool
                 {
-                  // Sorted by highest priority
-                  auto iACTIONS = (
+                  // Sorted by higher priority
+                  std::array <int, 3> iACTIONS = (
                     bIsTearingModeAdaptiveOff &&
                     bIsAboveRefresh &&
                     bIsPreRenderLimit1
@@ -2639,9 +2639,6 @@ SK::Framerate::Limiter::wait (void)
                                   _IsHighVariation () )
                         {
                           bIsNewACTION = true;
-                               iACTION =
-                               vACTION;
-                          return  true;
                         }
                         break;
                       case    ACTION_HighRenderLatency:
@@ -2649,9 +2646,6 @@ SK::Framerate::Limiter::wait (void)
                                   _IsHighRenderLatency () )
                         {
                           bIsNewACTION = true;
-                               iACTION =
-                               vACTION;
-                          return  true;
                         }
                         break;
                       case    ACTION_StuckInputLatency:
@@ -2659,13 +2653,18 @@ SK::Framerate::Limiter::wait (void)
                                   _IsStuckInputLatency () )
                         {
                           bIsNewACTION = true;
-                               iACTION =
-                               vACTION;
-                          return  true;
                         }
                         break;
                       default:
                         break;
+                    }
+
+                    if (bIsNewACTION)
+                    {
+                      iACTION =
+                      vACTION;
+
+                      return true;
                     }
                   }
 
@@ -2749,11 +2748,14 @@ SK::Framerate::Limiter::wait (void)
                                iACTION ==
                                 ACTION_HighRenderLatency )
                     {
-                      _ToggleTearing (false);
+                      if (! bIsAboveRefresh)
+                      {
+                        _ToggleTearing (false);
 
-                      dWaitSeconds = -_FrametimeSeconds ();
+                        dWaitSeconds = -_FrametimeSeconds ();
 
-                      return;
+                        return;
+                      }
                     }
                   } break;
                 }
@@ -2761,31 +2763,28 @@ SK::Framerate::Limiter::wait (void)
 
               if (! ( bAbortACTION || iACTION == ACTION_None ) )
               {
+                double dMaxWaitSeconds = 1.5;
+
+                if (iACTION == ACTION_HighVariation)
+                {
+                  double dMultiplier = std::round (
+                    SK_ImGui_Frames->getCapacity () / fps
+                  );
+
+                  if (dMultiplier >= 1.0)
+                  {
+                    dMaxWaitSeconds = dMultiplier * 2.0;
+                  }
+                }
+
                 if (! bIsNewACTION )
                 {
-                  double dMaxWaitSeconds = 1.5;
-
-                  if (iACTION == ACTION_HighVariation)
-                  {
-                    double dMultiplier = std::round (
-                      SK_ImGui_Frames->getCapacity () / fps
-                    );
-
-                    if (dMultiplier >= 1.0)
-                    {
-                      dMaxWaitSeconds = dMultiplier * 2.0;
-                    }
-                  }
-
                   switch (iACTION)
                   {
                     case ACTION_HighVariation:
                     {
-                      if ( ( bIsTearingModeAdaptiveOff ) &&
-                           ( ( bIsAboveRefresh &&
-                               bIsPreRenderLimit1 ) ||
-                             ( dWaitSeconds >=
-                               dMaxWaitSeconds    )    ) )
+                      if ( dWaitSeconds >= dMaxWaitSeconds &&
+                           bIsTearingModeAdaptiveOff       )
                       {
                         _ToggleTearing (true);
 
@@ -2833,10 +2832,7 @@ SK::Framerate::Limiter::wait (void)
 
                       else
                       {
-                        if ( ( bIsAboveRefresh &&
-                               bIsPreRenderLimit1 ) ||
-                             ( dWaitSeconds >=
-                               dMaxWaitSeconds    ) )
+                        if (dWaitSeconds >= dMaxWaitSeconds)
                         {
                           _ToggleTearing (true);
 
@@ -2853,10 +2849,9 @@ SK::Framerate::Limiter::wait (void)
 
                     case ACTION_StuckInputLatency:
                     {
-                      if ( bIsTearingModeAdaptiveOff &&
-                           bIsUnstableFPS            &&
-                           dWaitSeconds >=
-                           dMaxWaitSeconds           )
+                      if ( dWaitSeconds >= dMaxWaitSeconds &&
+                           bIsTearingModeAdaptiveOff       &&
+                           bIsUnstableFPS                  )
                       {
                         _ToggleTearing (true);
 
@@ -2894,6 +2889,8 @@ SK::Framerate::Limiter::wait (void)
                            bIsPreRenderLimit1        )
                       {
                         _ToggleTearing (true);
+
+                        dWaitSeconds = dMaxWaitSeconds;
                       }
 
                       else
@@ -2918,6 +2915,12 @@ SK::Framerate::Limiter::wait (void)
                       else
                       {
                         _ToggleTearing (true);
+
+                        if ( bIsAboveRefresh &&
+                             bIsPreRenderLimit1 )
+                        {
+                          dWaitSeconds = dMaxWaitSeconds;
+                        }
                       }
                     } break;
 
@@ -2941,7 +2944,9 @@ SK::Framerate::Limiter::wait (void)
                 }
               }
 
-              else if ( bAbortACTION )
+              else if ( bAbortACTION &&
+                        !bIsUnstableFPS &&
+                        dWaitSeconds > 0.0 )
               {
                 reset (true);
               }
