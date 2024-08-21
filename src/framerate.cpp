@@ -2761,7 +2761,7 @@ SK::Framerate::Limiter::wait (void)
                 }
               }
 
-              if (! ( bAbortACTION || iACTION == ACTION_None ) )
+              if (! (bAbortACTION || iACTION == ACTION_None))
               {
                 double dMaxWaitSeconds = 1.5;
 
@@ -2777,7 +2777,7 @@ SK::Framerate::Limiter::wait (void)
                   }
                 }
 
-                if (! bIsNewACTION )
+                if (! bIsNewACTION)
                 {
                   switch (iACTION)
                   {
