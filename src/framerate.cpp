@@ -2408,7 +2408,7 @@ SK::Framerate::Limiter::wait (void)
               _ToggleTearing (
                 ( bIsTearingModeAdaptiveOff &&
                   ( bIsUnstableFPS       ||
-                    ( bIsAboveRefresh    &&
+                    ( bIsAboveRefresh &&
                       bIsPreRenderLimit1 ))  ) ||
                 ( bIsTearingModeAdaptiveOn  &&
                   ! bIsUnstableFPS           )
