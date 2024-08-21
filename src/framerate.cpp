@@ -2394,75 +2394,92 @@ SK::Framerate::Limiter::wait (void)
             fps / rb.getActiveRefreshRate ()
           ) >= 2.0;
 
-          if (iACTION == ACTION_FrameBecameStable)
+          bool bIsVRR =
+            bIsTearingModeAlwaysOff;
+
+          switch (iACTION)
           {
-            if (bIsTrueFullscreen)
+            case ACTION_FrameBecameStable:
             {
-              _ToggleTearing (
-                bIsTearingModeAdaptiveOn
-              );
-            }
+              if (bIsVRR)
+              {
+                iACTION =
+                 ACTION_None;
 
-            else
+                dWaitSeconds = 0.0;
+
+                return;
+              }
+
+              if (bIsTrueFullscreen)
+              {
+                _ToggleTearing (
+                  bIsTearingModeAdaptiveOn
+                );
+              }
+
+              else
+              {
+                _ToggleTearing (
+                  ( bIsTearingModeAdaptiveOff &&
+                    ( bIsUnstableFPS       ||
+                      ( bIsAboveRefresh &&
+                        bIsPreRenderLimit1 ))  ) ||
+                  ( bIsTearingModeAdaptiveOn  &&
+                    ! bIsUnstableFPS           )
+                );
+              }
+
+              dWaitSeconds += _FrametimeSeconds ();
+
+              if (dWaitSeconds < 1.5)
+              {
+                return;
+              }
+
+              if (! bIsTearingModeAdaptiveOn)
+              {
+                reset (true);
+              }
+
+              iACTION =
+               ACTION_None;
+
+              dWaitSeconds = 0.0;
+            } return;
+
+            default:
             {
-              _ToggleTearing (
-                ( bIsTearingModeAdaptiveOff &&
-                  ( bIsUnstableFPS       ||
-                    ( bIsAboveRefresh &&
-                      bIsPreRenderLimit1 ))  ) ||
-                ( bIsTearingModeAdaptiveOn  &&
-                  ! bIsUnstableFPS           )
-              );
-            }
+              static bool        bWasFpsUnstable = bIsUnstableFPS;
 
-            dWaitSeconds += _FrametimeSeconds ();
+              if (std::exchange (bWasFpsUnstable,  bIsUnstableFPS) &&
+                                                  !bIsUnstableFPS)
+              {
+                if (bIsTrueFullscreen)
+                {
+                  _ToggleTearing (
+                    bIsTearingModeAdaptiveOn
+                  );
+                }
 
-            if (dWaitSeconds < 1.5)
-            {
-              return;
-            }
+                else
+                {
+                  _ToggleTearing (
+                    ( bIsTearingModeAdaptiveOff &&
+                      bIsAboveRefresh           &&
+                      bIsPreRenderLimit1         ) ||
+                    ( bIsTearingModeAdaptiveOn   )
+                  );
+                }
 
-            if (! bIsTearingModeAdaptiveOn)
-            {
-              reset (true);
-            }
+                iACTION =
+                 ACTION_FrameBecameStable;
 
-            iACTION =
-             ACTION_None;
+                dWaitSeconds = 0.0;
 
-            dWaitSeconds = 0.0;
-
-            return;
-          }
-
-          static bool        bWasFpsUnstable = bIsUnstableFPS;
-
-          if (std::exchange (bWasFpsUnstable,  bIsUnstableFPS) &&
-                                              !bIsUnstableFPS)
-          {
-            if (bIsTrueFullscreen)
-            {
-              _ToggleTearing (
-                bIsTearingModeAdaptiveOn
-              );
-            }
-
-            else
-            {
-              _ToggleTearing (
-                ( bIsTearingModeAdaptiveOff &&
-                  bIsAboveRefresh           &&
-                  bIsPreRenderLimit1         ) ||
-                ( bIsTearingModeAdaptiveOn   )
-              );
-            }
-
-            iACTION =
-             ACTION_FrameBecameStable;
-
-            dWaitSeconds = 0.0;
-
-            return;
+                return;
+              }
+            } break;
           }
 
           if ( rb.presentation.mode != SK_PresentMode::Composed_Composition_Atlas &&
