@@ -2405,7 +2405,6 @@ SK::Framerate::Limiter::wait (void)
               bAbortACTION = false;
 
             static int         iLastTearingMode = iTearingMode;
-
             if (std::exchange (iLastTearingMode,  iTearingMode) !=
                                                   iTearingMode)
             {
@@ -2413,7 +2412,6 @@ SK::Framerate::Limiter::wait (void)
             }
 
             static bool        bWasTrueFullscreen = bIsTrueFullscreen;
-
             if (std::exchange (bWasTrueFullscreen,  bIsTrueFullscreen) !=
                                                     bIsTrueFullscreen)
             {
@@ -2421,7 +2419,6 @@ SK::Framerate::Limiter::wait (void)
             }
 
             static bool        bWasAboveRefresh = bIsAboveRefresh;
-
             if (std::exchange (bWasAboveRefresh,  bIsAboveRefresh) !=
                                                   bIsAboveRefresh)
             {
@@ -2429,7 +2426,6 @@ SK::Framerate::Limiter::wait (void)
             }
 
             static bool        bWasVRR = bIsVRR;
-
             if (std::exchange (bWasVRR,  bIsVRR) !=
                                          bIsVRR)
             {
@@ -2512,63 +2508,73 @@ SK::Framerate::Limiter::wait (void)
 
               auto _IsFrameBecameStable = [&]() -> bool
               {
-                static bool
-                  bWasFpsUnstable =
-                  bIsUnstableFPS;
-
-                return std::exchange (
-                  bWasFpsUnstable,
-                  bIsUnstableFPS
-                ) && (
-                 !bIsUnstableFPS
-                );
+                static bool           bWasFpsUnstable = bIsUnstableFPS;
+                return std::exchange (bWasFpsUnstable,  bIsUnstableFPS) &&
+                                                       !bIsUnstableFPS;
               };
 
-              bool bIgnoreHighVariation =
-                bIsTearingModeAdaptiveOn ||
-                bIsUnstableFPS           ||
-                bIsVRR;
+              bool bIgnoreHighVariation = (
+                bIsTearingModeAdaptiveOn
+              ) || (
+                bIsUnstableFPS
+              ) || (
+                bIsVRR
+              );
 
               if (! (bIgnoreHighVariation || bIsAboveRefresh))
               {
-                bIgnoreHighVariation =
-                  config.render.framerate.enforcement_policy == 2 ||
-                  config.nvidia.reflex.use_limiter                ||
-                  config.fps.timing_method   ==
-                    SK_FrametimeMeasures_NewFrameBegin;
+                bIgnoreHighVariation = (
+                  config.render.framerate.enforcement_policy == 2
+                ) || (
+                  config.nvidia.reflex.use_limiter
+                ) || (
+                  config.fps.timing_method ==
+                    SK_FrametimeMeasures_NewFrameBegin
+                );
               }
 
-              bool bIgnoreHighRenderLatency =
-                bIsTearingModeAdaptiveOn ||
-                bIsTearingModeAlwaysOff  ||
-                bIsUnstableFPS;
+              bool bIgnoreHighRenderLatency = (
+                bIsTearingModeAdaptiveOn
+              ) || (
+                bIsTearingModeAlwaysOff
+              ) || (
+                bIsUnstableFPS
+              );
 
-              bool bIgnoreStuckInputLatency =
-                ( bIsTearingModeAdaptiveOff &&
-                  bIsAboveRefresh           &&
-                  bIsUnstableFPS             ) ||
-                ( bIsTearingModeAdaptiveOn   )
-                ( bIsVRR                     );
+              bool bIgnoreStuckInputLatency = (
+                bIsTearingModeAdaptiveOff
+                &&
+                bIsAboveRefresh
+                &&
+                bIsUnstableFPS
+              ) || (
+                bIsTearingModeAdaptiveOn
+              ) || (
+                bIsVRR
+              );
 
-              bool bIgnoreFrameBecameStable =
-                bIsVRR;
+              bool bIgnoreFrameBecameStable = (
+                bIsVRR
+              );
 
               auto _ChangeACTION = [&]() -> bool
               {
                 // Sorted by higher priority
-                std::array <int, 3> iACTIONS = (
-                  bIsTearingModeAdaptiveOff &&
-                  bIsAboveRefresh &&
+                std::array <int, 4> iACTIONS = (
+                  bIsTearingModeAdaptiveOff
+                  &&
+                  bIsAboveRefresh
+                  &&
                   bIsPreRenderLimit1
                 ) ? (
-                  std::array <int, 3> {
+                  std::array <int, 4> {
                     ACTION_FrameBecameStable,
                     ACTION_HighVariation,
                     ACTION_HighRenderLatency,
                     ACTION_StuckInputLatency
                   }
                 ) : (
-                  std::array <int, 3> {
+                  std::array <int, 4> {
                     ACTION_FrameBecameStable,
                     ACTION_HighRenderLatency,
                     ACTION_HighVariation,
@@ -2695,8 +2701,7 @@ SK::Framerate::Limiter::wait (void)
                     break;
                   }
 
-                  if ( bIgnoreFrameBecameStable ||
-                          !_IsFrameBecameStable () )
+                  if ( bIgnoreFrameBecameStable )
                   {
                     bAbortACTION = true;
                   }
@@ -2707,13 +2712,16 @@ SK::Framerate::Limiter::wait (void)
                   iACTION =
                    ACTION_None;
 
-                  if ( ( config.render.framerate.present_interval == 0 &&
-                         config.render.dxgi.allow_tearing               ) ||
-                       ( config.render.framerate.present_interval >= 1 &&
-                         config.render.framerate.turn_vsync_off        &&
-                         bIsTearingModeAdaptiveOff                      ) )
+                  if (! bIsTearingModeAdaptiveOn)
                   {
-                    break;
+                    if ( ( config.render.framerate.present_interval == 0 &&
+                           config.render.dxgi.allow_tearing               ) ||
+                         ( config.render.framerate.present_interval >= 1 &&
+                           config.render.framerate.turn_vsync_off        &&
+                           bIsTearingModeAdaptiveOff                      ) )
+                    {
+                      break;
+                    }
                   }
 
                   if ( _ChangeACTION () &&
@@ -2867,6 +2875,8 @@ SK::Framerate::Limiter::wait (void)
                     {
                       return;
                     }
+
+                    bAbortACTION = true;
                   } break;
 
                   [[unlikely]] default:
@@ -2965,8 +2975,9 @@ SK::Framerate::Limiter::wait (void)
               }
             }
 
-            else if ( dWaitSeconds > 0.0 &&
-                      bAbortACTION       )
+            if ( !bIsTearingModeAdaptiveOn &&
+                  bAbortACTION             &&
+                  dWaitSeconds > 0.0       )
             {
               reset (true);
             }
