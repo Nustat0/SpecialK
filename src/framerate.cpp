@@ -2508,8 +2508,8 @@ SK::Framerate::Limiter::wait (void)
 
               auto _IsFrameBecameStable = [&]() -> bool
               {
-                static bool           bWasFpsUnstable = bIsUnstableFPS;
-                return std::exchange (bWasFpsUnstable,  bIsUnstableFPS) &&
+                static bool           bWasUnstableFPS = bIsUnstableFPS;
+                return std::exchange (bWasUnstableFPS,  bIsUnstableFPS) &&
                                                        !bIsUnstableFPS;
               };
 
@@ -2560,21 +2560,21 @@ SK::Framerate::Limiter::wait (void)
               auto _ChangeACTION = [&]() -> bool
               {
                 // Sorted by higher priority
-                std::array <int, 4> iACTIONS = (
+                std::vector <int> iACTIONS = (
                   bIsTearingModeAdaptiveOff
                   &&
                   bIsAboveRefresh
                   &&
                   bIsPreRenderLimit1
                 ) ? (
-                  std::array <int, 4> {
+                  std::vector <int> {
                     ACTION_FrameBecameStable,
                     ACTION_HighVariation,
                     ACTION_HighRenderLatency,
                     ACTION_StuckInputLatency
                   }
                 ) : (
-                  std::array <int, 4> {
+                  std::vector <int> {
                     ACTION_FrameBecameStable,
                     ACTION_HighRenderLatency,
                     ACTION_HighVariation,
