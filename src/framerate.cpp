@@ -2432,12 +2432,27 @@ SK::Framerate::Limiter::wait (void)
               bAbortACTION = true;
             }
 
+            if (! bIsTearingModeAdaptiveOn)
+            {
+              if (iACTION == ACTION_None)
+              {
+                if ( ( config.render.framerate.present_interval == 0 &&
+                       config.render.dxgi.allow_tearing               ) ||
+                     ( config.render.framerate.present_interval >= 1 &&
+                       config.render.framerate.turn_vsync_off        &&
+                       bIsTearingModeAdaptiveOff                      ) )
+                {
+                  bAbortACTION = true;
+                }
+              }
+            }
+
             if (! bAbortACTION)
             {
               auto _IsHighVariation = [&]() -> bool
               {
                 float min = FLT_MAX,
-                      max = 0.0f;
+                      max = 0.0000f;
 
                 for ( const auto& val : SK_ImGui_Frames->getValues () )
                 {
@@ -2557,191 +2572,168 @@ SK::Framerate::Limiter::wait (void)
                 bIsVRR
               );
 
-              auto _ChangeACTION = [&]() -> bool
+              // Sorted by higher priority
+              std::vector <int> iACTIONS = (
+                bIsTearingModeAdaptiveOff
+                &&
+                bIsAboveRefresh
+                &&
+                bIsPreRenderLimit1
+              ) ? (
+                std::vector <int> {
+                  ACTION_FrameBecameStable,
+                  ACTION_HighVariation,
+                  ACTION_HighRenderLatency,
+                  ACTION_StuckInputLatency
+                }
+              ) : (
+                std::vector <int> {
+                  ACTION_FrameBecameStable,
+                  ACTION_HighRenderLatency,
+                  ACTION_HighVariation,
+                  ACTION_StuckInputLatency
+                }
+              );
+
+              for ( const auto& vACTION : iACTIONS )
               {
-                // Sorted by higher priority
-                std::vector <int> iACTIONS = (
-                  bIsTearingModeAdaptiveOff
-                  &&
-                  bIsAboveRefresh
-                  &&
-                  bIsPreRenderLimit1
-                ) ? (
-                  std::vector <int> {
-                    ACTION_FrameBecameStable,
-                    ACTION_HighVariation,
-                    ACTION_HighRenderLatency,
-                    ACTION_StuckInputLatency
-                  }
-                ) : (
-                  std::vector <int> {
-                    ACTION_FrameBecameStable,
-                    ACTION_HighRenderLatency,
-                    ACTION_HighVariation,
-                    ACTION_StuckInputLatency
-                  }
-                );
-
-                for ( const auto& vACTION : iACTIONS )
+                switch (vACTION)
                 {
-                  if ( iACTION == vACTION )
+                  case ACTION_HighVariation:
                   {
-                    return false;
-                  }
-
-                  switch (vACTION)
-                  {
-                    case    ACTION_HighVariation:
+                    if (iACTION != vACTION)
+                    {
                       if ( !bIgnoreHighVariation &&
                                 _IsHighVariation () )
                       {
                         bIsNewACTION = true;
                       }
-                      break;
-                    case    ACTION_HighRenderLatency:
+                    }
+
+                    else
+                    {
+                      if ( bIgnoreHighVariation ||
+                              !_IsHighVariation () )
+                      {
+                        bAbortACTION = true;
+                      }
+                    }
+                  } break;
+
+                  case ACTION_HighRenderLatency:
+                  {
+                    if (iACTION != vACTION)
+                    {
                       if ( !bIgnoreHighRenderLatency &&
                                 _IsHighRenderLatency () )
                       {
+                        if (! bIsAboveRefresh)
+                        {
+                          _ToggleTearing (false);
+
+                          dWaitSeconds = -_FrametimeSeconds ();
+                        }
+
                         bIsNewACTION = true;
                       }
-                      break;
-                    case    ACTION_StuckInputLatency:
+                    }
+
+                    else
+                    {
+                      if ( bIgnoreHighRenderLatency ||
+                              !_IsHighRenderLatency () )
+                      {
+                        bAbortACTION = true;
+                      }
+
+                      // Avoid rapid Render Latency changes
+                      else if (dWaitSeconds < 0.0)
+                      {
+                        _ToggleTearing (false);
+
+                        dWaitSeconds -= _FrametimeSeconds ();
+
+                        if (std::abs (dWaitSeconds) < 1.0)
+                        {
+                          return;
+                        }
+
+                        dWaitSeconds = 0.00;
+
+                        bIsNewACTION = true;
+                      }
+                    }
+                  } break;
+
+                  case ACTION_StuckInputLatency:
+                  {
+                    if (iACTION != vACTION)
+                    {
                       if ( !bIgnoreStuckInputLatency &&
                                 _IsStuckInputLatency () )
                       {
                         bIsNewACTION = true;
                       }
-                      break;
-                    case    ACTION_FrameBecameStable:
+                    }
+
+                    else
+                    {
+                      if ( bIgnoreStuckInputLatency ||
+                              !_IsStuckInputLatency () )
+                      {
+                        bAbortACTION = true;
+                      }
+                    }
+                  } break;
+
+                  case ACTION_FrameBecameStable:
+                  {
+                    if (iACTION != vACTION)
+                    {
                       if ( !bIgnoreFrameBecameStable &&
                                 _IsFrameBecameStable () )
                       {
                         bIsNewACTION = true;
                       }
-                      break;
-                    default:
-                      break;
-                  }
+                    }
 
-                  if (bIsNewACTION)
+                    else
+                    {
+                      if ( bIgnoreFrameBecameStable )
+                      {
+                        bAbortACTION = true;
+                      }
+                    }
+                  } break;
+
+                  default:
                   {
-                    iACTION =
-                    vACTION;
-
-                    return true;
-                  }
+                  } break;
                 }
 
-                return false;
-              };
-
-              switch (iACTION)
-              {
-                case ACTION_HighVariation:
-                {
-                  if (_ChangeACTION ())
-                  {
-                    break;
-                  }
-
-                  if ( bIgnoreHighVariation ||
-                          !_IsHighVariation () )
-                  {
-                    bAbortACTION = true;
-                  }
-                } break;
-
-                case ACTION_HighRenderLatency:
-                {
-                  if (_ChangeACTION ())
-                  {
-                    break;
-                  }
-
-                  if ( bIgnoreHighRenderLatency ||
-                          !_IsHighRenderLatency () )
-                  {
-                    bAbortACTION = true;
-                  }
-
-                  // Avoid rapid Render Latency changes
-                  else if (dWaitSeconds < 0.0)
-                  {
-                    _ToggleTearing (false);
-
-                    dWaitSeconds -= _FrametimeSeconds ();
-
-                    if (std::abs (dWaitSeconds) < 1.0)
-                    {
-                      return;
-                    }
-
-                    bIsNewACTION = true;
-                  }
-                } break;
-
-                case ACTION_StuckInputLatency:
-                {
-                  if (_ChangeACTION ())
-                  {
-                    break;
-                  }
-
-                  if ( bIgnoreStuckInputLatency ||
-                          !_IsStuckInputLatency () )
-                  {
-                    bAbortACTION = true;
-                  }
-                } break;
-
-                case ACTION_FrameBecameStable:
-                {
-                  if (_ChangeACTION ())
-                  {
-                    break;
-                  }
-
-                  if ( bIgnoreFrameBecameStable )
-                  {
-                    bAbortACTION = true;
-                  }
-                } break;
-
-                default:
+                if (bIsNewACTION)
                 {
                   iACTION =
-                   ACTION_None;
+                  vACTION;
 
-                  if (! bIsTearingModeAdaptiveOn)
+                  if (dWaitSeconds < 0.0)
                   {
-                    if ( ( config.render.framerate.present_interval == 0 &&
-                           config.render.dxgi.allow_tearing               ) ||
-                         ( config.render.framerate.present_interval >= 1 &&
-                           config.render.framerate.turn_vsync_off        &&
-                           bIsTearingModeAdaptiveOff                      ) )
-                    {
-                      break;
-                    }
+                    return;
                   }
 
-                  if ( _ChangeACTION () &&
-                             iACTION ==
-                              ACTION_HighRenderLatency )
-                  {
-                    if (! bIsAboveRefresh)
-                    {
-                      _ToggleTearing (false);
+                  break;
+                }
 
-                      dWaitSeconds = -_FrametimeSeconds ();
-
-                      return;
-                    }
-                  }
-                } break;
+                if (bAbortACTION ||
+                         iACTION ==
+                         vACTION)
+                {
+                  break;
+                }
               }
             }
 
-            if (! (bAbortACTION || iACTION == ACTION_None))
+            if (!  (bAbortACTION || iACTION == ACTION_None))
             {
               double dMaxWaitSeconds = 1.5;
 
@@ -2801,7 +2793,7 @@ SK::Framerate::Limiter::wait (void)
                              dMaxWaitSeconds        )
                       {
                         __target_fps_temp = 0.0f;
-                             dWaitSeconds = 0.0;
+                             dWaitSeconds = 0.00;
                       }
 
                       if (dWaitSeconds < dMaxWaitSeconds)
@@ -2889,7 +2881,7 @@ SK::Framerate::Limiter::wait (void)
               if (! bAbortACTION)
               {
                 __target_fps_temp = 0.0f;
-                     dWaitSeconds = 0.0;
+                     dWaitSeconds = 0.00;
 
                 switch (iACTION)
                 {
@@ -2995,7 +2987,7 @@ SK::Framerate::Limiter::wait (void)
            ACTION_None;
 
           __target_fps_temp = 0.0f;
-               dWaitSeconds = 0.0;
+               dWaitSeconds = 0.00;
 
           switch (iTearingMode)
           {
@@ -3309,7 +3301,7 @@ SK::Framerate::Limiter::wait (void)
     static bool   bTry =  true; // First time signals resync
     if (          bTry)
     {             bTry = !bTry;         bSync = true; }
-    static double dTry =   0.0;
+    static double dTry =  0.00;
     if (  config.render.framerate.latent_sync.scanline_resync != 0.0f &&
           static_cast <float>  (dTry += _FrametimeSeconds ()) >=
           config.render.framerate.latent_sync.scanline_resync
