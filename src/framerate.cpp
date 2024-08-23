@@ -2886,10 +2886,10 @@ SK::Framerate::Limiter::wait (void)
                     bIsTearingModeAdaptiveOff
                   ) && (
                     bIsUnstableFPS
-                  ) && {
+                  ) && (
                     dWaitSeconds >=
                     dMaxWaitSeconds
-                  };
+                  );
 
                   if (bStopWait)
                   {
