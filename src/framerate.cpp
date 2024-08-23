@@ -2262,6 +2262,18 @@ SK::Framerate::Limiter::wait (void)
 
       static double dWaitSeconds = 0.0;
 
+      auto _RestartACTION = [&](bool bAbort = false) -> void
+      {
+        if (bAbort)
+        {
+          iACTION =
+           ACTION_None;
+        }
+
+        __target_fps_temp = 0.0f;
+             dWaitSeconds = 0.00;
+      };
+
       auto _ToggleTearing = [&](bool bEnableTearing) -> void
       {
         if (config.render.framerate.tearing_mode == SK_TearingMode::AppControlled)
@@ -2721,6 +2733,8 @@ SK::Framerate::Limiter::wait (void)
                     return;
                   }
 
+                  _RestartACTION ();
+
                   break;
                 }
 
@@ -2733,7 +2747,7 @@ SK::Framerate::Limiter::wait (void)
               }
             }
 
-            if (!  (bAbortACTION || iACTION == ACTION_None))
+            if (! bAbortACTION)
             {
               double dMaxWaitSeconds = 1.5;
 
@@ -2749,34 +2763,63 @@ SK::Framerate::Limiter::wait (void)
                 }
               }
 
-              if (! bIsNewACTION)
+              switch (iACTION)
               {
-                switch (iACTION)
+                case ACTION_HighVariation:
                 {
-                  case ACTION_HighVariation:
+                  bool bSkipWait = (
+                    bIsTearingModeAdaptiveOff
+                  ) && (
+                    bIsAboveRefresh
+                  ) && (
+                    bIsPreRenderLimit1
+                  );
+
+                  bool bStopWait = (
+                    bIsTearingModeAdaptiveOff
+                  ) && (
+                    dWaitSeconds >=
+                    dMaxWaitSeconds
+                  );
+
+                  if (bSkipWait || bStopWait)
                   {
-                    if ( dWaitSeconds >= dMaxWaitSeconds &&
-                         bIsTearingModeAdaptiveOff       )
-                    {
-                      _ToggleTearing (true);
+                    _ToggleTearing (true);
+                  }
 
-                      return;
-                    }
-
+                  else
+                  {
                     _ToggleTearing (false);
 
-                    dWaitSeconds += _FrametimeSeconds ();
-
-                    if (dWaitSeconds < dMaxWaitSeconds)
+                    if (! bIsNewACTION)
                     {
-                      return;
-                    }
-                  } break;
+                      dWaitSeconds += _FrametimeSeconds ();
 
-                  case ACTION_HighRenderLatency:
+                      if ( !bStopWait &&
+                            dWaitSeconds >=
+                            dMaxWaitSeconds )
+                      {
+                        bIsNewACTION = true;
+                      }
+                    }
+
+                    if (bIsNewACTION)
+                    {
+                      _RestartACTION ();
+
+                      reset (true);
+                    }
+                  }
+                } return;
+
+                case ACTION_HighRenderLatency:
+                {
+                  if ( bIsTearingModeAlwaysOffLL ||
+                       bIsTrueFullscreen         )
                   {
-                    if ( bIsTearingModeAlwaysOffLL ||
-                         bIsTrueFullscreen         )
+                    _ToggleTearing (false);
+
+                    if (! bIsNewACTION)
                     {
                       if (__target_fps_temp >= __target_fps)
                       {
@@ -2784,186 +2827,136 @@ SK::Framerate::Limiter::wait (void)
                         break;
                       }
 
-                      _ToggleTearing (false);
-
                       dWaitSeconds += _FrametimeSeconds ();
 
                       if ( __target_fps_temp > 0.0f &&
                                 dWaitSeconds >=
-                             dMaxWaitSeconds        )
+                              dMaxWaitSeconds        )
                       {
-                        __target_fps_temp = 0.0f;
-                             dWaitSeconds = 0.00;
+                        _RestartACTION ();
                       }
 
-                      if (dWaitSeconds < dMaxWaitSeconds)
-                      {
-                        return;
-                      }
-                    }
-
-                    else
-                    {
                       if (dWaitSeconds >= dMaxWaitSeconds)
                       {
-                        _ToggleTearing (true);
-
-                        return;
+                        bIsNewACTION = true;
                       }
-
-                      _ToggleTearing (false);
-
-                      dWaitSeconds += _FrametimeSeconds ();
-
-                      return;
-                    }
-                  } break;
-
-                  case ACTION_StuckInputLatency:
-                  {
-                    if ( dWaitSeconds >= dMaxWaitSeconds &&
-                         bIsTearingModeAdaptiveOff       &&
-                         bIsUnstableFPS                  )
-                    {
-                      _ToggleTearing (true);
-
-                      return;
                     }
 
-                    _ToggleTearing (false);
-
-                    dWaitSeconds += _FrametimeSeconds ();
-
-                    if (dWaitSeconds < dMaxWaitSeconds)
+                    if (bIsNewACTION)
                     {
-                      return;
-                    }
-                  } break;
-
-                  case ACTION_FrameBecameStable:
-                  {
-                    if (bIsTrueFullscreen)
-                    {
-                      _ToggleTearing (
-                        bIsTearingModeAdaptiveOn
-                      );
-                    }
-
-                    else
-                    {
-                      _ToggleTearing (
-                        ( bIsTearingModeAdaptiveOff &&
-                          ( bIsUnstableFPS       ||
-                            ( bIsAboveRefresh &&
-                              bIsPreRenderLimit1 ))  ) ||
-                        ( bIsTearingModeAdaptiveOn  &&
-                          ! bIsUnstableFPS           )
-                      );
-                    }
-
-                    dWaitSeconds += _FrametimeSeconds ();
-
-                    if (dWaitSeconds < dMaxWaitSeconds)
-                    {
-                      return;
-                    }
-
-                    bAbortACTION = true;
-                  } break;
-
-                  [[unlikely]] default:
-                  {
-                    bAbortACTION = true;
-                  } break;
-                }
-              }
-
-              if (! bAbortACTION)
-              {
-                __target_fps_temp = 0.0f;
-                     dWaitSeconds = 0.00;
-
-                switch (iACTION)
-                {
-                  case ACTION_HighVariation:
-                  {
-                    if ( bIsTearingModeAdaptiveOff &&
-                         bIsAboveRefresh           &&
-                         bIsPreRenderLimit1        )
-                    {
-                      _ToggleTearing (true);
-
-                      dWaitSeconds = dMaxWaitSeconds;
-                    }
-
-                    else
-                    {
-                      _ToggleTearing (false);
-
-                      reset (true);
-                    }
-                  } break;
-
-                  case ACTION_HighRenderLatency:
-                  {
-                    if ( bIsTearingModeAlwaysOffLL ||
-                         bIsTrueFullscreen         )
-                    {
-                      _ToggleTearing (false);
+                      _RestartACTION ();
 
                       __target_fps_temp =
                       __target_fps - 1.0f;
                     }
+                  }
+
+                  else
+                  {
+                    bool bSkipWait = (
+                      bIsAboveRefresh
+                    ) && (
+                      bIsPreRenderLimit1
+                    );
+
+                    if ( bSkipWait ||
+                         dWaitSeconds >=
+                         dMaxWaitSeconds )
+                    {
+                      _ToggleTearing (true);
+                    }
 
                     else
                     {
-                      _ToggleTearing (true);
+                      _ToggleTearing (
+                        bIsNewACTION
+                      );
 
-                      if ( bIsAboveRefresh &&
-                           bIsPreRenderLimit1 )
+                      if (! bIsNewACTION)
                       {
-                        dWaitSeconds = dMaxWaitSeconds;
+                        dWaitSeconds += _FrametimeSeconds ();
                       }
                     }
-                  } break;
+                  }
+                } return;
 
-                  case ACTION_StuckInputLatency:
+                case ACTION_StuckInputLatency:
+                {
+                  bool bStopWait = (
+                    bIsTearingModeAdaptiveOff
+                  ) && (
+                    bIsUnstableFPS
+                  ) && {
+                    dWaitSeconds >=
+                    dMaxWaitSeconds
+                  };
+
+                  if (bStopWait)
+                  {
+                    _ToggleTearing (true);
+                  }
+
+                  else
                   {
                     _ToggleTearing (false);
 
-                    reset (true);
-                  } break;
-
-                  case ACTION_FrameBecameStable:
-                  {
-                    if (bIsTrueFullscreen)
+                    if (! bIsNewACTION)
                     {
-                      _ToggleTearing (
-                        bIsTearingModeAdaptiveOn
-                      );
+                      dWaitSeconds += _FrametimeSeconds ();
+
+                      if ( !bStopWait &&
+                            dWaitSeconds >=
+                            dMaxWaitSeconds )
+                      {
+                        bIsNewACTION = true;
+                      }
                     }
 
-                    else
+                    if (bIsNewACTION)
                     {
-                      _ToggleTearing (
-                        ( bIsTearingModeAdaptiveOff &&
-                          bIsAboveRefresh           &&
-                          bIsPreRenderLimit1         ) ||
-                        ( bIsTearingModeAdaptiveOn   )
-                      );
+                      _RestartACTION ();
+
+                      reset (true);
                     }
-                  } break;
+                  }
+                } return;
 
-                  [[unlikely]] default:
-                  {
-                    bAbortACTION = true;
-                  } break;
-                }
-
-                if (! bAbortACTION )
+                case ACTION_FrameBecameStable:
                 {
-                  return;
-                }
+                  if (bIsTrueFullscreen)
+                  {
+                    _ToggleTearing (
+                      bIsTearingModeAdaptiveOn
+                    );
+                  }
+
+                  else
+                  {
+                    _ToggleTearing (
+                      ( bIsTearingModeAdaptiveOff &&
+                        ( bIsUnstableFPS       ||
+                          ( bIsAboveRefresh &&
+                            bIsPreRenderLimit1 ))  ) ||
+                      ( bIsTearingModeAdaptiveOn  &&
+                        ! bIsUnstableFPS           )
+                    );
+                  }
+
+                  if (! bIsNewACTION)
+                  {
+                    dWaitSeconds += _FrametimeSeconds ();
+
+                    if (dWaitSeconds >= dMaxWaitSeconds)
+                    {
+                      bAbortACTION = true;
+                      break;
+                    }
+                  }
+                } return;
+
+                default:
+                {
+                } break;
               }
             }
 
@@ -2983,11 +2976,7 @@ SK::Framerate::Limiter::wait (void)
 
         default:
         {
-          iACTION =
-           ACTION_None;
-
-          __target_fps_temp = 0.0f;
-               dWaitSeconds = 0.00;
+          _RestartACTION (true);
 
           switch (iTearingMode)
           {
