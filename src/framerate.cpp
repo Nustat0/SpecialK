@@ -2920,6 +2920,36 @@ SK::Framerate::Limiter::wait (void)
                       {
                         _RestartACTION ();
                       }
+
+                      if (bIsTrueFullscreen)
+                      {
+                        _ToggleTearing (
+                          bIsTearingModeAdaptiveOn
+                        );
+                      }
+
+                      else
+                      {
+                        _ToggleTearing (
+                          ( bIsTearingModeAdaptiveOff &&
+                            ( bIsUnstableFPS       ||
+                              ( bIsAboveRefresh &&
+                                bIsPreRenderLimit1 ))  ) ||
+                          ( bIsTearingModeAdaptiveOn  &&
+                            ! bIsUnstableFPS           )
+                        );
+                      }
+
+                      if (! bIsNewACTION)
+                      {
+                        dWaitSeconds += _FrametimeSeconds ();
+
+                        if (dWaitSeconds >= dMaxWaitSeconds)
+                        {
+                          bAbortACTION = true;
+                          break;
+                        }
+                      }
                     }
                   } return;
 
@@ -2932,49 +2962,6 @@ SK::Framerate::Limiter::wait (void)
                 {
                   break;
                 }
-              }
-            }
-
-            if (! bAbortACTION)
-            {
-              switch (iACTION)
-              {
-                case ACTION_FrameBecameStable:
-                {
-                  if (bIsTrueFullscreen)
-                  {
-                    _ToggleTearing (
-                      bIsTearingModeAdaptiveOn
-                    );
-                  }
-
-                  else
-                  {
-                    _ToggleTearing (
-                      ( bIsTearingModeAdaptiveOff &&
-                        ( bIsUnstableFPS       ||
-                          ( bIsAboveRefresh &&
-                            bIsPreRenderLimit1 ))  ) ||
-                      ( bIsTearingModeAdaptiveOn  &&
-                        ! bIsUnstableFPS           )
-                    );
-                  }
-
-                  if (! bIsNewACTION)
-                  {
-                    dWaitSeconds += _FrametimeSeconds ();
-
-                    if (dWaitSeconds >= dMaxWaitSeconds)
-                    {
-                      bAbortACTION = true;
-                      break;
-                    }
-                  }
-                } return;
-
-                default:
-                {
-                } break;
               }
             }
 
