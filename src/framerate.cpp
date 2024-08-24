@@ -2407,10 +2407,23 @@ SK::Framerate::Limiter::wait (void)
           bool bIsVRR =
             bIsTearingModeAlwaysOff;
 
-          if ( rb.presentation.mode != SK_PresentMode::Composed_Composition_Atlas &&
-               rb.presentation.mode != SK_PresentMode::Composed_Copy_GPU_GDI      &&
-               rb.presentation.mode != SK_PresentMode::Composed_Copy_CPU_GDI      &&
-               rb.presentation.mode != SK_PresentMode::Composed_Flip              )
+          bool bIsComposedPresentMode =
+            rb.presentation.mode == SK_PresentMode::Composed_Composition_Atlas ||
+            rb.presentation.mode == SK_PresentMode::Composed_Copy_GPU_GDI      ||
+            rb.presentation.mode == SK_PresentMode::Composed_Copy_CPU_GDI      ||
+            rb.presentation.mode == SK_PresentMode::Composed_Flip;
+
+          static bool        bWasComposedPresentMode = bIsComposedPresentMode;
+          if (std::exchange (bWasComposedPresentMode,  bIsComposedPresentMode) &&
+                                                      !bIsComposedPresentMode)
+          {
+            if (! bIsTearingModeAdaptiveOn)
+            {
+              reset (true);
+            }
+          }
+
+          if (! bIsComposedPresentMode)
           {
             bool
               bIsNewACTION = false,
