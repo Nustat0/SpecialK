@@ -2274,7 +2274,7 @@ SK::Framerate::Limiter::wait (void)
              dWaitSeconds = 0.00;
       };
 
-      auto _ToggleTearing = [&](bool bEnableTearing) -> void
+      auto _EnableTearing = [&](bool bEnableTearing = true) -> void
       {
         if (config.render.framerate.tearing_mode == SK_TearingMode::AppControlled)
         {
@@ -2682,12 +2682,12 @@ SK::Framerate::Limiter::wait (void)
 
                       if (bSkipWait || bStopWait)
                       {
-                        _ToggleTearing (true);
+                        _EnableTearing ();
                       }
 
                       else
                       {
-                        _ToggleTearing (false);
+                        _EnableTearing (false);
 
                         if (! bIsNewACTION)
                         {
@@ -2743,7 +2743,7 @@ SK::Framerate::Limiter::wait (void)
                         // Avoid rapid Render Latency changes
                         if (! bIsAboveRefresh)
                         {
-                          _ToggleTearing (false);
+                          _EnableTearing (false);
 
                           dWaitSeconds = -_FrametimeSeconds ();
 
@@ -2753,7 +2753,7 @@ SK::Framerate::Limiter::wait (void)
 
                       if (dWaitSeconds < 0.0)
                       {
-                        _ToggleTearing (false);
+                        _EnableTearing (false);
 
                         dWaitSeconds -= _FrametimeSeconds ();
 
@@ -2768,7 +2768,7 @@ SK::Framerate::Limiter::wait (void)
                       if ( bIsTearingModeAlwaysOffLL ||
                            bIsTrueFullscreen         )
                       {
-                        _ToggleTearing (false);
+                        _EnableTearing (false);
 
                         if (! bIsNewACTION)
                         {
@@ -2814,12 +2814,12 @@ SK::Framerate::Limiter::wait (void)
                              dWaitSeconds >=
                              dMaxWaitSeconds )
                         {
-                          _ToggleTearing (true);
+                          _EnableTearing ();
                         }
 
                         else
                         {
-                          _ToggleTearing (
+                          _EnableTearing (
                             bIsNewACTION
                           );
 
@@ -2877,12 +2877,12 @@ SK::Framerate::Limiter::wait (void)
 
                       if (bStopWait)
                       {
-                        _ToggleTearing (true);
+                        _EnableTearing ();
                       }
 
                       else
                       {
-                        _ToggleTearing (false);
+                        _EnableTearing (false);
 
                         if (! bIsNewACTION)
                         {
@@ -2936,14 +2936,14 @@ SK::Framerate::Limiter::wait (void)
 
                       if (bIsTrueFullscreen)
                       {
-                        _ToggleTearing (
+                        _EnableTearing (
                           bIsTearingModeAdaptiveOn
                         );
                       }
 
                       else
                       {
-                        _ToggleTearing (
+                        _EnableTearing (
                           ( bIsTearingModeAdaptiveOff &&
                             ( bIsUnstableFPS       ||
                               ( bIsAboveRefresh &&
@@ -2986,7 +2986,7 @@ SK::Framerate::Limiter::wait (void)
             }
           }
 
-          _ToggleTearing (
+          _EnableTearing (
             ( bIsTearingModeAdaptiveOff &&  bIsUnstableFPS ) ||
             ( bIsTearingModeAdaptiveOn  && !bIsUnstableFPS )
           );
@@ -3000,7 +3000,7 @@ SK::Framerate::Limiter::wait (void)
           {
             case SK_TearingMode::AlwaysOn:
             {
-              _ToggleTearing (true);
+              _EnableTearing ();
 
               __SK_LatentSyncSkip = 0;
             } break;
