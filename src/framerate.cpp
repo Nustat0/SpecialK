@@ -2262,9 +2262,9 @@ SK::Framerate::Limiter::wait (void)
 
       static double dWaitSeconds = 0.0;
 
-      auto _RestartACTION = [&](bool bAbort = false) -> void
+      auto  _ResetACTION  =  [&](bool bFull = false) -> void
       {
-        if (bAbort)
+        if (bFull)
         {
           iACTION =
            ACTION_None;
@@ -2653,7 +2653,7 @@ SK::Framerate::Limiter::wait (void)
 
                       else
                       {
-                        _RestartACTION ();
+                        _ResetACTION ();
                       }
 
                       double dMultiplier = std::round (
@@ -2703,7 +2703,7 @@ SK::Framerate::Limiter::wait (void)
 
                         if (bIsNewACTION)
                         {
-                          _RestartACTION ();
+                          _ResetACTION ();
 
                           reset (true);
                         }
@@ -2738,7 +2738,7 @@ SK::Framerate::Limiter::wait (void)
 
                       else
                       {
-                        _RestartACTION ();
+                        _ResetACTION ();
 
                         // Avoid rapid Render Latency changes
                         if (! bIsAboveRefresh)
@@ -2784,7 +2784,7 @@ SK::Framerate::Limiter::wait (void)
                                     dWaitSeconds >=
                                   dMaxWaitSeconds       )
                           {
-                            _RestartACTION ();
+                            _ResetACTION ();
                           }
 
                           if (dWaitSeconds >= dMaxWaitSeconds)
@@ -2795,7 +2795,7 @@ SK::Framerate::Limiter::wait (void)
 
                         if (bIsNewACTION)
                         {
-                          _RestartACTION ();
+                          _ResetACTION ();
 
                           __target_fps_temp =
                           __target_fps - 1.0f;
@@ -2830,7 +2830,7 @@ SK::Framerate::Limiter::wait (void)
 
                           else
                           {
-                            _RestartACTION ();
+                            _ResetACTION ();
                           }
                         }
                       }
@@ -2863,7 +2863,7 @@ SK::Framerate::Limiter::wait (void)
 
                       else
                       {
-                        _RestartACTION ();
+                        _ResetACTION ();
                       }
 
                       bool bStopWait = (
@@ -2898,7 +2898,7 @@ SK::Framerate::Limiter::wait (void)
 
                         if (bIsNewACTION)
                         {
-                          _RestartACTION ();
+                          _ResetACTION ();
 
                           reset (true);
                         }
@@ -2931,7 +2931,7 @@ SK::Framerate::Limiter::wait (void)
 
                       else
                       {
-                        _RestartACTION ();
+                        _ResetACTION ();
                       }
 
                       if (bIsTrueFullscreen)
@@ -2994,7 +2994,7 @@ SK::Framerate::Limiter::wait (void)
 
         default:
         {
-          _RestartACTION (true);
+          _ResetACTION (true);
 
           switch (iTearingMode)
           {
