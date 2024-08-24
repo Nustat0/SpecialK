@@ -2253,6 +2253,8 @@ SK::Framerate::Limiter::wait (void)
         __SK_LatentSyncSkip = 0;
       }
 
+      static double dWaitSeconds = 0.0;
+
       static constexpr int ACTION_None              = 0,
                            ACTION_HighVariation     = 1,
                            ACTION_HighRenderLatency = 2,
@@ -2260,9 +2262,7 @@ SK::Framerate::Limiter::wait (void)
                            ACTION_FrameBecameStable = 4;
       static int iACTION = ACTION_None;
 
-      static double dWaitSeconds = 0.0;
-
-      auto  _ResetACTION  =  [&](bool bFull = false) -> void
+      auto  _ResetACTION = [&](bool bFull = false) -> void
       {
         if (bFull)
         {
