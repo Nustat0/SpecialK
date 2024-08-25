@@ -2479,24 +2479,18 @@ SK::Framerate::Limiter::wait (void)
             {
               bool bHighVariation = [&]() -> bool
               {
-                bool bIgnoreHighVariation = (
-                  bIsTearingModeAdaptiveOn
-                ) || (
-                  bIsUnstableFPS
-                ) || (
-                  bIsVRR
-                );
+                bool bIgnoreHighVariation =
+                  bIsTearingModeAdaptiveOn ||
+                  bIsUnstableFPS           ||
+                  bIsVRR;
 
                 if (! (bIgnoreHighVariation || bIsAboveRefresh))
                 {
-                  bIgnoreHighVariation = (
-                    config.render.framerate.enforcement_policy == 2
-                  ) || (
-                    config.nvidia.reflex.use_limiter
-                  ) || (
+                  bIgnoreHighVariation =
+                    config.render.framerate.enforcement_policy == 2 ||
+                    config.nvidia.reflex.use_limiter                ||
                     config.fps.timing_method ==
-                      SK_FrametimeMeasures_NewFrameBegin
-                  );
+                      SK_FrametimeMeasures_NewFrameBegin;
                 }
 
                 if (bIgnoreHighVariation)
@@ -2525,13 +2519,10 @@ SK::Framerate::Limiter::wait (void)
 
               bool bHighRenderLatency = [&]() -> bool
               {
-                bool bIgnoreHighRenderLatency = (
-                  bIsTearingModeAdaptiveOn
-                ) || (
-                  bIsTearingModeAlwaysOff
-                ) || (
-                  bIsUnstableFPS
-                );
+                bool bIgnoreHighRenderLatency =
+                  bIsTearingModeAdaptiveOn ||
+                  bIsTearingModeAlwaysOff  ||
+                  bIsUnstableFPS;
 
                 if (bIgnoreHighRenderLatency)
                 {
@@ -2582,19 +2573,13 @@ SK::Framerate::Limiter::wait (void)
 
               bool bStuckInputLatency = [&]() -> bool
               {
-                bool bIgnoreStuckInputLatency = (
-                  bIsTearingModeAdaptiveOff
-                  &&
-                  bIsAboveRefresh
-                  &&
-                  bIsPreRenderLimit1
-                  &&
-                  bIsUnstableFPS
-                ) || (
-                  bIsTearingModeAdaptiveOn
-                ) || (
-                  bIsVRR
-                );
+                bool bIgnoreStuckInputLatency =
+                  ( bIsTearingModeAdaptiveOff &&
+                    bIsPreRenderLimit1        &&
+                    bIsAboveRefresh           &&
+                    bIsUnstableFPS             ) ||
+                  ( bIsTearingModeAdaptiveOn   ) ||
+                  ( bIsVRR                     );
 
                 if (bIgnoreStuckInputLatency)
                 {
@@ -2608,9 +2593,8 @@ SK::Framerate::Limiter::wait (void)
 
               bool bFrameBecameStable = [&]() -> bool
               {
-                bool bIgnoreFrameBecameStable = (
-                  bIsVRR
-                );
+                bool bIgnoreFrameBecameStable =
+                  bIsVRR;
 
                 if (bIgnoreFrameBecameStable)
                 {
@@ -2629,11 +2613,9 @@ SK::Framerate::Limiter::wait (void)
 
               // Sorted by higher priority
               std::vector <int> iACTIONS = (
-                bIsTearingModeAdaptiveOff
-                &&
+                bIsTearingModeAdaptiveOff &&
+                bIsPreRenderLimit1        &&
                 bIsAboveRefresh
-                &&
-                bIsPreRenderLimit1
               ) ? (
                 std::vector <int> {
                   ACTION_FrameBecameStable,
@@ -2693,22 +2675,16 @@ SK::Framerate::Limiter::wait (void)
                         dMaxWaitSeconds = dMultiplier * 2.0;
                       }
 
-                      bool bSkipWait = (
-                        bIsTearingModeAdaptiveOff
-                      ) && (
-                        bIsAboveRefresh
-                      ) && (
-                        bIsPreRenderLimit1
-                      );
+                      bool bSkipWait =
+                        bIsTearingModeAdaptiveOff &&
+                        bIsPreRenderLimit1        &&
+                        bIsAboveRefresh;
 
                       bool bStopWait = (
-                        bIsTearingModeAdaptiveOff
-                      ) && (
-                       !bIsTrueFullscreen
-                      ) && (
+                        bIsTearingModeAdaptiveOff &&
+                       !bIsTrueFullscreen         &&
                         dWaitSeconds >=
-                        dMaxWaitSeconds
-                      );
+                        dMaxWaitSeconds;
 
                       if (bSkipWait || bStopWait)
                       {
@@ -2840,16 +2816,15 @@ SK::Framerate::Limiter::wait (void)
 
                       else
                       {
-                        bool bSkipWait = (
-                          bIsAboveRefresh
-                        ) && (
-                          bIsPreRenderLimit1
-                        );
+                        bool bSkipWait =
+                          bIsTearingModeAdaptiveOff &&
+                          bIsPreRenderLimit1        &&
+                          bIsAboveRefresh;
 
-                        bool bStopWait = (
+                        bool bStopWait =
+                          bIsTearingModeAdaptiveOff &&
                           dWaitSeconds >=
-                          dMaxWaitSeconds
-                        );
+                          dMaxWaitSeconds;
 
                         if (bSkipWait || bStopWait)
                         {
@@ -2870,11 +2845,18 @@ SK::Framerate::Limiter::wait (void)
                             {
                               _EnableTearing ();
                             }
+
+                            else if ( dWaitSeconds >=
+                                      dMaxWaitSeconds )
+                            {
+                              bIsNewACTION = true;
+                            }
                           }
 
-                          else
+                          if (bIsNewACTION)
                           {
-                            _ResetACTION ();
+                            _ResetACTION   ();
+                            _EnableTearing ();
                           }
                         }
                       }
@@ -2911,14 +2893,11 @@ SK::Framerate::Limiter::wait (void)
                         _ResetACTION ();
                       }
 
-                      bool bStopWait = (
-                        bIsTearingModeAdaptiveOff
-                      ) && (
-                        bIsUnstableFPS
-                      ) && (
+                      bool bStopWait =
+                        bIsTearingModeAdaptiveOff &&
+                        bIsUnstableFPS            &&
                         dWaitSeconds >=
-                        dMaxWaitSeconds
-                      );
+                        dMaxWaitSeconds;
 
                       if (bStopWait)
                       {
