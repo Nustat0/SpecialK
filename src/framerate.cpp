@@ -3820,7 +3820,7 @@ SK::Framerate::Tick ( bool          wait,
 
   SK_ReleaseAssert (pLimiter != nullptr);
 
-  if (__target_fps <= 0.0f)
+  if (__target_fps_temp > 0.0f && __target_fps <= 0.0f)
   {
     __target_fps_temp = 0.0f;
   }
