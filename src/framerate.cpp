@@ -2306,6 +2306,9 @@ SK::Framerate::Limiter::wait (void)
       {
         if (SK_API_IsDirect3D9 (rb.api))
         {
+          static double dSeconds = 0.00;
+          double dMaxWaitSeconds = 15.0;
+
           auto _IsTearingD3D9 = [&]() -> bool
           {
             auto pDev9 =
@@ -2321,6 +2324,8 @@ SK::Framerate::Limiter::wait (void)
 
                 if (SUCCEEDED (pSwap9->GetPresentParameters (&pparams)))
                 {
+                  dSeconds = 0.0;
+
                   return
                     pparams.PresentationInterval == D3DPRESENT_INTERVAL_IMMEDIATE ||
                     pparams.PresentationInterval == D3DPRESENT_FORCEIMMEDIATE;
@@ -2328,22 +2333,20 @@ SK::Framerate::Limiter::wait (void)
               }
             }
 
+            dSeconds = dMaxWaitSeconds;
+
             return false;
           };
 
           static bool bIsTearingD3D9 =
                       _IsTearingD3D9 ();
 
-          static double dSeconds = 0.0;
-
           dSeconds += _FrametimeSeconds ();
 
-          if (dSeconds >= 30.0)
+          if (dSeconds >= dMaxWaitSeconds)
           {
             bIsTearingD3D9 =
             _IsTearingD3D9 ();
-
-            dSeconds = 0.0;
           }
 
           iTearingMode =
@@ -2413,11 +2416,11 @@ SK::Framerate::Limiter::wait (void)
             rb.presentation.mode == SK_PresentMode::Composed_Copy_CPU_GDI      ||
             rb.presentation.mode == SK_PresentMode::Composed_Flip;
 
-          static bool        bWasComposedPresentMode = bIsComposedPresentMode;
-          if (std::exchange (bWasComposedPresentMode,  bIsComposedPresentMode) &&
-                                                      !bIsComposedPresentMode)
+          if (! bIsTearingModeAdaptiveOn)
           {
-            if (! bIsTearingModeAdaptiveOn)
+            static bool        bWasComposedPresentMode = bIsComposedPresentMode;
+            if (std::exchange (bWasComposedPresentMode,  bIsComposedPresentMode) &&
+                                                        !bIsComposedPresentMode)
             {
               reset (true);
             }
@@ -2586,6 +2589,8 @@ SK::Framerate::Limiter::wait (void)
                 &&
                 bIsAboveRefresh
                 &&
+                bIsPreRenderLimit1
+                &&
                 bIsUnstableFPS
               ) || (
                 bIsTearingModeAdaptiveOn
@@ -2693,9 +2698,13 @@ SK::Framerate::Limiter::wait (void)
                         {
                           dWaitSeconds += _FrametimeSeconds ();
 
-                          if ( !bStopWait &&
-                                dWaitSeconds >=
-                                dMaxWaitSeconds )
+                          if (bStopWait)
+                          {
+                            _EnableTearing ();
+                          }
+
+                          else if ( dWaitSeconds >=
+                                    dMaxWaitSeconds )
                           {
                             bIsNewACTION = true;
                           }
@@ -2741,7 +2750,8 @@ SK::Framerate::Limiter::wait (void)
                         _ResetACTION ();
 
                         // Avoid rapid Render Latency changes
-                        if (! bIsAboveRefresh)
+                        if (! ( SK_RenderBackend_V2::latency.stale ||
+                                bIsAboveRefresh                     ) )
                         {
                           _EnableTearing (false);
 
@@ -2782,12 +2792,13 @@ SK::Framerate::Limiter::wait (void)
 
                           if ( __target_fps_temp > 0.0f &&
                                     dWaitSeconds >=
-                                  dMaxWaitSeconds       )
+                                    dMaxWaitSeconds     )
                           {
                             _ResetACTION ();
                           }
 
-                          if (dWaitSeconds >= dMaxWaitSeconds)
+                          if ( dWaitSeconds >=
+                               dMaxWaitSeconds )
                           {
                             bIsNewACTION = true;
                           }
@@ -2810,9 +2821,12 @@ SK::Framerate::Limiter::wait (void)
                           bIsPreRenderLimit1
                         );
 
-                        if ( bSkipWait ||
-                             dWaitSeconds >=
-                             dMaxWaitSeconds )
+                        bool bStopWait = (
+                          dWaitSeconds >=
+                          dMaxWaitSeconds
+                        );
+
+                        if (bSkipWait || bStopWait)
                         {
                           _EnableTearing ();
                         }
@@ -2826,6 +2840,11 @@ SK::Framerate::Limiter::wait (void)
                           if (! bIsNewACTION)
                           {
                             dWaitSeconds += _FrametimeSeconds ();
+
+                            if (bStopWait)
+                            {
+                              _EnableTearing ();
+                            }
                           }
 
                           else
@@ -2858,6 +2877,7 @@ SK::Framerate::Limiter::wait (void)
                                 !_IsStuckInputLatency () )
                         {
                           bAbortACTION = true;
+                          break;
                         }
                       }
 
@@ -2888,9 +2908,13 @@ SK::Framerate::Limiter::wait (void)
                         {
                           dWaitSeconds += _FrametimeSeconds ();
 
-                          if ( !bStopWait &&
-                                dWaitSeconds >=
-                                dMaxWaitSeconds )
+                          if (bStopWait)
+                          {
+                            _EnableTearing ();
+                          }
+
+                          else if ( dWaitSeconds >=
+                                    dMaxWaitSeconds )
                           {
                             bIsNewACTION = true;
                           }
@@ -2926,6 +2950,7 @@ SK::Framerate::Limiter::wait (void)
                         if (bIgnoreFrameBecameStable)
                         {
                           bAbortACTION = true;
+                          break;
                         }
                       }
 
@@ -2943,21 +2968,34 @@ SK::Framerate::Limiter::wait (void)
 
                       else
                       {
-                        _EnableTearing (
-                          ( bIsTearingModeAdaptiveOff &&
-                            ( bIsUnstableFPS       ||
-                              ( bIsAboveRefresh &&
-                                bIsPreRenderLimit1 ))  ) ||
-                          ( bIsTearingModeAdaptiveOn  &&
-                            ! bIsUnstableFPS           )
-                        );
+                        if (bIsTearingModeAdaptiveOff)
+                        {
+                          _EnableTearing (
+                            ( bIsAboveRefresh &&
+                              bIsPreRenderLimit1 ) ||
+                            ( bIsUnstableFPS     )
+                          );
+                        }
+
+                        else if (bIsTearingModeAdaptiveOn)
+                        {
+                          _EnableTearing (
+                            ! bIsUnstableFPS
+                          );
+                        }
+
+                        else
+                        {
+                          _EnableTearing (false);
+                        }
                       }
 
                       if (! bIsNewACTION)
                       {
                         dWaitSeconds += _FrametimeSeconds ();
 
-                        if (dWaitSeconds >= dMaxWaitSeconds)
+                        if ( dWaitSeconds >=
+                             dMaxWaitSeconds )
                         {
                           bAbortACTION = true;
                           break;
