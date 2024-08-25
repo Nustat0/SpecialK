@@ -2667,7 +2667,7 @@ SK::Framerate::Limiter::wait (void)
 
                       if (dMultiplier >= 1.0)
                       {
-                        dMaxWaitSeconds = dMultiplier * 3.0;
+                        dMaxWaitSeconds = dMultiplier * 2.0;
                       }
 
                       bool bSkipWait = (
@@ -3027,10 +3027,15 @@ SK::Framerate::Limiter::wait (void)
             }
 
             if ( !bIsTearingModeAdaptiveOn &&
+                 !bIsUnstableFPS           &&
                   bAbortACTION             &&
                   dWaitSeconds > 0.0       )
             {
-              reset (true);
+              if (! ( iACTION == ACTION_HighVariation &&
+                      bIsTrueFullscreen                ) )
+              {
+                reset (true);
+              }
             }
           }
 
