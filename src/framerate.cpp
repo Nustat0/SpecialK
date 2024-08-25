@@ -2717,8 +2717,10 @@ SK::Framerate::Limiter::wait (void)
                           reset (true);
                         }
                       }
+
+                      return;
                     }
-                  } return;
+                  } break;
 
                   case ACTION_HighRenderLatency:
                   {
@@ -2853,8 +2855,10 @@ SK::Framerate::Limiter::wait (void)
                           }
                         }
                       }
+
+                      return;
                     }
-                  } return;
+                  } break;
 
                   case ACTION_StuckInputLatency:
                   {
@@ -2927,8 +2931,10 @@ SK::Framerate::Limiter::wait (void)
                           reset (true);
                         }
                       }
+
+                      return;
                     }
-                  } return;
+                  } break;
 
                   case ACTION_FrameBecameStable:
                   {
@@ -3001,8 +3007,10 @@ SK::Framerate::Limiter::wait (void)
                           break;
                         }
                       }
+
+                      return;
                     }
-                  } return;
+                  } break;
 
                   default:
                   {
