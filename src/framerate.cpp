@@ -2306,8 +2306,8 @@ SK::Framerate::Limiter::wait (void)
       {
         if (SK_API_IsDirect3D9 (rb.api))
         {
-          static double dSeconds = 0.00;
-          double dMaxWaitSeconds = 15.0;
+          static double dMaxSeconds = 15.0,
+                           dSeconds = 0.00;
 
           auto _IsTearingD3D9 = [&]() -> bool
           {
@@ -2333,7 +2333,7 @@ SK::Framerate::Limiter::wait (void)
               }
             }
 
-            dSeconds = dMaxWaitSeconds;
+            dSeconds = dMaxSeconds;
 
             return false;
           };
@@ -2343,7 +2343,7 @@ SK::Framerate::Limiter::wait (void)
 
           dSeconds += _FrametimeSeconds ();
 
-          if (dSeconds >= dMaxWaitSeconds)
+          if (dSeconds >= dMaxSeconds)
           {
             bIsTearingD3D9 =
             _IsTearingD3D9 ();
