@@ -2477,8 +2477,33 @@ SK::Framerate::Limiter::wait (void)
 
             if (! bAbortACTION)
             {
-              auto _IsHighVariation = [&]() -> bool
+              bool bIgnoreHighVariation = (
+                bIsTearingModeAdaptiveOn
+              ) || (
+                bIsUnstableFPS
+              ) || (
+                bIsVRR
+              );
+
+              if (! (bIgnoreHighVariation || bIsAboveRefresh))
               {
+                bIgnoreHighVariation = (
+                  config.render.framerate.enforcement_policy == 2
+                ) || (
+                  config.nvidia.reflex.use_limiter
+                ) || (
+                  config.fps.timing_method ==
+                    SK_FrametimeMeasures_NewFrameBegin
+                );
+              }
+
+              bool bHighVariation = [&]() -> bool
+              {
+                if (bIgnoreHighVariation)
+                {
+                  return false;
+                }
+
                 float min = FLT_MAX,
                       max = 0.0000f;
 
@@ -2496,10 +2521,23 @@ SK::Framerate::Limiter::wait (void)
                 }
 
                 return (double)max - (double)min > 1.0;
-              };
+              }();
 
-              auto _IsHighRenderLatency = [&]() -> bool
+              bool bIgnoreHighRenderLatency = (
+                bIsTearingModeAdaptiveOn
+              ) || (
+                bIsTearingModeAlwaysOff
+              ) || (
+                bIsUnstableFPS
+              );
+
+              bool bHighRenderLatency = [&]() -> bool
               {
+                if (bIgnoreHighRenderLatency)
+                {
+                  return false;
+                }
+
                 // Frametime graph becomes unstable in 2x.. non-tearing mode
                 // when Present Latency exceeds Display Frame Time by 1.7x..
                 if (bIsAboveRefresh)
@@ -2540,49 +2578,7 @@ SK::Framerate::Limiter::wait (void)
                 }
 
                 return false;
-              };
-
-              auto _IsStuckInputLatency = [&]() -> bool
-              {
-                return
-                  latency_avg.getInput () > -0.1 &&
-                  latency_avg.getInput () <  0.0;
-              };
-
-              auto _IsFrameBecameStable = [&]() -> bool
-              {
-                static bool           bWasUnstableFPS = bIsUnstableFPS;
-                return std::exchange (bWasUnstableFPS,  bIsUnstableFPS) &&
-                                                       !bIsUnstableFPS;
-              };
-
-              bool bIgnoreHighVariation = (
-                bIsTearingModeAdaptiveOn
-              ) || (
-                bIsUnstableFPS
-              ) || (
-                bIsVRR
-              );
-
-              if (! (bIgnoreHighVariation || bIsAboveRefresh))
-              {
-                bIgnoreHighVariation = (
-                  config.render.framerate.enforcement_policy == 2
-                ) || (
-                  config.nvidia.reflex.use_limiter
-                ) || (
-                  config.fps.timing_method ==
-                    SK_FrametimeMeasures_NewFrameBegin
-                );
-              }
-
-              bool bIgnoreHighRenderLatency = (
-                bIsTearingModeAdaptiveOn
-              ) || (
-                bIsTearingModeAlwaysOff
-              ) || (
-                bIsUnstableFPS
-              );
+              }();
 
               bool bIgnoreStuckInputLatency = (
                 bIsTearingModeAdaptiveOff
@@ -2598,9 +2594,33 @@ SK::Framerate::Limiter::wait (void)
                 bIsVRR
               );
 
+              bool bStuckInputLatency = [&]() -> bool
+              {
+                if (bIgnoreStuckInputLatency)
+                {
+                  return false;
+                }
+
+                return
+                  latency_avg.getInput () > -0.1 &&
+                  latency_avg.getInput () <  0.0;
+              }();
+
               bool bIgnoreFrameBecameStable = (
                 bIsVRR
               );
+
+              bool bFrameBecameStable = [&]() -> bool
+              {
+                if (bIgnoreFrameBecameStable)
+                {
+                  return false;
+                }
+
+                static bool           bWasUnstableFPS = bIsUnstableFPS;
+                return std::exchange (bWasUnstableFPS,  bIsUnstableFPS) &&
+                                                       !bIsUnstableFPS;
+              }();
 
               // Sorted by higher priority
               std::vector <int> iACTIONS = (
@@ -2636,7 +2656,7 @@ SK::Framerate::Limiter::wait (void)
                     if (iACTION != vACTION)
                     {
                       if ( !bIgnoreHighVariation &&
-                                _IsHighVariation () )
+                                  bHighVariation )
                       {
                         bIsNewACTION = true;
                              iACTION =
@@ -2649,7 +2669,7 @@ SK::Framerate::Limiter::wait (void)
                       if (! bIsNewACTION)
                       {
                         if ( bIgnoreHighVariation ||
-                                !_IsHighVariation () )
+                                  !bHighVariation )
                         {
                           bAbortACTION = true;
                           break;
@@ -2729,7 +2749,7 @@ SK::Framerate::Limiter::wait (void)
                     if (iACTION != vACTION)
                     {
                       if ( !bIgnoreHighRenderLatency &&
-                                _IsHighRenderLatency () )
+                                  bHighRenderLatency )
                       {
                         bIsNewACTION = true;
                              iACTION =
@@ -2742,7 +2762,7 @@ SK::Framerate::Limiter::wait (void)
                       if (! bIsNewACTION)
                       {
                         if ( bIgnoreHighRenderLatency ||
-                                !_IsHighRenderLatency () )
+                                  !bHighRenderLatency )
                         {
                           bAbortACTION = true;
                           break;
@@ -2867,7 +2887,7 @@ SK::Framerate::Limiter::wait (void)
                     if (iACTION != vACTION)
                     {
                       if ( !bIgnoreStuckInputLatency &&
-                                _IsStuckInputLatency () )
+                                  bStuckInputLatency )
                       {
                         bIsNewACTION = true;
                              iACTION =
@@ -2880,7 +2900,7 @@ SK::Framerate::Limiter::wait (void)
                       if (! bIsNewACTION)
                       {
                         if ( bIgnoreStuckInputLatency ||
-                                !_IsStuckInputLatency () )
+                                  !bStuckInputLatency )
                         {
                           bAbortACTION = true;
                           break;
@@ -2943,7 +2963,7 @@ SK::Framerate::Limiter::wait (void)
                     if (iACTION != vACTION)
                     {
                       if ( !bIgnoreFrameBecameStable &&
-                                _IsFrameBecameStable () )
+                                  bFrameBecameStable )
                       {
                         bIsNewACTION = true;
                              iACTION =
