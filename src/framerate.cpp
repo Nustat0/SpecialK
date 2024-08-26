@@ -2569,31 +2569,36 @@ SK::Framerate::Limiter::wait (void)
 
                     else
                     {
-                      static UINT iMaxRenderLatency = 0;
-
-                      static bool bFirstHRL = true;
+                      static UINT iMinRenderLatency = 0,
+                                  iMaxRenderLatency = 0;
 
                       if (iACTION == ACTION_HighRenderLatency)
                       {
-                        if (bFirstHRL)
+                        if ((dWaitSeconds <= 0.0 || bIsTearing) && iMinRenderLatency > 0)
                         {
-                          static bool bStartHRL = true;
+                          bool
+                            bMaxRenderLatency0 =
+                            iMaxRenderLatency == 0;
 
-                          if ((dWaitSeconds <= 0.0 || bIsTearing) && !bStartHRL)
+                          iMaxRenderLatency =
+                          iMinRenderLatency;
+
+                          if (bMaxRenderLatency0)
                           {
-                            bFirstHRL = false;
-
                             return false;
                           }
-
-                          if (dWaitSeconds > 0.0 && !bIsTearing)
-                          {
-                            bStartHRL = false;
-
-                            iMaxRenderLatency =
-                              SK_RenderBackend_V2::latency.delays.PresentQueue;
-                          }
                         }
+
+                        if (dWaitSeconds > 0.0 && !bIsTearing)
+                        {
+                          iMinRenderLatency =
+                            SK_RenderBackend_V2::latency.delays.PresentQueue;
+                        }
+                      }
+
+                      else
+                      {
+                        iMinRenderLatency = 0;
                       }
 
                       if (SK_RenderBackend_V2::latency.delays.PresentQueue > iMaxRenderLatency)
