@@ -2680,7 +2680,7 @@ SK::Framerate::Limiter::wait (void)
                         bIsPreRenderLimit1        &&
                         bIsAboveRefresh;
 
-                      bool bStopWait = (
+                      bool bStopWait =
                         bIsTearingModeAdaptiveOff &&
                        !bIsTrueFullscreen         &&
                         dWaitSeconds >=
@@ -2822,7 +2822,6 @@ SK::Framerate::Limiter::wait (void)
                           bIsAboveRefresh;
 
                         bool bStopWait =
-                          bIsTearingModeAdaptiveOff &&
                           dWaitSeconds >=
                           dMaxWaitSeconds;
 
@@ -2845,18 +2844,11 @@ SK::Framerate::Limiter::wait (void)
                             {
                               _EnableTearing ();
                             }
-
-                            else if ( dWaitSeconds >=
-                                      dMaxWaitSeconds )
-                            {
-                              bIsNewACTION = true;
-                            }
                           }
 
-                          if (bIsNewACTION)
+                          else
                           {
-                            _ResetACTION   ();
-                            _EnableTearing ();
+                            _ResetACTION ();
                           }
                         }
                       }
@@ -2976,9 +2968,9 @@ SK::Framerate::Limiter::wait (void)
                         if (bIsTearingModeAdaptiveOff)
                         {
                           _EnableTearing (
-                            ( bIsAboveRefresh &&
-                              bIsPreRenderLimit1 ) ||
-                            ( bIsUnstableFPS     )
+                            ( bIsPreRenderLimit1 &&
+                              bIsAboveRefresh     ) ||
+                            ( bIsUnstableFPS      )
                           );
                         }
 
