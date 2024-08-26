@@ -2487,19 +2487,18 @@ SK::Framerate::Limiter::wait (void)
               bAbortACTION = true;
             }
 
-            if (! bIsTearingModeAdaptiveOn)
+            bool bIsTearing =
+              ( config.render.framerate.present_interval == 0 &&
+                config.render.dxgi.allow_tearing               ) ||
+              ( config.render.framerate.present_interval >= 1 &&
+                config.render.framerate.turn_vsync_off        &&
+                bIsTearingModeAdaptiveOff                      );
+
+            if ( !bIsTearingModeAdaptiveOn &&
+                  iACTION == ACTION_None   &&
+                  bIsTearing               )
             {
-              if (iACTION == ACTION_None)
-              {
-                if ( ( config.render.framerate.present_interval == 0 &&
-                       config.render.dxgi.allow_tearing               ) ||
-                     ( config.render.framerate.present_interval >= 1 &&
-                       config.render.framerate.turn_vsync_off        &&
-                       bIsTearingModeAdaptiveOff                      ) )
-                {
-                  bAbortACTION = true;
-                }
-              }
+              bAbortACTION = true;
             }
 
             if (! bAbortACTION)
@@ -2570,15 +2569,31 @@ SK::Framerate::Limiter::wait (void)
 
                     else
                     {
-                      static UINT iMinRenderLatency = 2,
-                                  iMaxRenderLatency = 4;
+                      static UINT iMaxRenderLatency = 0;
 
-                      if (iACTION == ACTION_None && !bIsUnstableFPS)
+                      static bool bFirstHRL = true;
+
+                      if (iACTION == ACTION_HighRenderLatency)
                       {
-                        iMaxRenderLatency = std::max (
-                          SK_RenderBackend_V2::latency.delays.PresentQueue,
-                          iMinRenderLatency
-                        );
+                        if (bFirstHRL)
+                        {
+                          static bool bStartHRL = true;
+
+                          if ((dWaitSeconds <= 0.0 || bIsTearing) && !bStartHRL)
+                          {
+                            bFirstHRL = false;
+
+                            return false;
+                          }
+
+                          if (dWaitSeconds > 0.0 && !bIsTearing)
+                          {
+                            bStartHRL = false;
+
+                            iMaxRenderLatency =
+                              SK_RenderBackend_V2::latency.delays.PresentQueue;
+                          }
+                        }
                       }
 
                       if (SK_RenderBackend_V2::latency.delays.PresentQueue > iMaxRenderLatency)
@@ -2795,8 +2810,7 @@ SK::Framerate::Limiter::wait (void)
                         _ResetACTION ();
 
                         // Avoid rapid Render Latency changes
-                        if (! ( SK_RenderBackend_V2::latency.stale ||
-                                bIsAboveRefresh                     ) )
+                        if (! SK_RenderBackend_V2::latency.stale)
                         {
                           _EnableTearing (false);
 
