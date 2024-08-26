@@ -2556,15 +2556,29 @@ SK::Framerate::Limiter::wait (void)
                   return false;
                 }
 
-                // Frametime graph becomes unstable in 2x.. non-tearing mode
-                // when Present Latency exceeds Display Frame Time by 1.7x..
                 if (bIsAboveRefresh)
                 {
-                  if (bIsPreRenderLimit1)
+                  if (! SK_RenderBackend_V2::latency.stale)
                   {
-                    if (! SK_RenderBackend_V2::latency.stale)
+                    if (bIsPreRenderLimit1)
                     {
                       if (SK_RenderBackend_V2::latency.delays.PresentQueue > 1)
+                      {
+                        return true;
+                      }
+                    }
+
+                    else
+                    {
+                      static int iMaxRenderLatency = 4;
+
+                      if (iACTION == ACTION_None && !bIsUnstableFPS)
+                      {
+                        iMaxRenderLatency =
+                          SK_RenderBackend_V2::latency.delays.PresentQueue;
+                      }
+
+                      if (SK_RenderBackend_V2::latency.delays.PresentQueue > iMaxRenderLatency)
                       {
                         return true;
                       }
@@ -2575,7 +2589,7 @@ SK::Framerate::Limiter::wait (void)
                   {
                     return
                       rb.presentation.avg_stats.latency /
-                      rb.presentation.avg_stats.display > 1.7;
+                      rb.presentation.avg_stats.display > 1.65;
                   }
                 }
 
@@ -2591,7 +2605,7 @@ SK::Framerate::Limiter::wait (void)
                   {
                     return
                       rb.presentation.avg_stats.latency /
-                      rb.presentation.avg_stats.display > 1.8;
+                      rb.presentation.avg_stats.display > 1.65;
                   }
                 }
 
