@@ -2574,8 +2574,10 @@ SK::Framerate::Limiter::wait (void)
 
                       if (iACTION == ACTION_None && !bIsUnstableFPS)
                       {
-                        iMaxRenderLatency =
-                          SK_RenderBackend_V2::latency.delays.PresentQueue;
+                        iMaxRenderLatency = std::max (
+                          SK_RenderBackend_V2::latency.delays.PresentQueue,
+                          2
+                        );
                       }
 
                       if (SK_RenderBackend_V2::latency.delays.PresentQueue > iMaxRenderLatency)
