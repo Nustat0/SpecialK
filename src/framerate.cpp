@@ -268,20 +268,6 @@ void SK_LatentSync_EndSwap (void) noexcept
                  sampled_swaps;
 }
 
-bool SK_LatentSync_SupportsFrameSkipping (SK_RenderAPI api)
-{
-  if (SK_API_IsLayeredOnD3D12 (api) || SK_GL_OnD3D11)
-  {
-    return false;
-  }
-
-  return
-    SK_API_IsLayeredOnD3D11 (api) ||
-    SK_API_IsLayeredOnD3D10 (api) ||
-    SK_API_IsDirect3D9      (api) ||
-    SK_API_IsGDIBased       (api);
-}
-
 
 struct scanline_target_s {
   LARGE_INTEGER qpc_t0 = { 0L, 0UL };
@@ -333,6 +319,27 @@ struct scanline_target_s {
                                if (signals.acquire.isValid ()) ResetEvent (signals.acquire);     }
   } lock;
 } __scanline;
+
+
+bool
+SK_LatentSync_AllowFrameSkip (void)
+{
+  const SK_RenderBackend& rb =
+    SK_GetCurrentRenderBackend ();
+
+  if ( SK_API_IsLayeredOnD3D12 (rb.api) ||
+       rb.isTrueFullscreen ()           ||
+       SK_GL_OnD3D11                    )
+  {
+    return false;
+  }
+
+  return
+    SK_API_IsLayeredOnD3D11 (rb.api) ||
+    SK_API_IsLayeredOnD3D10 (rb.api) ||
+    SK_API_IsDirect3D9      (rb.api) ||
+    SK_API_IsGDIBased       (rb.api);
+}
 
 
 void
@@ -711,8 +718,8 @@ SK_ImGui_LatentSyncConfig (void)
           config.render.framerate.tearing_mode ==
             SK_TearingMode::AdaptiveOff;
 
-        bool bSupportsFrameSkipping    =
-          SK_LatentSync_SupportsFrameSkipping (rb.api);
+        bool bAllowFrameSkip  =
+          SK_LatentSync_AllowFrameSkip ();
 
         int iBufferCount      =
           config.render.framerate.buffer_count;
@@ -730,20 +737,16 @@ SK_ImGui_LatentSyncConfig (void)
                       iBufferCount <
               iRequiredBufferCount;
 
-        bool bIsInvalidMaxDeviceLatency = !(
-          ( bIsTearingModeAdaptiveOff  &&
-            bSupportsFrameSkipping     &&
-            iMaxDeviceLatency == 1      ) ||
+        bool bIsInvalidMaxDeviceLatency = ! (
+          ( bIsTearingModeAdaptiveOff &&
+            bAllowFrameSkip           &&
+            iMaxDeviceLatency == 1     ) ||
           ( iMaxDeviceLatency >=
-            iRequiredMaxDeviceLatency   )
+            iRequiredMaxDeviceLatency  )
         );
-
-        bool bIsTrueFullscreen =
-          rb .isTrueFullscreen ();
 
         if ( bIsInvalidMaxDeviceLatency ||
              bIsInvalidBufferCount      ||
-             bIsTrueFullscreen          ||
              bIsD3D9                    )
         {
           bIsInvalidTearingMode = true;
@@ -780,9 +783,8 @@ SK_ImGui_LatentSyncConfig (void)
               ImGui::BulletText   ("NVIDIA's Fast Sync is not compatible with Direct3D 12");
             }
 
-            if ( !( bIsD3D12 && !config.render.dxgi.allow_d3d12_footguns ) &&
-                 !( bIsD3D9  ||  bIsTrueFullscreen                       ) &&
-                  ( iRequiredBufferCount   <=   15                       ) )
+            if ( ! ( bIsD3D12 && !config.render.dxgi.allow_d3d12_footguns ) &&
+                 ! ( bIsD3D9  || iRequiredBufferCount > 15                ) )
             {
               ImGui::Separator    ();
               ImGui::Text         (
@@ -796,7 +798,7 @@ SK_ImGui_LatentSyncConfig (void)
               ImGui::BeginGroup   ();
               ImGui::BulletText   ("Adaptive (Prefer On)");
 
-              if (bSupportsFrameSkipping)
+              if (bAllowFrameSkip)
               {
                 ImGui::BulletText ("Adaptive (Prefer Off)");
               }
@@ -826,7 +828,7 @@ SK_ImGui_LatentSyncConfig (void)
                 iRequiredMaxDeviceLatency
               );
 
-              if (bSupportsFrameSkipping)
+              if (bAllowFrameSkip)
               {
                 _PrintRequiredSettings (
                   iRequiredBufferCount,
@@ -846,6 +848,29 @@ SK_ImGui_LatentSyncConfig (void)
             }
 
             ImGui::EndTooltip     ();
+          }
+        }
+      }
+
+      if (! bIsInvalidTearingMode)
+      {
+        if ( config.render.framerate.tearing_mode == SK_TearingMode::AdaptiveOff ||
+             config.render.framerate.tearing_mode == SK_TearingMode::AdaptiveOn  )
+        {
+          if (rb.isTrueFullscreen ())
+          {
+            bIsInvalidTearingMode = true;
+
+            ImGui::SameLine    ();
+            ImGui::TextColored (
+              ImColor (0.0f, 1.0f, 1.0f),
+              ICON_FA_EXCLAMATION_TRIANGLE
+            );
+
+            if (ImGui::IsItemHovered ())
+            {
+              ImGui::SetTooltip ("Adaptive Tearing works better in Fake Fullscreen or Windowed Mode");
+            }
           }
         }
       }
@@ -886,6 +911,8 @@ SK_ImGui_LatentSyncConfig (void)
 
           if (! bIsInvalidTearingMode)
           {
+            bIsInvalidTearingMode = true;
+
             ImGui::SameLine    ();
             ImGui::TextColored (
               ImColor (1.0f, 1.0f, 0.0f),
@@ -3110,7 +3137,7 @@ SK::Framerate::Limiter::wait (void)
         )
       );
 
-      if ((! SK_LatentSync_SupportsFrameSkipping (rb.api)) || __SK_LatentSyncSkip < 2)
+      if ((! SK_LatentSync_AllowFrameSkip ()) || __SK_LatentSyncSkip < 2)
       {
         __SK_LatentSyncSkip = 0;
       }
