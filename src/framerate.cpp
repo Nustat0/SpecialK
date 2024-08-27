@@ -2601,7 +2601,7 @@ SK::Framerate::Limiter::wait (void)
                         iTargetRenderLatency = 2;
                       }
 
-                      if (SK_RenderBackend_V2::latency.delays.PresentQueue > iTargetRenderLatency)
+                      if (SK_RenderBackend_V2::latency.delays.PresentQueue > 2)
                       {
                         return true;
                       }
