@@ -2572,6 +2572,8 @@ SK::Framerate::Limiter::wait (void)
                       static UINT iTargetRenderLatency =  0;
                       static  int       iRenderLatency = -1;
 
+                      static bool bFirstACTION = true;
+
                       if (iACTION == ACTION_HighRenderLatency)
                       {
                         if (dWaitSeconds > 0.0 && !bIsTearing)
@@ -2582,8 +2584,19 @@ SK::Framerate::Limiter::wait (void)
 
                         else if (iRenderLatency > -1)
                         {
-                          iTargetRenderLatency =
-                                iRenderLatency;
+                          if (bFirstACTION)
+                          {
+                            iTargetRenderLatency =
+                                  iRenderLatency;
+
+                            bFirstACTION = false;
+                          }
+
+                          else if (iRenderLatency < iTargetRenderLatency)
+                          {
+                            iTargetRenderLatency =
+                                  iRenderLatency;
+                          }
                         }
                       }
 
