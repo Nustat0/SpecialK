@@ -2569,8 +2569,8 @@ SK::Framerate::Limiter::wait (void)
 
                     else
                     {
-                      static int iTargetRenderLatency =  0,
-                                       iRenderLatency = -1;
+                      static UINT iTargetRenderLatency =  0;
+                      static  int       iRenderLatency = -1;
 
                       if (iACTION == ACTION_HighRenderLatency)
                       {
