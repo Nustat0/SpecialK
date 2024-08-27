@@ -2569,40 +2569,31 @@ SK::Framerate::Limiter::wait (void)
 
                     else
                     {
-                      static UINT iTargetRenderLatency =  0;
-                      static  int       iRenderLatency = -1;
+                      static UINT iTargetRenderLatency = 2;
 
-                      static bool bFirstACTION = true;
-
-                      if (iACTION == ACTION_HighRenderLatency)
+                      if (! SK_LatentSync_AllowFrameSkip ())
                       {
-                        if (dWaitSeconds > 0.0 && !bIsTearing)
-                        {
-                          iRenderLatency =
-                            SK_RenderBackend_V2::latency.delays.PresentQueue;
-                        }
+                        static int iRenderLatency = -1;
 
-                        else if (iRenderLatency > -1)
+                        if (iACTION == ACTION_HighRenderLatency)
                         {
-                          if (bFirstACTION)
+                          if (dWaitSeconds > 0.0 && !bIsTearing)
                           {
-                            iTargetRenderLatency =
-                                  iRenderLatency;
-
-                            bFirstACTION = false;
+                            iRenderLatency =
+                              SK_RenderBackend_V2::latency.delays.PresentQueue;
                           }
 
-                          else if (iRenderLatency < iTargetRenderLatency)
+                          else if (iRenderLatency > -1)
                           {
                             iTargetRenderLatency =
                                   iRenderLatency;
                           }
                         }
-                      }
 
-                      else
-                      {
-                        iRenderLatency = -1;
+                        else
+                        {
+                          iRenderLatency = -1;
+                        }
                       }
 
                       if (SK_RenderBackend_V2::latency.delays.PresentQueue > iTargetRenderLatency)
