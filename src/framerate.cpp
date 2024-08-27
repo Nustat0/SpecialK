@@ -2608,7 +2608,7 @@ SK::Framerate::Limiter::wait (void)
                     }
                   }
 
-                  else if (rb.presentation.avg_stats.display != 0.0)
+                  if (rb.presentation.avg_stats.display != 0.0)
                   {
                     return
                       rb.presentation.avg_stats.latency /
@@ -2903,11 +2903,12 @@ SK::Framerate::Limiter::wait (void)
                           if (! bIsNewACTION)
                           {
                             dWaitSeconds += _FrametimeSeconds ();
-
+#if 0
                             if (bStopWait)
                             {
                               _EnableTearing ();
                             }
+#endif
                           }
 
                           else
