@@ -324,6 +324,7 @@ struct scanline_target_s {
 bool
 SK_LatentSync_AllowFrameSkip (void)
 {
+  return true;/*
   const SK_RenderBackend& rb =
     SK_GetCurrentRenderBackend ();
 
@@ -338,7 +339,7 @@ SK_LatentSync_AllowFrameSkip (void)
     SK_API_IsLayeredOnD3D11 (rb.api) ||
     SK_API_IsLayeredOnD3D10 (rb.api) ||
     SK_API_IsDirect3D9      (rb.api) ||
-    SK_API_IsGDIBased       (rb.api);
+    SK_API_IsGDIBased       (rb.api);*/
 }
 
 
