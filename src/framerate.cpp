@@ -324,7 +324,6 @@ struct scanline_target_s {
 bool
 SK_LatentSync_AllowFrameSkip (void)
 {
-  return true;/*
   const SK_RenderBackend& rb =
     SK_GetCurrentRenderBackend ();
 
@@ -339,7 +338,7 @@ SK_LatentSync_AllowFrameSkip (void)
     SK_API_IsLayeredOnD3D11 (rb.api) ||
     SK_API_IsLayeredOnD3D10 (rb.api) ||
     SK_API_IsDirect3D9      (rb.api) ||
-    SK_API_IsGDIBased       (rb.api);*/
+    SK_API_IsGDIBased       (rb.api);
 }
 
 
@@ -2814,7 +2813,7 @@ SK::Framerate::Limiter::wait (void)
                       else
                       {
                         _ResetACTION ();
-
+#if 0
                         // Avoid rapid Render Latency changes
                         if (! SK_RenderBackend_V2::latency.stale)
                         {
@@ -2824,8 +2823,9 @@ SK::Framerate::Limiter::wait (void)
 
                           return;
                         }
+#endif
                       }
-
+#if 0
                       if (dWaitSeconds < 0.0)
                       {
                         _EnableTearing (false);
@@ -2839,7 +2839,7 @@ SK::Framerate::Limiter::wait (void)
 
                         bIsNewACTION = true;
                       }
-
+#endif
                       if ( bIsTearingModeAlwaysOffLL ||
                            bIsTrueFullscreen         )
                       {
