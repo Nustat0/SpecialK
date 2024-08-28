@@ -2570,7 +2570,7 @@ SK::Framerate::Limiter::wait (void)
                     else
                     {
                       static UINT iTargetRenderLatency = 2;
-#if 0
+
                       if (! SK_LatentSync_AllowFrameSkip ())
                       {
                         static int iRenderLatency = -1;
@@ -2600,7 +2600,7 @@ SK::Framerate::Limiter::wait (void)
                       {
                         iTargetRenderLatency = 2;
                       }
-#endif
+
                       if (SK_RenderBackend_V2::latency.delays.PresentQueue > iTargetRenderLatency)
                       {
                         return true;
@@ -2813,7 +2813,7 @@ SK::Framerate::Limiter::wait (void)
                       else
                       {
                         _ResetACTION ();
-#if 0
+
                         // Avoid rapid Render Latency changes
                         if (! SK_RenderBackend_V2::latency.stale)
                         {
@@ -2823,7 +2823,6 @@ SK::Framerate::Limiter::wait (void)
 
                           return;
                         }
-#endif
                       }
 
                       if (dWaitSeconds < 0.0)
