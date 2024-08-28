@@ -2882,7 +2882,6 @@ SK::Framerate::Limiter::wait (void)
                       {
                         bool bSkipWait =
                           bIsTearingModeAdaptiveOff &&
-                          bIsPreRenderLimit1        &&
                           bIsAboveRefresh;
 
                         bool bStopWait =
