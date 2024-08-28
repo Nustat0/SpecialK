@@ -2571,34 +2571,23 @@ SK::Framerate::Limiter::wait (void)
                     {
                       static UINT iTargetRenderLatency = 2;
 
-                      if (! SK_LatentSync_AllowFrameSkip ())
+                      if (iACTION == ACTION_HighRenderLatency)
                       {
                         static int iRenderLatency = -1;
 
-                        if (iACTION == ACTION_HighRenderLatency)
+                        if (dWaitSeconds > 0.0 && !bIsTearing)
                         {
-                          if (dWaitSeconds > 0.0 && !bIsTearing)
-                          {
-                            iRenderLatency =
-                              SK_RenderBackend_V2::latency.delays.PresentQueue;
-                          }
-
-                          else if (iRenderLatency > -1)
-                          {
-                            iTargetRenderLatency =
-                                  iRenderLatency;
-                          }
+                          iRenderLatency =
+                            SK_RenderBackend_V2::latency.delays.PresentQueue;
                         }
 
-                        else
+                        else if (iRenderLatency > -1)
                         {
+                          iTargetRenderLatency =
+                                iRenderLatency;
+
                           iRenderLatency = -1;
                         }
-                      }
-
-                      else
-                      {
-                        iTargetRenderLatency = 2;
                       }
 
                       if (SK_RenderBackend_V2::latency.delays.PresentQueue > iTargetRenderLatency)
@@ -2881,7 +2870,6 @@ SK::Framerate::Limiter::wait (void)
                       else
                       {
                         bool bSkipWait =
-                          bIsTearingModeAdaptiveOff &&
                           bIsAboveRefresh;
 
                         bool bStopWait =
