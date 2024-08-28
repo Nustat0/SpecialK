@@ -958,18 +958,9 @@ SK::ControlPanel::D3D11::Draw (void)
 
           if  (
                 ImGui::Checkbox (
-                  bIsAdaptiveVSync
-                    ? config.render.framerate.turn_vsync_off
-                        ? "Enable Tearing (Yes)"
-                        : "Enable Tearing (Noooooooo)"
-                    : bIsAdaptiveLatentSync
-                        ? config.render.dxgi.allow_tearing
-                            ? "Enable Tearing (Yes)"
-                            : "Enable Tearing (Noooooooo)"
-                    : "Enable Tearing",
-                  /*bIsAdaptiveVSync || bIsAdaptiveLatentSync
+                  bIsAdaptiveVSync || bIsAdaptiveLatentSync
                     ? "Enable Tearing (Adaptive)"
-                    : "Enable Tearing",*/
+                    : "Enable Tearing",
                   bIsAdaptiveVSync
                     ? &config.render.framerate.turn_vsync_off
                     : &config.render.dxgi.allow_tearing

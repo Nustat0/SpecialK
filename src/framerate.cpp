@@ -2813,7 +2813,7 @@ SK::Framerate::Limiter::wait (void)
                       else
                       {
                         _ResetACTION ();
-#if 0
+
                         // Avoid rapid Render Latency changes
                         if (! SK_RenderBackend_V2::latency.stale)
                         {
@@ -2823,9 +2823,8 @@ SK::Framerate::Limiter::wait (void)
 
                           return;
                         }
-#endif
                       }
-#if 0
+
                       if (dWaitSeconds < 0.0)
                       {
                         _EnableTearing (false);
@@ -2839,7 +2838,7 @@ SK::Framerate::Limiter::wait (void)
 
                         bIsNewACTION = true;
                       }
-#endif
+
                       if ( bIsTearingModeAlwaysOffLL ||
                            bIsTrueFullscreen         )
                       {
