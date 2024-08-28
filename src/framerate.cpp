@@ -2815,7 +2815,8 @@ SK::Framerate::Limiter::wait (void)
                         _ResetACTION ();
 
                         // Avoid rapid Render Latency changes
-                        if (! SK_RenderBackend_V2::latency.stale)
+                        if (! ( SK_RenderBackend_V2::latency.stale ||
+                                bIsAboveRefresh                     ) )
                         {
                           _EnableTearing (false);
 
