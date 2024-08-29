@@ -2571,23 +2571,19 @@ SK::Framerate::Limiter::wait (void)
                     {
                       static UINT iTargetRenderLatency = 2;
 
+                      static bool bReduceRenderLatency = false;
+
                       if (iACTION == ACTION_HighRenderLatency)
                       {
-                        static int iRenderLatency = -1;
+                        bReduceRenderLatency = true;
+                      }
 
-                        if (dWaitSeconds > 0.0 && !bIsTearing)
-                        {
-                          iRenderLatency =
-                            SK_RenderBackend_V2::latency.delays.PresentQueue;
-                        }
+                      else if (bReduceRenderLatency && !bIsTearing)
+                      {
+                        iTargetRenderLatency =
+                          SK_RenderBackend_V2::latency.delays.PresentQueue;
 
-                        else if (iRenderLatency > -1)
-                        {
-                          iTargetRenderLatency =
-                                iRenderLatency;
-
-                          iRenderLatency = -1;
-                        }
+                        bReduceRenderLatency = false;
                       }
 
                       if (SK_RenderBackend_V2::latency.delays.PresentQueue > iTargetRenderLatency)
