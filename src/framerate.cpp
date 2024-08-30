@@ -2557,12 +2557,14 @@ SK::Framerate::Limiter::wait (void)
 
                 if (bIsAboveRefresh)
                 {
-                  if (! SK_RenderBackend_V2::latency.stale &&
-                        SK_RenderBackend_V2::latency.delays.PresentQueue > 1 )
+                  if (! SK_RenderBackend_V2::latency.stale)
                   {
                     if (bIsPreRenderLimit1)
                     {
-                      return true;
+                      if (SK_RenderBackend_V2::latency.delays.PresentQueue > 1)
+                      {
+                        return true;
+                      }
                     }
 
                     else
@@ -2583,8 +2585,6 @@ SK::Framerate::Limiter::wait (void)
 
                       if (iACTION == ACTION_HighRenderLatency)
                       {
-                        dSeconds += _FrametimeSeconds ();
-
                         if (dSeconds < 0.5)
                         {
                           if (bRenderLatencyChanged && !bIsTearing)
@@ -2592,12 +2592,25 @@ SK::Framerate::Limiter::wait (void)
                             dSeconds = 0.0;
                           }
 
+                          dSeconds += _FrametimeSeconds ();
+
                           return true;
                         }
+
+                        dSeconds = 0.5;
+
+                        return false;
                       }
 
                       else
                       {
+                        if (dSeconds >= 0.5 && dSeconds < 1.0)
+                        {
+                          dSeconds += _FrametimeSeconds ();
+
+                          return true;
+                        }
+
                         dSeconds = 0.0;
 
                         if (bRenderLatencyChanged)
