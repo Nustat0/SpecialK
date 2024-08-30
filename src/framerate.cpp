@@ -2557,38 +2557,29 @@ SK::Framerate::Limiter::wait (void)
 
                 if (bIsAboveRefresh)
                 {
-                  if (! SK_RenderBackend_V2::latency.stale &&
-                        SK_RenderBackend_V2::latency.delays.PresentQueue > 1 )
+                  if (! SK_RenderBackend_V2::latency.stale)
                   {
                     if (bIsPreRenderLimit1)
                     {
-                      return true;
+                      if (SK_RenderBackend_V2::latency.delays.PresentQueue > 1)
+                      {
+                        return true;
+                      }
                     }
 
                     else
                     {
-                      static double dSeconds = 0.0;
-
-                      UINT iRenderLatency =
-                        SK_RenderBackend_V2::latency.delays.PresentQueue;
-
-                      static UINT        iLastRenderLatency = iRenderLatency;
-                      if (std::exchange (iLastRenderLatency,  iRenderLatency) !=
-                                                              iRenderLatency)
+                      if (SK_RenderBackend_V2::latency.delays.PresentQueue > 2)
                       {
-                        dSeconds += _FrametimeSeconds ();
+                        UINT iRenderLatency =
+                          SK_RenderBackend_V2::latency.delays.PresentQueue;
 
-                        if (dSeconds > 0.5)
+                        static UINT        iLastRenderLatency = iRenderLatency;
+                        if (std::exchange (iLastRenderLatency,  iRenderLatency) !=
+                                                                iRenderLatency)
                         {
-                          dSeconds = 0.0;
-
                           return true;
                         }
-                      }
-
-                      else
-                      {
-                        dSeconds = 0.0;
                       }
                     }
                   }
