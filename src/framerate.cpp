@@ -2578,7 +2578,7 @@ SK::Framerate::Limiter::wait (void)
                       {
                         dSeconds += _FrametimeSeconds ();
 
-                        if (dSeconds > 1.0)
+                        if (dSeconds > 0.5)
                         {
                           return true;
                         }
