@@ -2571,6 +2571,18 @@ SK::Framerate::Limiter::wait (void)
                     {
                       static double dSeconds = 0.0;
 
+                      if (iACTION == ACTION_HighRenderLatency)
+                      {
+                        dSeconds += _FrametimeSeconds ();
+
+                        if (dSeconds < 0.5)
+                        {
+                          return true;
+                        }
+
+                        dSeconds = 0.0;
+                      }
+
                       if (SK_RenderBackend_V2::latency.delays.PresentQueue > 2)
                       {
                         UINT iRenderLatency =
