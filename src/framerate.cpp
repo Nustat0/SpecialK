@@ -2569,14 +2569,45 @@ SK::Framerate::Limiter::wait (void)
 
                     else
                     {
-                      if (SK_RenderBackend_V2::latency.delays.PresentQueue > 2 && !bIsTearing)
-                      {
-                        UINT iRenderLatency =
-                          SK_RenderBackend_V2::latency.delays.PresentQueue;
+                      bool bRenderLatencyChanged = false;
 
-                        static UINT        iLastRenderLatency = iRenderLatency;
-                        if (std::exchange (iLastRenderLatency,  iRenderLatency) !=
-                                                                iRenderLatency)
+                      UINT iRenderLatency =
+                        SK_RenderBackend_V2::latency.delays.PresentQueue;
+
+                      static UINT        iLastRenderLatency = iRenderLatency;
+                      if (std::exchange (iLastRenderLatency,  iRenderLatency) !=
+                                                              iRenderLatency)
+                      {
+                        bRenderLatencyChanged = true;
+                      }
+
+                      static double dSeconds = 0.0;
+
+                      if (iACTION == ACTION_HighRenderLatency)
+                      {
+                        dSeconds += _FrametimeSeconds ();
+
+                        if (dSeconds < 0.5)
+                        {
+                          if (bRenderLatencyChanged && !bIsTearing)
+                          {
+                            dSeconds = 0.0;
+                          }
+
+                          return true;
+                        }
+
+                        else
+                        {
+                          return false;
+                        }
+                      }
+
+                      else
+                      {
+                        dSeconds = 0.0;
+
+                        if (bRenderLatencyChanged)
                         {
                           return true;
                         }
