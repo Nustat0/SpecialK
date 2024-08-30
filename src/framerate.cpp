@@ -2557,14 +2557,12 @@ SK::Framerate::Limiter::wait (void)
 
                 if (bIsAboveRefresh)
                 {
-                  if (! SK_RenderBackend_V2::latency.stale)
+                  if (! SK_RenderBackend_V2::latency.stale &&
+                        SK_RenderBackend_V2::latency.delays.PresentQueue > 1 )
                   {
                     if (bIsPreRenderLimit1)
                     {
-                      if (SK_RenderBackend_V2::latency.delays.PresentQueue > 1)
-                      {
-                        return true;
-                      }
+                      return true;
                     }
 
                     else
