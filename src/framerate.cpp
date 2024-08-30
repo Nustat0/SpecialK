@@ -2555,54 +2555,36 @@ SK::Framerate::Limiter::wait (void)
                   return false;
                 }
 
-                if (bIsAboveRefresh)
+                if (! SK_RenderBackend_V2::latency.stale)
                 {
-                  if (! SK_RenderBackend_V2::latency.stale)
+                  UINT iRenderLatency =
+                    SK_RenderBackend_V2::latency.delays.PresentQueue;
+
+                  if (! (bIsAboveRefresh && !bIsPreRenderLimit1))
                   {
-                    if (bIsPreRenderLimit1)
-                    {
-                      return
-                        SK_RenderBackend_V2::latency.delays.PresentQueue > 1;
-                    }
-
-                    else
-                    {
-                      UINT iMinRenderLatency = bIsTrueFullscreen ? 3 : 2;
-
-                      if (SK_RenderBackend_V2::latency.delays.PresentQueue > iMinRenderLatency)
-                      {
-                        UINT iRenderLatency =
-                          SK_RenderBackend_V2::latency.delays.PresentQueue;
-
-                        static UINT           iLastRenderLatency = iRenderLatency;
-                        return std::exchange (iLastRenderLatency,  iRenderLatency) !=
-                                                                   iRenderLatency;
-                      }
-                    }
+                    return iRenderLatency > 1;
                   }
 
-                  if (rb.presentation.avg_stats.display != 0.0)
+                  else
                   {
-                    return
-                      rb.presentation.avg_stats.latency /
-                      rb.presentation.avg_stats.display > 1.65;
+                    UINT iMinRenderLatency = bIsTrueFullscreen ? 3 : 2;
+
+                    if (iRenderLatency <= iMinRenderLatency)
+                    {
+                      return false;
+                    }
+
+                    static UINT           iLastRenderLatency = iRenderLatency;
+                    return std::exchange (iLastRenderLatency,  iRenderLatency) !=
+                                                               iRenderLatency;
                   }
                 }
 
-                else
+                if (rb.presentation.avg_stats.display != 0.0)
                 {
-                  if (! SK_RenderBackend_V2::latency.stale)
-                  {
-                    return
-                      ( SK_RenderBackend_V2::latency.delays.PresentQueue > 1 );
-                  }
-
-                  if (rb.presentation.avg_stats.display != 0.0)
-                  {
-                    return
-                      rb.presentation.avg_stats.latency /
-                      rb.presentation.avg_stats.display > 1.65;
-                  }
+                  return
+                    rb.presentation.avg_stats.latency /
+                    rb.presentation.avg_stats.display > 1.65;
                 }
 
                 return false;
