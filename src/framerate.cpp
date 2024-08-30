@@ -2580,6 +2580,8 @@ SK::Framerate::Limiter::wait (void)
 
                         if (dSeconds > 0.5)
                         {
+                          dSeconds = 0.0;
+
                           return true;
                         }
                       }
