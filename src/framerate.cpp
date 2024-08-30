@@ -2596,11 +2596,6 @@ SK::Framerate::Limiter::wait (void)
 
                           return true;
                         }
-
-                        else
-                        {
-                          return false;
-                        }
                       }
 
                       else
