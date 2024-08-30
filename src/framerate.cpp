@@ -2569,6 +2569,8 @@ SK::Framerate::Limiter::wait (void)
 
                     else
                     {
+                      static double dSeconds = 0.0;
+
                       if (SK_RenderBackend_V2::latency.delays.PresentQueue > 2)
                       {
                         UINT iRenderLatency =
@@ -2578,8 +2580,25 @@ SK::Framerate::Limiter::wait (void)
                         if (std::exchange (iLastRenderLatency,  iRenderLatency) !=
                                                                 iRenderLatency)
                         {
-                          return true;
+                          dSeconds += _FrametimeSeconds ();
+
+                          if (dSeconds > 0.5)
+                          {
+                            dSeconds = 0.0;
+
+                            return true;
+                          }
                         }
+
+                        else
+                        {
+                          dSeconds = 0.0;
+                        }
+                      }
+
+                      else
+                      {
+                        dSeconds = 0.0;
                       }
                     }
                   }
