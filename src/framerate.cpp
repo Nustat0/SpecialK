@@ -2567,9 +2567,9 @@ SK::Framerate::Limiter::wait (void)
 
                   else
                   {
-                    UINT iMinRenderLatency = bIsTrueFullscreen ? 3 : 2;
+                    UINT iTargetRenderLatency = bIsTrueFullscreen ? 4 : 3;
 
-                    if (iRenderLatency <= iMinRenderLatency)
+                    if (iRenderLatency <= iTargetRenderLatency)
                     {
                       return false;
                     }
@@ -2584,7 +2584,7 @@ SK::Framerate::Limiter::wait (void)
                 {
                   return
                     rb.presentation.avg_stats.latency /
-                    rb.presentation.avg_stats.display > 1.65;
+                    rb.presentation.avg_stats.display > 1.64;
                 }
 
                 return false;
