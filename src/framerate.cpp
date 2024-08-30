@@ -2608,7 +2608,7 @@ SK::Framerate::Limiter::wait (void)
                         {
                           dSeconds += _FrametimeSeconds ();
 
-                          return true;
+                          return false;
                         }
 
                         dSeconds = 0.0;
