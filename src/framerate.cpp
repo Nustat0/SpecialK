@@ -2561,56 +2561,22 @@ SK::Framerate::Limiter::wait (void)
                   {
                     if (bIsPreRenderLimit1)
                     {
-                      if (SK_RenderBackend_V2::latency.delays.PresentQueue > 1)
-                      {
-                        return true;
-                      }
+                      return
+                        SK_RenderBackend_V2::latency.delays.PresentQueue > 1;
                     }
 
                     else
                     {
-                      static double dSeconds = 0.0;
+                      UINT iMinRenderLatency = bIsTrueFullscreen ? 3 : 2;
 
-                      if (iACTION == ACTION_HighRenderLatency)
-                      {
-                        dSeconds += _FrametimeSeconds ();
-
-                        if (dSeconds < 0.5)
-                        {
-                          return true;
-                        }
-
-                        dSeconds = 0.0;
-                      }
-
-                      if (SK_RenderBackend_V2::latency.delays.PresentQueue > 2)
+                      if (SK_RenderBackend_V2::latency.delays.PresentQueue > iMinRenderLatency)
                       {
                         UINT iRenderLatency =
                           SK_RenderBackend_V2::latency.delays.PresentQueue;
 
-                        static UINT        iLastRenderLatency = iRenderLatency;
-                        if (std::exchange (iLastRenderLatency,  iRenderLatency) !=
-                                                                iRenderLatency)
-                        {
-                          dSeconds += _FrametimeSeconds ();
-
-                          if (dSeconds > 0.5)
-                          {
-                            dSeconds = 0.0;
-
-                            return true;
-                          }
-                        }
-
-                        else
-                        {
-                          dSeconds = 0.0;
-                        }
-                      }
-
-                      else
-                      {
-                        dSeconds = 0.0;
+                        static UINT           iLastRenderLatency = iRenderLatency;
+                        return std::exchange (iLastRenderLatency,  iRenderLatency) !=
+                                                                   iRenderLatency;
                       }
                     }
                   }
@@ -2822,8 +2788,7 @@ SK::Framerate::Limiter::wait (void)
                         _ResetACTION ();
 
                         // Avoid rapid Render Latency changes
-                        if (! ( SK_RenderBackend_V2::latency.stale ||
-                                bIsAboveRefresh                     ) )
+                        if (! SK_RenderBackend_V2::latency.stale)
                         {
                           _EnableTearing (false);
 
