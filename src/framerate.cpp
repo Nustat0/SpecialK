@@ -2557,20 +2557,16 @@ SK::Framerate::Limiter::wait (void)
 
                 if (bIsAboveRefresh)
                 {
-                  if (! SK_RenderBackend_V2::latency.stale)
+                  if (! SK_RenderBackend_V2::latency.stale &&
+                        SK_RenderBackend_V2::latency.delays.PresentQueue > 1 )
                   {
                     if (bIsPreRenderLimit1)
                     {
-                      if (SK_RenderBackend_V2::latency.delays.PresentQueue > 1)
-                      {
-                        return true;
-                      }
+                      return true;
                     }
 
                     else
                     {
-                      bool bRenderLatencyChanged = false;
-
                       UINT iRenderLatency =
                         SK_RenderBackend_V2::latency.delays.PresentQueue;
 
@@ -2578,45 +2574,7 @@ SK::Framerate::Limiter::wait (void)
                       if (std::exchange (iLastRenderLatency,  iRenderLatency) !=
                                                               iRenderLatency)
                       {
-                        bRenderLatencyChanged = true;
-                      }
-
-                      static double dSeconds = 0.0;
-
-                      if (iACTION == ACTION_HighRenderLatency)
-                      {
-                        if (dSeconds < 0.5)
-                        {
-                          if (bRenderLatencyChanged && !bIsTearing)
-                          {
-                            dSeconds = 0.0;
-                          }
-
-                          dSeconds += _FrametimeSeconds ();
-
-                          return true;
-                        }
-
-                        dSeconds = 0.5;
-
-                        return false;
-                      }
-
-                      else
-                      {
-                        if (dSeconds >= 0.5 && dSeconds < 4.0)
-                        {
-                          dSeconds += _FrametimeSeconds ();
-
-                          return false;
-                        }
-
-                        dSeconds = 0.0;
-
-                        if (bRenderLatencyChanged)
-                        {
-                          return true;
-                        }
+                        return true;
                       }
                     }
                   }
