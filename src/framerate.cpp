@@ -2567,16 +2567,20 @@ SK::Framerate::Limiter::wait (void)
 
                   else
                   {
-                    UINT iTargetRenderLatency = bIsTrueFullscreen ? 4 : 3;
-
-                    if (iRenderLatency <= iTargetRenderLatency)
+                    static UINT       iTargetRenderLatency = 2,
+                                        iLastRenderLatency =
+                                            iRenderLatency;
+                    if ( std::exchange (iLastRenderLatency,
+                                            iRenderLatency) >
+                                      iTargetRenderLatency    &&
+                                            iRenderLatency  >
+                                      iTargetRenderLatency    )
                     {
-                      return false;
+                      iTargetRenderLatency =
+                            iRenderLatency;
                     }
 
-                    static UINT           iLastRenderLatency = iRenderLatency;
-                    return std::exchange (iLastRenderLatency,  iRenderLatency) !=
-                                                               iRenderLatency;
+                    return iRenderLatency > iTargetRenderLatency;
                   }
                 }
 
