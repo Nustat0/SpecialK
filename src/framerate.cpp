@@ -2573,16 +2573,19 @@ SK::Framerate::Limiter::wait (void)
 
                     if (iLastRenderLatency != iRenderLatency)
                     {
-                      if (! bIsTearing)
+                      if ( iLastRenderLatency > iTargetRenderLatency &&
+                               iRenderLatency > iTargetRenderLatency )
                       {
-                        iTargetRenderLatency = std::abs (
+                        iTargetRenderLatency = std::min (
                           iLastRenderLatency,
                               iRenderLatency
-                        ) == 1
-                          ? std::max (iLastRenderLatency,
-                                          iRenderLatency) - 1
-                          : std::min (iLastRenderLatency,
-                                          iRenderLatency);
+                        );
+                      }
+
+                      else if ( iLastRenderLatency > 2 &&
+                                    iRenderLatency > 2 )
+                      {
+                        iTargetRenderLatency = 2;
                       }
 
                       iLastRenderLatency =
