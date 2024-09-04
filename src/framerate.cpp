@@ -2579,8 +2579,10 @@ SK::Framerate::Limiter::wait (void)
                       iTargetRenderLatency = 2;
                     }
 
-                    else if (! bIsTearing)
+                    else
                     {
+                      static bool dSeconds = 0.0;
+
                       bool bIsHighRenderLatency =
                         iACTION == ACTION_HighRenderLatency;
 
@@ -2588,6 +2590,13 @@ SK::Framerate::Limiter::wait (void)
                       if (std::exchange (bWasHighRenderLatency,  bIsHighRenderLatency) &&
                                                                 !bIsHighRenderLatency)
                       {
+                        dSeconds = 0.0;
+                      }
+
+                      if (dSeconds < 1.5)
+                      {
+                        dSeconds += _FrametimeSeconds ();
+
                         iTargetRenderLatency = std::max (
                           iRenderLatency,
                           static_cast <UINT> (2)
