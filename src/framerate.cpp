@@ -2567,29 +2567,24 @@ SK::Framerate::Limiter::wait (void)
 
                   else
                   {
-                    static UINT iTargetRenderLatency = 2,
-                                  iLastRenderLatency =
-                                      iRenderLatency;
+                    static UINT iTargetRenderLatency = 2;
 
-                    if (iLastRenderLatency != iRenderLatency)
+                    float fTargetFPS =
+                      config.render.framerate.target_fps;
+
+                    static float       fLastTargetFPS = fTargetFPS;
+                    if (std::exchange (fLastTargetFPS,  fTargetFPS) !=
+                                                        fTargetFPS)
                     {
-                      if ( iLastRenderLatency > iTargetRenderLatency &&
-                               iRenderLatency > iTargetRenderLatency )
-                      {
-                        iTargetRenderLatency = std::min (
-                          iLastRenderLatency,
-                              iRenderLatency
-                        );
-                      }
+                      iTargetRenderLatency = 2;
+                    }
 
-                      else if ( iLastRenderLatency > 2 &&
-                                    iRenderLatency > 2 )
-                      {
-                        iTargetRenderLatency = 2;
-                      }
-
-                      iLastRenderLatency =
-                          iRenderLatency;
+                    else if (! bIsTearing)
+                    {
+                      iTargetRenderLatency = std::max (
+                        iRenderLatency,
+                        2
+                      );
                     }
 
                     return iRenderLatency > iTargetRenderLatency;
