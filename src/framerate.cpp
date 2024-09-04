@@ -2590,7 +2590,7 @@ SK::Framerate::Limiter::wait (void)
                       {
                         iTargetRenderLatency = std::max (
                           iRenderLatency,
-                          2
+                          static_cast <UINT> (2)
                         );
                       }
                     }
