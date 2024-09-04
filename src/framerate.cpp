@@ -2581,10 +2581,18 @@ SK::Framerate::Limiter::wait (void)
 
                     else if (! bIsTearing)
                     {
-                      iTargetRenderLatency = std::max (
-                        iRenderLatency,
-                        2
-                      );
+                      bool bIsHighRenderLatency =
+                        iACTION == ACTION_HighRenderLatency;
+
+                      static bool        bWasHighRenderLatency = bIsHighRenderLatency;
+                      if (std::exchange (bWasHighRenderLatency,  bIsHighRenderLatency) &&
+                                                                !bIsHighRenderLatency)
+                      {
+                        iTargetRenderLatency = std::max (
+                          iRenderLatency,
+                          2
+                        );
+                      }
                     }
 
                     return iRenderLatency > iTargetRenderLatency;
