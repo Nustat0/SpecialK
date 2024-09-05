@@ -2593,16 +2593,14 @@ SK::Framerate::Limiter::wait (void)
                         dSeconds = 0.0;
                       }
 
-                      if (dSeconds < 1.5)
+                      if (!bIsHighRenderLatency && dSeconds < 1.5)
                       {
                         dSeconds += _FrametimeSeconds ();
 
-                        if (dSeconds > 0.5)
+                        if (iRenderLatency > 1 && dSeconds > 0.5)
                         {
-                          iTargetRenderLatency = std::max (
-                            iRenderLatency,
-                            2
-                          );
+                          iTargetRenderLatency =
+                                iRenderLatency;
                         }
                       }
                     }
