@@ -2569,6 +2569,8 @@ SK::Framerate::Limiter::wait (void)
                   {
                     static UINT iTargetRenderLatency = 2;
 
+                    static double dSeconds = 0.0;
+
                     float fTargetFPS =
                       config.render.framerate.target_fps;
 
@@ -2579,30 +2581,26 @@ SK::Framerate::Limiter::wait (void)
                       iTargetRenderLatency = 2;
                     }
 
-                    else
+                    bool bIsHighRenderLatency =
+                      iACTION == ACTION_HighRenderLatency;
+
+                    static bool        bWasHighRenderLatency = bIsHighRenderLatency;
+                    if (std::exchange (bWasHighRenderLatency,  bIsHighRenderLatency) &&
+                                                              !bIsHighRenderLatency)
                     {
-                      static double dSeconds = 1.5;
+                      iTargetRenderLatency = 2;
 
-                      bool bIsHighRenderLatency =
-                        iACTION == ACTION_HighRenderLatency;
+                      dSeconds = 0.0;
+                    }
 
-                      static bool        bWasHighRenderLatency = bIsHighRenderLatency;
-                      if (std::exchange (bWasHighRenderLatency,  bIsHighRenderLatency) &&
-                                                                !bIsHighRenderLatency)
-                      {
-                        dSeconds = 0.0;
-                      }
+                    if (!bIsHighRenderLatency && dSeconds < 0.5)
+                    {
+                      dSeconds += _FrametimeSeconds ();
 
-                      if (!bIsHighRenderLatency && dSeconds < 1.5)
-                      {
-                        dSeconds += _FrametimeSeconds ();
-
-                        if (iRenderLatency > 1 && dSeconds > 0.5)
-                        {
-                          iTargetRenderLatency =
-                                iRenderLatency;
-                        }
-                      }
+                      iTargetRenderLatency = std::max (
+                        iTargetRenderLatency,
+                        iRenderLatency
+                      );
                     }
 
                     return iRenderLatency > iTargetRenderLatency;
