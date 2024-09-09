@@ -2569,17 +2569,13 @@ SK::Framerate::Limiter::wait (void)
                   {
                     static UINT iTargetRenderLatency = 2;
 
-                    static double dSeconds = 0.0;
-
-                    float fTargetFPS =
-                      config.render.framerate.target_fps;
-
-                    static float       fLastTargetFPS = fTargetFPS;
-                    if (std::exchange (fLastTargetFPS,  fTargetFPS) !=
-                                                        fTargetFPS)
+                    if ( iTargetRenderLatency > iRenderLatency &&
+                         iTargetRenderLatency - iRenderLatency >= 2 )
                     {
                       iTargetRenderLatency = 2;
                     }
+
+                    static double dSeconds = 0.0;
 
                     bool bIsHighRenderLatency =
                       iACTION == ACTION_HighRenderLatency;
