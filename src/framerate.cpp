@@ -2593,7 +2593,7 @@ SK::Framerate::Limiter::wait (void)
                       dSeconds = 0.0;
                     }
 
-                    if (!bIsHighRenderLatency && dSeconds < 0.5)
+                    if (dSeconds < 0.5)
                     {
                       dSeconds += _FrametimeSeconds ();
 
@@ -3058,16 +3058,14 @@ SK::Framerate::Limiter::wait (void)
               }
             }
 
-            if ( !bIsTearingModeAdaptiveOn &&
-                 !bIsUnstableFPS           &&
-                  bAbortACTION             &&
-                  dWaitSeconds > 0.0       )
+            if ( iACTION != ACTION_StuckInputLatency &&
+                 iACTION != ACTION_HighVariation     &&
+                 !bIsTearingModeAdaptiveOn           &&
+                 !bIsUnstableFPS                     &&
+                  bAbortACTION                       &&
+                  dWaitSeconds > 0.0                 )
             {
-              if (! ( iACTION == ACTION_HighVariation &&
-                      bIsTrueFullscreen                ) )
-              {
-                reset (true);
-              }
+              reset (true);
             }
           }
 
