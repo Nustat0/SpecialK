@@ -2487,20 +2487,6 @@ SK::Framerate::Limiter::wait (void)
               bAbortACTION = true;
             }
 
-            bool bIsTearing =
-              ( config.render.framerate.present_interval == 0 &&
-                config.render.dxgi.allow_tearing               ) ||
-              ( config.render.framerate.present_interval >= 1 &&
-                config.render.framerate.turn_vsync_off        &&
-                bIsTearingModeAdaptiveOff                      );
-
-            if ( !bIsTearingModeAdaptiveOn &&
-                  iACTION == ACTION_None   &&
-                  bIsTearing               )
-            {
-              bAbortACTION = true;
-            }
-
             if (! bAbortACTION)
             {
               bool bHighVariation = [&]() -> bool
@@ -3099,9 +3085,9 @@ SK::Framerate::Limiter::wait (void)
 
       if (config.render.framerate.present_interval == SK_NoPreference)
       {
-        if ( rb.isTrueFullscreen ( ) ||
-             rb.present_interval > 0 ||
-             bIsD3D9                 )
+        if ( rb.present_interval >= 1 ||
+             rb.isTrueFullscreen ()   ||
+             bIsD3D9                  )
         {
           config.render.framerate.tearing_mode =
             SK_TearingMode::AppControlled;
