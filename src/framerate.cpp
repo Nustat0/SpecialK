@@ -2555,7 +2555,7 @@ SK::Framerate::Limiter::wait (void)
                   {
                     static UINT iTargetRenderLatency = 2;
 
-                    static double dMaxSeconds = 0.5,
+                    static double dMaxSeconds = 1.0,
                                      dSeconds =
                                   dMaxSeconds;
 
