@@ -2570,6 +2570,14 @@ SK::Framerate::Limiter::wait (void)
                     bool bIsHighRenderLatency =
                       iACTION == ACTION_HighRenderLatency;
 
+                    if ( bIsTearingModeAlwaysOffLL &&
+                         bIsHighRenderLatency      &&
+                         __target_fps_temp <= 0.0f )
+                    {
+                      iTargetRenderLatency =
+                            iRenderLatency;
+                    }
+
                     static bool        bWasHighRenderLatency = bIsHighRenderLatency;
                     if (std::exchange (bWasHighRenderLatency,  bIsHighRenderLatency) &&
                                                               !bIsHighRenderLatency)
