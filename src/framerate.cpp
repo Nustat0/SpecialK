@@ -2555,13 +2555,17 @@ SK::Framerate::Limiter::wait (void)
                   {
                     static UINT iTargetRenderLatency = 2;
 
+                    static double dMaxSeconds = 0.5,
+                                     dSeconds =
+                                  dMaxSeconds;
+
                     if ( iTargetRenderLatency > iRenderLatency &&
                          iTargetRenderLatency - iRenderLatency >= 2 )
                     {
                       iTargetRenderLatency = 2;
-                    }
 
-                    static double dSeconds = 0.0;
+                      dSeconds = dMaxSeconds;
+                    }
 
                     bool bIsHighRenderLatency =
                       iACTION == ACTION_HighRenderLatency;
@@ -2575,7 +2579,7 @@ SK::Framerate::Limiter::wait (void)
                       dSeconds = 0.0;
                     }
 
-                    if (dSeconds < 0.5)
+                    if (dSeconds < dMaxSeconds)
                     {
                       dSeconds += _FrametimeSeconds ();
 
