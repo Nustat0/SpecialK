@@ -2555,7 +2555,7 @@ SK::Framerate::Limiter::wait (void)
                   {
                     static UINT iTargetRenderLatency = 2;
 
-                    static double dMaxSeconds = 1.0,
+                    static double dMaxSeconds = 0.5,
                                      dSeconds =
                                   dMaxSeconds;
 
@@ -2570,15 +2570,12 @@ SK::Framerate::Limiter::wait (void)
                     bool bIsHighRenderLatency =
                       iACTION == ACTION_HighRenderLatency;
 
-                    if (bIsHighRenderLatency)
-                    {
-                      iTargetRenderLatency = 2;
-                    }
-
                     static bool        bWasHighRenderLatency = bIsHighRenderLatency;
                     if (std::exchange (bWasHighRenderLatency,  bIsHighRenderLatency) &&
                                                               !bIsHighRenderLatency)
                     {
+                      iTargetRenderLatency = 2;
+
                       dSeconds = 0.0;
                     }
 
