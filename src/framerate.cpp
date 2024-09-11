@@ -2559,30 +2559,8 @@ SK::Framerate::Limiter::wait (void)
                                      dSeconds =
                                   dMaxSeconds;
 
-                    if ( iTargetRenderLatency > iRenderLatency &&
-                         iTargetRenderLatency - iRenderLatency >= 2 )
-                    {
-                      iTargetRenderLatency = 2;
-
-                      dSeconds = dMaxSeconds;
-                    }
-
                     bool bIsHighRenderLatency =
                       iACTION == ACTION_HighRenderLatency;
-
-                    if (bIsHighRenderLatency)
-                    {
-                      bool bIsTempTargetFPS =
-                        __target_fps_temp > 0;
-
-                      static bool        bWasTempTargetFPS = bIsTempTargetFPS;
-                      if (std::exchange (bWasTempTargetFPS,  bIsTempTargetFPS) &&
-                                                            !bIsTempTargetFPS)
-                      {
-                        iTargetRenderLatency =
-                              iRenderLatency;
-                      }
-                    }
 
                     static bool        bWasHighRenderLatency = bIsHighRenderLatency;
                     if (std::exchange (bWasHighRenderLatency,  bIsHighRenderLatency) &&
@@ -2591,6 +2569,39 @@ SK::Framerate::Limiter::wait (void)
                       iTargetRenderLatency = 2;
 
                       dSeconds = 0.0;
+                    }
+
+                    else
+                    {
+                      if (bIsHighRenderLatency)
+                      {
+                        bool bIsTearing =
+                          ( config.render.framerate.present_interval == 0 &&
+                            config.render.dxgi.allow_tearing               ) ||
+                          ( config.render.framerate.present_interval >= 1 &&
+                            config.render.framerate.turn_vsync_off        &&
+                            bIsTearingModeAdaptiveOff                      );
+
+                        if ( __target_fps_temp <= 0.0f &&
+                                  dWaitSeconds == 0.0  &&
+                                  ! bIsTearing         )
+                        {
+                          iTargetRenderLatency =
+                                iRenderLatency;
+                        }
+                      }
+
+                      else
+                      {
+                        if ( iRenderLatency < iTargetRenderLatency &&
+                             iRenderLatency > 1                    )
+                        {
+                          iTargetRenderLatency =
+                                iRenderLatency;
+
+                          dSeconds = dMaxSeconds;
+                        }
+                      }
                     }
 
                     if (dSeconds < dMaxSeconds)
