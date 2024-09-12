@@ -2685,6 +2685,9 @@ SK::Framerate::Limiter::wait (void)
                 }
               );
 
+              bool bACTION_None =
+                iACTION == ACTION_None;
+
               for ( const auto& vACTION : iACTIONS )
               {
                 double dMaxWaitSeconds = 1.5;
@@ -2768,7 +2771,10 @@ SK::Framerate::Limiter::wait (void)
                         {
                           _ResetACTION ();
 
-                          reset (true);
+                          if (bACTION_None)
+                          {
+                            reset (true);
+                          }
                         }
                       }
 
@@ -2970,7 +2976,10 @@ SK::Framerate::Limiter::wait (void)
                         {
                           _ResetACTION ();
 
-                          reset (true);
+                          if (bACTION_None)
+                          {
+                            reset (true);
+                          }
                         }
                       }
 
