@@ -2589,7 +2589,7 @@ SK::Framerate::Limiter::wait (void)
                         }
                       }
 
-                      else
+                      /*else
                       {
                         if ( iRenderLatency < iTargetRenderLatency &&
                              iRenderLatency > 1                    )
@@ -2597,7 +2597,7 @@ SK::Framerate::Limiter::wait (void)
                           iTargetRenderLatency =
                                 iRenderLatency;
                         }
-                      }
+                      }*/
                     }
 
                     if (dSeconds < 0.5)
