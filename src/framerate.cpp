@@ -2586,18 +2586,22 @@ SK::Framerate::Limiter::wait (void)
                         {
                           iTargetRenderLatency =
                                 iRenderLatency;
+
+                          dSeconds = 0.0;
                         }
                       }
 
-                      /*else
+                      else
                       {
                         if ( iRenderLatency < iTargetRenderLatency &&
                              iRenderLatency > 1                    )
                         {
                           iTargetRenderLatency =
                                 iRenderLatency;
+
+                          dSeconds = 0.0;
                         }
-                      }*/
+                      }
                     }
 
                     if (dSeconds < 0.5)
