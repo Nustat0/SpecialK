@@ -2293,8 +2293,7 @@ SK::Framerate::Limiter::wait (void)
       {
         if (bFull)
         {
-          iACTION =
-           ACTION_None;
+          iACTION = ACTION_None;
         }
 
         __target_fps_temp = 0.0f;
@@ -2534,7 +2533,9 @@ SK::Framerate::Limiter::wait (void)
                 bool bIgnoreHighRenderLatency =
                   bIsTearingModeAdaptiveOn ||
                   bIsTearingModeAlwaysOff  ||
-                  bIsUnstableFPS;
+                  bIsUnstableFPS           ||
+                  iACTION ==
+                   ACTION_HighVariation;
 
                 if (bIgnoreHighRenderLatency)
                 {
@@ -2559,11 +2560,13 @@ SK::Framerate::Limiter::wait (void)
                                      dSeconds =
                                   dMaxSeconds;
 
-                    auto _ResetTargetRenderLatency = [&]() -> void
+                    auto _ResetTargetRenderLatency = [&](bool bFull = true) -> void
                     {
                       iTargetRenderLatency = 2;
 
-                      dSeconds = 0.0;
+                      dSeconds = bFull
+                        ? 0.0
+                        : dMaxSeconds;
                     };
 
                     bool bIsHighRenderLatency =
@@ -2600,7 +2603,7 @@ SK::Framerate::Limiter::wait (void)
                         if ( iRenderLatency < iTargetRenderLatency &&
                              iRenderLatency > 1                    )
                         {
-                          _ResetTargetRenderLatency ();
+                          _ResetTargetRenderLatency (false);
                         }
                       }
                     }
