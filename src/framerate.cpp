@@ -2561,13 +2561,6 @@ SK::Framerate::Limiter::wait (void)
                                      dSeconds =
                                   dMaxSeconds;
 
-                    auto _ResetTargetRenderLatency = [&]() -> void
-                    {
-                      iTargetRenderLatency = 2;
-
-                      dSeconds = 0.0;
-                    };
-
                     bool bIsHighRenderLatency =
                       iACTION == ACTION_HighRenderLatency;
 
@@ -2575,7 +2568,9 @@ SK::Framerate::Limiter::wait (void)
                     if (std::exchange (bWasHighRenderLatency,  bIsHighRenderLatency) &&
                                                               !bIsHighRenderLatency)
                     {
-                      _ResetTargetRenderLatency ();
+                      iTargetRenderLatency = 2;
+
+                      dSeconds = 0.0;
                     }
 
                     else
@@ -2593,7 +2588,8 @@ SK::Framerate::Limiter::wait (void)
                                   dWaitSeconds == 0.0  &&
                                   ! bIsTearing         )
                         {
-                          _ResetTargetRenderLatency ();
+                          iTargetRenderLatency =
+                                iRenderLatency;
                         }
                       }
 
@@ -2602,7 +2598,10 @@ SK::Framerate::Limiter::wait (void)
                         if ( iRenderLatency < iTargetRenderLatency &&
                              iRenderLatency > 1                    )
                         {
-                          _ResetTargetRenderLatency ();
+                          iTargetRenderLatency =
+                                iRenderLatency;
+
+                          dSeconds = dMaxSeconds;
                         }
                       }
                     }
