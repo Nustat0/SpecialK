@@ -2293,7 +2293,8 @@ SK::Framerate::Limiter::wait (void)
       {
         if (bFull)
         {
-          iACTION = ACTION_None;
+          iACTION =
+           ACTION_None;
         }
 
         __target_fps_temp = 0.0f;
