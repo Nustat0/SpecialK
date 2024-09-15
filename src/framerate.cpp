@@ -2568,8 +2568,6 @@ SK::Framerate::Limiter::wait (void)
                     if (std::exchange (bWasHighRenderLatency,  bIsHighRenderLatency) &&
                                                               !bIsHighRenderLatency)
                     {
-                      iTargetRenderLatency = 2;
-
                       dSeconds = 0.0;
                     }
 
@@ -2593,17 +2591,14 @@ SK::Framerate::Limiter::wait (void)
                         }
                       }
 
-                      /*else
+                      else
                       {
                         if ( iRenderLatency < iTargetRenderLatency &&
                              iRenderLatency > 1                    )
                         {
-                          iTargetRenderLatency =
-                                iRenderLatency;
-
                           dSeconds = 0.0;
                         }
-                      }*/
+                      }
                     }
 
                     if (dSeconds < dMaxSeconds)
@@ -2611,8 +2606,8 @@ SK::Framerate::Limiter::wait (void)
                       dSeconds += _FrametimeSeconds ();
 
                       iTargetRenderLatency = std::max (
-                        iTargetRenderLatency,
-                        iRenderLatency
+                        iRenderLatency,
+                        2
                       );
                     }
 
