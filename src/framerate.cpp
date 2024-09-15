@@ -3073,16 +3073,6 @@ SK::Framerate::Limiter::wait (void)
                 }
               }
             }
-
-            if ( iACTION != ACTION_StuckInputLatency &&
-                 iACTION != ACTION_HighVariation     &&
-                 !bIsTearingModeAdaptiveOn           &&
-                 !bIsUnstableFPS                     &&
-                  bAbortACTION                       &&
-                  dWaitSeconds > 0.0                 )
-            {
-              reset (true);
-            }
           }
 
           _EnableTearing (
