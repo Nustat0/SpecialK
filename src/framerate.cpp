@@ -2601,7 +2601,7 @@ SK::Framerate::Limiter::wait (void)
                           iTargetRenderLatency =
                                 iRenderLatency;
 
-                          dSeconds = dMaxSeconds;
+                          dSeconds = 0.0;
                         }
                       }
                     }
