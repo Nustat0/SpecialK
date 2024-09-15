@@ -2593,8 +2593,7 @@ SK::Framerate::Limiter::wait (void)
 
                       else
                       {
-                        if ( iRenderLatency < iTargetRenderLatency &&
-                             iRenderLatency > 1                    )
+                        if (iRenderLatency < iTargetRenderLatency)
                         {
                           dSeconds = 0.0;
                         }
@@ -2607,7 +2606,7 @@ SK::Framerate::Limiter::wait (void)
 
                       iTargetRenderLatency = std::max (
                         iRenderLatency,
-                        2
+                        (UINT)2
                       );
                     }
 
