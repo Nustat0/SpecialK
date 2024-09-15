@@ -2571,32 +2571,28 @@ SK::Framerate::Limiter::wait (void)
                       dSeconds = 0.0;
                     }
 
-                    else
+                    else if (bIsHighRenderLatency)
                     {
-                      if (bIsHighRenderLatency)
-                      {
-                        bool bIsTearing =
-                          ( config.render.framerate.present_interval == 0 &&
-                            config.render.dxgi.allow_tearing               ) ||
-                          ( config.render.framerate.present_interval >= 1 &&
-                            config.render.framerate.turn_vsync_off        &&
-                            bIsTearingModeAdaptiveOff                      );
+                      bool bIsTearing =
+                        ( config.render.framerate.present_interval == 0 &&
+                          config.render.dxgi.allow_tearing               ) ||
+                        ( config.render.framerate.present_interval >= 1 &&
+                          config.render.framerate.turn_vsync_off        &&
+                          bIsTearingModeAdaptiveOff                      );
 
-                        if ( __target_fps_temp <= 0.0f &&
-                                  dWaitSeconds == 0.0  &&
-                                  ! bIsTearing         )
-                        {
-                          iTargetRenderLatency =
-                                iRenderLatency;
-                        }
+                      if ( __target_fps_temp <= 0.0f &&
+                                dWaitSeconds == 0.0  &&
+                                ! bIsTearing         )
+                      {
+                        dSeconds = 0.0;
                       }
+                    }
 
-                      else
+                    else if (dSeconds >= dMaxSeconds)
+                    {
+                      if (iRenderLatency < iTargetRenderLatency)
                       {
-                        if (iRenderLatency < iTargetRenderLatency)
-                        {
-                          dSeconds = 0.0;
-                        }
+                        dSeconds = 0.0;
                       }
                     }
 
