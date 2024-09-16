@@ -2598,11 +2598,16 @@ SK::Framerate::Limiter::wait (void)
 
                     if (dSeconds < dMaxSeconds)
                     {
+                      if (dSeconds == 0.0)
+                      {
+                        iTargetRenderLatency = 2;
+                      }
+
                       dSeconds += _FrametimeSeconds ();
 
                       iTargetRenderLatency = std::max (
-                        iRenderLatency,
-                        (UINT)2
+                        iTargetRenderLatency,
+                        iRenderLatency
                       );
                     }
 
