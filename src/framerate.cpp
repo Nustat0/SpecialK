@@ -2592,7 +2592,17 @@ SK::Framerate::Limiter::wait (void)
                     {
                       if (iRenderLatency < iTargetRenderLatency)
                       {
-                        dSeconds = 0.0;
+                        dSeconds += _FrametimeSeconds ();
+
+                        if (dSeconds >= dMaxSeconds * 2.0)
+                        {
+                          dSeconds = 0.0;
+                        }
+                      }
+
+                      else
+                      {
+                        dSeconds = dMaxSeconds;
                       }
                     }
 
