@@ -2496,7 +2496,8 @@ SK::Framerate::Limiter::wait (void)
                   bIsUnstableFPS           ||
                   bIsVRR;
 
-                if (! (bIgnoreHighVariation || bIsAboveRefresh))
+                if ( !bIgnoreHighVariation &&
+                     !bIsAboveRefresh      )
                 {
                   bIgnoreHighVariation =
                     config.render.framerate.enforcement_policy == 2 ||
@@ -2534,9 +2535,15 @@ SK::Framerate::Limiter::wait (void)
                 bool bIgnoreHighRenderLatency =
                   bIsTearingModeAdaptiveOn ||
                   bIsTearingModeAlwaysOff  ||
-                  bIsUnstableFPS           ||
-                  iACTION ==
-                   ACTION_HighVariation;
+                  bIsUnstableFPS;
+
+                if ( !bIgnoreHighRenderLatency &&
+                     !bIsPreRenderLimit1       &&
+                      bIsAboveRefresh          )
+                {
+                  bIgnoreHighRenderLatency =
+                    iACTION == ACTION_HighVariation;
+                }
 
                 if (bIgnoreHighRenderLatency)
                 {
