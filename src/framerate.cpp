@@ -2708,17 +2708,17 @@ SK::Framerate::Limiter::wait (void)
                 {
                   case ACTION_HighVariation:
                   {
-                    if (iACTION != vACTION)
+                    if (iACTION != ACTION_HighVariation)
                     {
                       if (bHighVariation)
                       {
                         bIsNewACTION = true;
                              iACTION =
-                             vACTION;
+                              ACTION_HighVariation;
                       }
                     }
 
-                    if (iACTION == vACTION)
+                    if (iACTION == ACTION_HighVariation)
                     {
                       if (! bIsNewACTION)
                       {
@@ -2793,17 +2793,17 @@ SK::Framerate::Limiter::wait (void)
 
                   case ACTION_HighRenderLatency:
                   {
-                    if (iACTION != vACTION)
+                    if (iACTION != ACTION_HighRenderLatency)
                     {
                       if (bHighRenderLatency)
                       {
                         bIsNewACTION = true;
                              iACTION =
-                             vACTION;
+                              ACTION_HighRenderLatency;
                       }
                     }
 
-                    if (iACTION == vACTION)
+                    if (iACTION == ACTION_HighRenderLatency)
                     {
                       if (! bIsNewACTION)
                       {
@@ -2925,17 +2925,17 @@ SK::Framerate::Limiter::wait (void)
 
                   case ACTION_StuckInputLatency:
                   {
-                    if (iACTION != vACTION)
+                    if (iACTION != ACTION_StuckInputLatency)
                     {
                       if (bStuckInputLatency)
                       {
                         bIsNewACTION = true;
                              iACTION =
-                             vACTION;
+                              ACTION_StuckInputLatency;
                       }
                     }
 
-                    if (iACTION == vACTION)
+                    if (iACTION == ACTION_StuckInputLatency)
                     {
                       if (! bIsNewACTION)
                       {
@@ -2996,17 +2996,17 @@ SK::Framerate::Limiter::wait (void)
 
                   case ACTION_FrameBecameStable:
                   {
-                    if (iACTION != vACTION)
+                    if (iACTION != ACTION_FrameBecameStable)
                     {
                       if (bFrameBecameStable)
                       {
                         bIsNewACTION = true;
                              iACTION =
-                             vACTION;
+                              ACTION_FrameBecameStable;
                       }
                     }
 
-                    if (iACTION == vACTION)
+                    if (iACTION == ACTION_FrameBecameStable)
                     {
                       if (! bIsNewACTION)
                       {
