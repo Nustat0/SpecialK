@@ -2496,10 +2496,9 @@ SK::Framerate::Limiter::wait (void)
                   bIsUnstableFPS           ||
                   bIsVRR;
 
-                if ( !bIgnoreHighVariation &&
-                     !bIsAboveRefresh      )
+                if (! bIsAboveRefresh)
                 {
-                  bIgnoreHighVariation =
+                  bIgnoreHighVariation |=
                     config.render.framerate.enforcement_policy == 2 ||
                     config.nvidia.reflex.use_limiter                ||
                     config.fps.timing_method ==
@@ -2537,11 +2536,9 @@ SK::Framerate::Limiter::wait (void)
                   bIsTearingModeAlwaysOff  ||
                   bIsUnstableFPS;
 
-                if ( !bIgnoreHighRenderLatency &&
-                     !bIsPreRenderLimit1       &&
-                      bIsAboveRefresh          )
+                if (bIsAboveRefresh)
                 {
-                  bIgnoreHighRenderLatency =
+                  bIgnoreHighRenderLatency |=
                     iACTION == ACTION_HighVariation;
                 }
 
