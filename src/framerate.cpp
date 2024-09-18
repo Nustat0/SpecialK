@@ -2577,6 +2577,11 @@ SK::Framerate::Limiter::wait (void)
 
                     else if (bIsHighRenderLatency)
                     {
+                      if (bIsComposedPresentMode)
+                      {
+                        iTargetRenderLatency = 2;
+                      }
+
                       bool bIsTearing =
                         ( config.render.framerate.present_interval == 0 &&
                           config.render.dxgi.allow_tearing               ) ||
@@ -2589,6 +2594,11 @@ SK::Framerate::Limiter::wait (void)
                                 ! bIsTearing         )
                       {
                         dSeconds = 0.0;
+                      }
+
+                      else
+                      {
+                        dSeconds = dMaxSeconds;
                       }
                     }
 
