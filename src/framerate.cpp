@@ -2584,9 +2584,12 @@ SK::Framerate::Limiter::wait (void)
                           config.render.framerate.turn_vsync_off        &&
                           bIsTearingModeAdaptiveOff                      );
 
-                      if ( __target_fps_temp <= 0.0f &&
-                                dWaitSeconds == 0.0  &&
-                                ! bIsTearing         )
+                      bool bFailedToReachTargetLatency =
+                        __target_fps_temp <= 0.0f &&
+                             dWaitSeconds == 0.0  &&
+                             !bIsTearing;
+
+                      if (bFailedToReachTargetLatency)
                       {
                         dSeconds = 0.0;
                       }
@@ -2599,13 +2602,72 @@ SK::Framerate::Limiter::wait (void)
 
                     else if (dSeconds >= dMaxSeconds)
                     {
-                      if (iRenderLatency < iTargetRenderLatency)
+                      if (iRenderLatency <= iTargetRenderLatency)
                       {
-                        dSeconds += _FrametimeSeconds ();
+                        static int iCountChangedLatency = 0,
+                                   iCountReducedLatency = 0,
+                                   iCountChangedSeconds = 0;
+
+                        if (dSeconds == dMaxSeconds)
+                        {
+                          iCountChangedLatency = 0;
+                          iCountReducedLatency = 0,
+                          iCountChangedSeconds = 0;
+                        }
+
+                        static UINT        iLastRenderLatency = iRenderLatency;
+                        if (std::exchange (iLastRenderLatency,  iRenderLatency) !=
+                                                                iRenderLatency)
+                        {
+                          iCountChangedLatency++;
+
+                          if (iRenderLatency < iTargetRenderLatency)
+                          {
+                            iCountReducedLatency++;
+                          }
+
+                          dSeconds += _FrametimeSeconds ();
+                        }
+
+                        else if (iRenderLatency < iTargetRenderLatency)
+                        {
+                          iCountReducedLatency++;
+                          iCountChangedSeconds++;
+
+                          if (iCountReducedLatency != iCountChangedSeconds)
+                          {
+                            dSeconds = dMaxSeconds;
+                          }
+
+                          else
+                          {
+                            dSeconds += _FrametimeSeconds ();
+                          }
+                        }
+
+                        else
+                        {
+                          dSeconds = dMaxSeconds;
+                        }
 
                         if (dSeconds >= dMaxSeconds * 2.0)
                         {
-                          dSeconds = 0.0;
+                          if  (
+                                static_cast <float> (
+                                  iCountChangedSeconds /
+                                  iCountChangedLatency
+                                ) > 0.7f
+                              )
+                          {
+                            iTargetRenderLatency = 2;
+
+                            dSeconds = dMaxSeconds;
+                          }
+
+                          else
+                          {
+                            dSeconds = 0.0;
+                          }
                         }
                       }
 
