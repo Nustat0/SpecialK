@@ -2604,14 +2604,14 @@ SK::Framerate::Limiter::wait (void)
                     {
                       if (iRenderLatency <= iTargetRenderLatency)
                       {
-                        static int iCountChangedLatency = 0,
-                                   iCountReducedLatency = 0,
+                        static int iCountReducedLatency = 0,
+                                   iCountChangedLatency = 0,
                                    iCountChangedSeconds = 0;
 
                         if (dSeconds == dMaxSeconds)
                         {
+                          iCountReducedLatency = 0;
                           iCountChangedLatency = 0;
-                          iCountReducedLatency = 0,
                           iCountChangedSeconds = 0;
                         }
 
@@ -2619,12 +2619,13 @@ SK::Framerate::Limiter::wait (void)
                         if (std::exchange (iLastRenderLatency,  iRenderLatency) !=
                                                                 iRenderLatency)
                         {
-                          iCountChangedLatency++;
-
                           if (iRenderLatency < iTargetRenderLatency)
                           {
                             iCountReducedLatency++;
                           }
+
+                          iCountChangedLatency++;
+                          iCountChangedSeconds++;
 
                           dSeconds += _FrametimeSeconds ();
                         }
