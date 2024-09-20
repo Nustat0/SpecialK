@@ -2652,12 +2652,7 @@ SK::Framerate::Limiter::wait (void)
 
                         if (dSeconds >= dMaxSeconds * 2.0)
                         {
-                          if  (
-                                static_cast <float> (
-                                  iCountChangedSeconds /
-                                  iCountChangedLatency
-                                ) > 0.7f
-                              )
+                          if (iCountChangedLatency >= iCountReducedLatency)
                           {
                             iTargetRenderLatency = 2;
 
