@@ -2605,14 +2605,12 @@ SK::Framerate::Limiter::wait (void)
                       if (iRenderLatency <= iTargetRenderLatency)
                       {
                         static int iCountReducedLatency = 0,
-                                   iCountChangedLatency = 0,
-                                   iCountChangedSeconds = 0;
+                                   iCountChangedLatency = 0;
 
                         if (dSeconds == dMaxSeconds)
                         {
                           iCountReducedLatency = 0;
                           iCountChangedLatency = 0;
-                          iCountChangedSeconds = 0;
                         }
 
                         static UINT        iLastRenderLatency = iRenderLatency;
@@ -2625,7 +2623,6 @@ SK::Framerate::Limiter::wait (void)
                           }
 
                           iCountChangedLatency++;
-                          iCountChangedSeconds++;
 
                           dSeconds += _FrametimeSeconds ();
                         }
@@ -2633,17 +2630,8 @@ SK::Framerate::Limiter::wait (void)
                         else if (iRenderLatency < iTargetRenderLatency)
                         {
                           iCountReducedLatency++;
-                          iCountChangedSeconds++;
 
-                          if (iCountReducedLatency != iCountChangedSeconds)
-                          {
-                            dSeconds = dMaxSeconds;
-                          }
-
-                          else
-                          {
-                            dSeconds += _FrametimeSeconds ();
-                          }
+                          dSeconds += _FrametimeSeconds ();
                         }
 
                         else
