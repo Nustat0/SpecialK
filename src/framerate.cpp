@@ -2602,17 +2602,79 @@ SK::Framerate::Limiter::wait (void)
 
                     else if (dSeconds >= dMaxSeconds)
                     {
-                      if (iRenderLatency < iTargetRenderLatency)
+                      SK_LOGi0 (
+                        L"Render Latency: %d",
+                        iRenderLatency
+                      );
+                      /*if (iRenderLatency <= iTargetRenderLatency)
                       {
-                        dSeconds += _FrametimeSeconds ();
+                        static int iCountReducedLatency = 0,
+                                   iCountChangedLatency = 0,
+                                   iCountChangedSeconds = 0;
+
+                        if (dSeconds == dMaxSeconds)
+                        {
+                          iCountReducedLatency = 0;
+                          iCountChangedLatency = 0;
+                          iCountChangedSeconds = 0;
+                        }
+
+                        static UINT        iLastRenderLatency = iRenderLatency;
+                        if (std::exchange (iLastRenderLatency,  iRenderLatency) !=
+                                                                iRenderLatency)
+                        {
+                          if (iRenderLatency < iTargetRenderLatency)
+                          {
+                            iCountReducedLatency++;
+                          }
+
+                          iCountChangedLatency++;
+                          iCountChangedSeconds++;
+
+                          dSeconds += _FrametimeSeconds ();
+                        }
+
+                        else if (iRenderLatency < iTargetRenderLatency)
+                        {
+                          iCountReducedLatency++;
+                          iCountChangedSeconds++;
+
+                          if (iCountReducedLatency != iCountChangedSeconds)
+                          {
+                            dSeconds = dMaxSeconds;
+                          }
+
+                          else
+                          {
+                            dSeconds += _FrametimeSeconds ();
+                          }
+                        }
+
+                        else
+                        {
+                          dSeconds = dMaxSeconds;
+                        }
 
                         if (dSeconds >= dMaxSeconds * 2.0)
                         {
-                          iTargetRenderLatency = 2;
+                          if (iCountChangedLatency >= iCountReducedLatency)
+                          {
+                            iTargetRenderLatency = 2;
 
-                          dSeconds = dMaxSeconds;
+                            dSeconds = dMaxSeconds;
+                          }
+
+                          else
+                          {
+                            dSeconds = 0.0;
+                          }
                         }
                       }
+
+                      else
+                      {
+                        dSeconds = dMaxSeconds;
+                      }*/
                     }
 
                     if (dSeconds < dMaxSeconds)
