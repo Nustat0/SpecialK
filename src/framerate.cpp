@@ -2602,62 +2602,16 @@ SK::Framerate::Limiter::wait (void)
 
                     else if (dSeconds >= dMaxSeconds)
                     {
-                      if (iRenderLatency <= iTargetRenderLatency)
+                      if (iRenderLatency < iTargetRenderLatency)
                       {
-                        static int iCountReducedLatency = 0,
-                                   iCountChangedLatency = 0;
-
-                        if (dSeconds == dMaxSeconds)
-                        {
-                          iCountReducedLatency = 0;
-                          iCountChangedLatency = 0;
-                        }
-
-                        static UINT        iLastRenderLatency = iRenderLatency;
-                        if (std::exchange (iLastRenderLatency,  iRenderLatency) !=
-                                                                iRenderLatency)
-                        {
-                          if (iRenderLatency < iTargetRenderLatency)
-                          {
-                            iCountReducedLatency++;
-                          }
-
-                          iCountChangedLatency++;
-
-                          dSeconds += _FrametimeSeconds ();
-                        }
-
-                        else if (iRenderLatency < iTargetRenderLatency)
-                        {
-                          iCountReducedLatency++;
-
-                          dSeconds += _FrametimeSeconds ();
-                        }
-
-                        else
-                        {
-                          dSeconds = dMaxSeconds;
-                        }
+                        dSeconds += _FrametimeSeconds ();
 
                         if (dSeconds >= dMaxSeconds * 2.0)
                         {
-                          if (iCountChangedLatency >= iCountReducedLatency)
-                          {
-                            iTargetRenderLatency = 2;
+                          iTargetRenderLatency = 2;
 
-                            dSeconds = dMaxSeconds;
-                          }
-
-                          else
-                          {
-                            dSeconds = 0.0;
-                          }
+                          dSeconds = dMaxSeconds;
                         }
-                      }
-
-                      else
-                      {
-                        dSeconds = dMaxSeconds;
                       }
                     }
 
