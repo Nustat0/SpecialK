@@ -2603,8 +2603,9 @@ SK::Framerate::Limiter::wait (void)
                     else if (dSeconds >= dMaxSeconds)
                     {
                       SK_LOGi0 (
-                        L"Render Latency: %d",
-                        iRenderLatency
+                        L"Render Latency: %d (Target: %d)",
+                        iRenderLatency,
+                        iTargetRenderLatency
                       );
                       /*if (iRenderLatency < iTargetRenderLatency)
                       {
