@@ -2602,18 +2602,21 @@ SK::Framerate::Limiter::wait (void)
 
                     else if (dSeconds >= dMaxSeconds)
                     {
-                      SK_LOGi0 (
-                        L"Render Latency: %d (Target: %d)",
-                        iRenderLatency,
-                        iTargetRenderLatency
-                      );
                       static UINT        iLastRenderLatency = iRenderLatency;
                       if (std::exchange (iLastRenderLatency,  iRenderLatency) ==
                                                               iRenderLatency)
                       {
-                        iTargetRenderLatency = 2;
+                        if (dSeconds > dMaxSeconds)
+                        {
+                          iTargetRenderLatency = 2;
 
-                        dSeconds = dMaxSeconds;
+                          dSeconds = dMaxSeconds;
+                        }
+
+                        else
+                        {
+                          dSeconds += _FrametimeSeconds ();
+                        }
                       }
 
                       else if (iRenderLatency < iTargetRenderLatency)
