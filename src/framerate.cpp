@@ -2672,7 +2672,7 @@ SK::Framerate::Limiter::wait (void)
               bool bFrameBecameStable = [&]() -> bool
               {
                 bool bIgnoreFrameBecameStable =
-                  bIsVRR;
+                  !bIsTrueFullscreen && bIsVRR;
 
                 if (bIgnoreFrameBecameStable)
                 {
@@ -3032,36 +3032,9 @@ SK::Framerate::Limiter::wait (void)
                         _ResetACTION ();
                       }
 
-                      if (bIsTrueFullscreen)
-                      {
-                        _EnableTearing (
-                          bIsTearingModeAdaptiveOn
-                        );
-                      }
-
-                      else
-                      {
-                        if (bIsTearingModeAdaptiveOff)
-                        {
-                          _EnableTearing (
-                            ( bIsPreRenderLimit1 &&
-                              bIsAboveRefresh     ) ||
-                            ( bIsUnstableFPS      )
-                          );
-                        }
-
-                        else if (bIsTearingModeAdaptiveOn)
-                        {
-                          _EnableTearing (
-                            ! bIsUnstableFPS
-                          );
-                        }
-
-                        else
-                        {
-                          _EnableTearing (false);
-                        }
-                      }
+                      _EnableTearing (
+                        bIsTearingModeAdaptiveOn
+                      );
 
                       if (! bIsNewACTION)
                       {
