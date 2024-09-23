@@ -2593,11 +2593,6 @@ SK::Framerate::Limiter::wait (void)
                       {
                         dSeconds = 0.0;
                       }
-
-                      else
-                      {
-                        dSeconds = dMaxSeconds;
-                      }
                     }
 
                     else if (dSeconds >= dMaxSeconds)
@@ -2606,24 +2601,14 @@ SK::Framerate::Limiter::wait (void)
                       if (std::exchange (iLastRenderLatency,  iRenderLatency) ==
                                                               iRenderLatency)
                       {
-                        if (dSeconds > dMaxSeconds)
-                        {
-                          iTargetRenderLatency = 2;
-
-                          dSeconds = dMaxSeconds;
-                        }
-
-                        else
-                        {
-                          dSeconds += _FrametimeSeconds ();
-                        }
+                        iLastRenderLatency = 0; iTargetRenderLatency = 2;
                       }
 
                       else if (iRenderLatency < iTargetRenderLatency)
                       {
                         dSeconds += _FrametimeSeconds ();
 
-                        if (dSeconds >= dMaxSeconds * 2.0)
+                        if (dSeconds >= dMaxSeconds + 0.5)
                         {
                           dSeconds = 0.0;
                         }
