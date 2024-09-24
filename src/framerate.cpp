@@ -2420,24 +2420,7 @@ SK::Framerate::Limiter::wait (void)
           bool bIsTearingModeAlwaysOff   =
             iTearingMode == SK_TearingMode::AlwaysOff;
 
-          bool bIsPreRenderLimit1 =
-            config.render.framerate.pre_render_limit == 1;
-
-          bool bIsTrueFullscreen  =
-            rb .isTrueFullscreen ();
-
-          bool bIsAboveRefresh    =    std::round (
-            fps / rb.getActiveRefreshRate ()
-          ) >= 2.0;
-
-          // TODO: Update this check when VRR status is detectable on all vendors
-          // -
-          // HighVariation/StuckInputLatency/FrameBecameStable should be ignored when VRR is active
-          // To preserve old behaviour, we are keeping regular "Always Off" mode unaffected for now
-          bool bIsVRR =
-            bIsTearingModeAlwaysOff;
-
-          bool bIsComposedPresentMode =
+          bool bIsComposedPresentMode    =
             rb.presentation.mode == SK_PresentMode::Composed_Composition_Atlas ||
             rb.presentation.mode == SK_PresentMode::Composed_Copy_GPU_GDI      ||
             rb.presentation.mode == SK_PresentMode::Composed_Copy_CPU_GDI      ||
@@ -2466,6 +2449,9 @@ SK::Framerate::Limiter::wait (void)
               bAbortACTION = true;
             }
 
+            bool bIsTrueFullscreen =
+              rb .isTrueFullscreen ();
+
             static bool        bWasTrueFullscreen = bIsTrueFullscreen;
             if (std::exchange (bWasTrueFullscreen,  bIsTrueFullscreen) !=
                                                     bIsTrueFullscreen)
@@ -2473,12 +2459,23 @@ SK::Framerate::Limiter::wait (void)
               bAbortACTION = true;
             }
 
+            bool bIsAboveRefresh = std::round (
+              fps / rb.getActiveRefreshRate ()
+            ) >= 2.0;
+
             static bool        bWasAboveRefresh = bIsAboveRefresh;
             if (std::exchange (bWasAboveRefresh,  bIsAboveRefresh) !=
                                                   bIsAboveRefresh)
             {
               bAbortACTION = true;
             }
+
+            // TODO: Update this check when VRR status is detectable on all vendors
+            // -
+            // HighVariation/StuckInputLatency/FrameBecameStable should be ignored when VRR is active
+            // To preserve old behaviour, we are keeping regular "Always Off" mode unaffected for now
+            bool bIsVRR =
+              bIsTearingModeAlwaysOff;
 
             static bool        bWasVRR = bIsVRR;
             if (std::exchange (bWasVRR,  bIsVRR) !=
@@ -2489,6 +2486,9 @@ SK::Framerate::Limiter::wait (void)
 
             if (! bAbortACTION)
             {
+              bool bIsPreRenderLimit1 =
+                config.render.framerate.pre_render_limit == 1;
+
               bool bHighVariation = [&]() -> bool
               {
                 bool bIgnoreHighVariation =
