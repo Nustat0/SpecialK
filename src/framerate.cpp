@@ -2426,11 +2426,15 @@ SK::Framerate::Limiter::wait (void)
             rb.presentation.mode == SK_PresentMode::Composed_Copy_CPU_GDI      ||
             rb.presentation.mode == SK_PresentMode::Composed_Flip;
 
-          if (! bIsTearingModeAdaptiveOn)
+          bool bRecoveredIndependentFlip = false;
+
+          static bool        bWasComposedPresentMode = bIsComposedPresentMode;
+          if (std::exchange (bWasComposedPresentMode,  bIsComposedPresentMode) &&
+                                                      !bIsComposedPresentMode)
           {
-            static bool        bWasComposedPresentMode = bIsComposedPresentMode;
-            if (std::exchange (bWasComposedPresentMode,  bIsComposedPresentMode) &&
-                                                        !bIsComposedPresentMode)
+            bRecoveredIndependentFlip = true;
+
+            if (! bIsTearingModeAdaptiveOn)
             {
               reset (true);
             }
@@ -2572,7 +2576,10 @@ SK::Framerate::Limiter::wait (void)
                     if (std::exchange (bWasHighRenderLatency,  bIsHighRenderLatency) &&
                                                               !bIsHighRenderLatency)
                     {
-                      dSeconds = 0.0;
+                      if (! bRecoveredIndependentFlip)
+                      {
+                        dSeconds = 0.0;
+                      }
                     }
 
                     else if (bIsHighRenderLatency)
