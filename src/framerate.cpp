@@ -2416,7 +2416,36 @@ SK::Framerate::Limiter::wait (void)
         (__SK_LatentSyncSwapTime / 2);
     }
 
-    auto _ManageTearing = [&]() -> void
+
+    wait_time.beginBusy ();
+
+    while (time_ < next_)
+    {
+      // SK's Multimedia Class Scheduling Task for this thread prevents
+      //   CPU starvation, but if the service is turned off, implement
+      //     a fail-safe for very low framerate limits.
+      if (! config.render.framerate.enable_mmcss)
+      {
+        const DWORD dwWaitMS =
+          sk::narrow_cast <DWORD> (
+            std::max (0.0, SK_RecalcTimeToNextFrame () * 1000.0)
+          );
+
+        // This is only practical @ 30 FPS or lower.
+        if (dwWaitMS > 4)
+          SK_SleepEx (1, FALSE);
+      }
+
+      SK_YieldProcessor (next_ - SK_QueryPerf ().QuadPart);
+
+      time_ =
+        SK_QueryPerf ().QuadPart;
+    }
+
+    wait_time.endBusy ();
+
+
+    auto _ManageTearing = [&]()
     {
       static constexpr int _MAX_FRAMES = 30;
 
@@ -3334,34 +3363,6 @@ SK::Framerate::Limiter::wait (void)
         } break;
       }
     }();
-
-
-    wait_time.beginBusy ();
-
-    while (time_ < next_)
-    {
-      // SK's Multimedia Class Scheduling Task for this thread prevents
-      //   CPU starvation, but if the service is turned off, implement
-      //     a fail-safe for very low framerate limits.
-      if (! config.render.framerate.enable_mmcss)
-      {
-        const DWORD dwWaitMS =
-          sk::narrow_cast <DWORD> (
-            std::max (0.0, SK_RecalcTimeToNextFrame () * 1000.0)
-          );
-
-        // This is only practical @ 30 FPS or lower.
-        if (dwWaitMS > 4)
-          SK_SleepEx (1, FALSE);
-      }
-
-      SK_YieldProcessor (next_ - SK_QueryPerf ().QuadPart);
-
-      time_ =
-        SK_QueryPerf ().QuadPart;
-    }
-
-    wait_time.endBusy ();
   }
 
   else [[unlikely]]
