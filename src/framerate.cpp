@@ -2243,209 +2243,7 @@ SK::Framerate::Limiter::wait (void)
     }
 
 
-    if (config.render.framerate.present_interval == 0 && ticks_per_scanline > 1)
-    {
-      __SK_LatentSyncSkip = static_cast <int> (
-        std::round (
-          fps / rb.getActiveRefreshRate ()
-        )
-      );
-
-      if ((! SK_LatentSync_AllowFrameSkip ()) || __SK_LatentSyncSkip < 2)
-      {
-        __SK_LatentSyncSkip = 0;
-      }
-
-      if (__scanline.lock.isPending ())
-      {
-        if (                        __SK_LatentSyncSkip  == 0 ||
-            (__SK_LatentSyncFrame % __SK_LatentSyncSkip) != 0)
-        {    __SK_LatentSyncFrame = __SK_LatentSyncSkip - 1;
-
-          double dTicksPerFrame = 0.0;
-
-          accum_per_frame =
-                  modf ( static_cast <double> (SK_PerfFreq) /
-                         static_cast <double> (fps),     &dTicksPerFrame );
-          ticks_per_frame  = sk::narrow_cast <ULONGLONG> (dTicksPerFrame);
-          ticks_per_frame +=
-            ( ticks_per_frame / ticks_per_refresh ) * config.render.framerate.latent_sync.scanline_error;
-
-          __SK_LatentSync_FrameInterval = ticks_per_frame;
-
-          // Update historical frametimes before restarting limiter
-          frames_of_fame.frames_measured.first.initClock  (__scanline.qpc_t0.QuadPart + __scanline.qpc_tL.QuadPart);
-          frames_of_fame.frames_measured.last.clock_val  = __scanline.qpc_t0.QuadPart + __scanline.qpc_tL.QuadPart;
-          frames_of_fame.frames_measured.first.initFrame  (frames);
-          frames_of_fame.frames_measured.last.frame_idx += frames;
-
-          // Re-sync would slide backwards and allow the limiter to run fast if we didn't handle this
-          while (__scanline.qpc_t0.QuadPart < next_ - ((ticks_per_refresh / 20) * 3)) // Allow moving the target back 15%, no more
-                 __scanline.qpc_t0.QuadPart +=          ticks_per_refresh;
-
-
-          LONGLONG llDelta =
-               (static_cast <LONGLONG> (pDisplay->signal.timing.total_size.cy) - __scanline.lock.target);
-
-          if (__scanline.lock.target < (pDisplay->signal.timing.total_size.cy / 2))
-          {
-            llDelta =
-              -__scanline.lock.target;
-          }
-
-          __scanline.qpc_t0.QuadPart +=
-              llDelta * ticks_per_scanline;
-
-
-          // Restart the limiter because we would drift otherwise
-          WriteRelease64 ( &frames, 0                               );
-          WriteRelease64 ( &start,  __scanline.qpc_t0.QuadPart + __scanline.qpc_tL.QuadPart );
-          WriteRelease64 ( &next,   __scanline.qpc_t0.QuadPart + __scanline.qpc_tL.QuadPart );
-
-          next_                   = __scanline.qpc_t0.QuadPart + __scanline.qpc_tL.QuadPart;
-
-
-          __SK_LatentSyncPostDelay =
-            (config.render.framerate.latent_sync.delay_bias == 0.0f) ? 0
-                                                                     :
-            static_cast <LONGLONG> (
-              static_cast <double> (ticks_per_frame) *
-                           config.render.framerate.latent_sync.delay_bias );
-
-          __scanline.lock.acquired = true;
-          __scanline.lock.resetSignals ();
-        }
-      }
-
-      else if (config.render.framerate.latent_sync.auto_bias)
-      {
-        static constexpr int _MAX_FRAMES = 6;
-
-        struct {
-          double input   [_MAX_FRAMES] = { };
-          double display [_MAX_FRAMES] = { };
-
-          int frames = 0;
-
-          double getInput (void) noexcept
-          {
-            double avg     = 0.0,
-                   samples = 0.0;
-
-            for (int i = 0; i < std::min (frames, _MAX_FRAMES); ++i)
-            {
-              ++samples; avg += input [i];
-            }
-
-            return
-              ( avg / samples );
-          }
-
-          double getDisplay (void) noexcept
-          {
-            double avg     = 0.0,
-                   samples = 0.0;
-
-            for (int i = 0; i < std::min (frames, _MAX_FRAMES); ++i)
-            {
-              ++samples; avg += display [i];
-            }
-
-            return
-              ( avg / samples );
-          }
-        } static latency_avg;
-
-        latency_avg.input   [latency_avg.frames   % _MAX_FRAMES] =
-          (1000.0 / get_limit           ()) -
-                    effective_frametime ();
-        latency_avg.display [latency_avg.frames++ % _MAX_FRAMES] =
-                    effective_frametime ();
-
-        float delta = 0.0f;
-
-        float auto_bias_target_ms      =
-          config.render.framerate.latent_sync.auto_bias_target.ms;
-
-        float auto_bias_target_percent =
-          config.render.framerate.latent_sync.auto_bias_target.percent;
-
-        if (auto_bias_target_percent > 0.0f)
-        {
-          auto_bias_target_ms = static_cast <float> (
-            (latency_avg.getInput () + latency_avg.getDisplay ()) * (1.0f - auto_bias_target_percent)
-          );
-        }
-
-        if (latency_avg.getInput () > (auto_bias_target_ms * 1.05f))
-        {
-          delta = (float)effective_frametime () * SK_LatentSyncDeltaMultiplier;
-
-          config.render.framerate.latent_sync.delay_bias =
-            SK_LatentSyncAlpha * config.render.framerate.latent_sync.delay_bias + (1.0f - SK_LatentSyncAlpha) * delta;
-        }
-
-        else if (latency_avg.getInput () < (auto_bias_target_ms * .95f))
-        {
-          delta = (float)effective_frametime () * SK_LatentSyncDeltaMultiplier * SK_LatentSyncBackOffMultiplier;
-
-          config.render.framerate.latent_sync.delay_bias =
-            SK_LatentSyncAlpha * config.render.framerate.latent_sync.delay_bias - (1.0f - SK_LatentSyncAlpha) * delta;
-          //config.render.framerate.latent_sync.delay_bias -= static_cast <float> (effective_frametime () * 0.000666);
-        }
-
-        config.render.framerate.latent_sync.delay_bias = std::clamp (
-          config.render.framerate.latent_sync.delay_bias,
-          0.0f,
-          auto_bias_target_percent <= 0.0f
-            ? config.render.framerate.latent_sync.max_auto_bias
-            : 1.0f
-        );
-
-        __SK_LatentSyncPostDelay =
-          (config.render.framerate.latent_sync.delay_bias == 0.0f) ? 0
-                                                                   :
-          static_cast <LONGLONG> (
-            static_cast <double> (get_ticks_per_frame ()) *
-                         config.render.framerate.latent_sync.delay_bias );
-      }
-
-      __SK_LatentSyncFrame++;
-
-      next_ -=
-        (__SK_LatentSyncSwapTime / 2);
-    }
-
-
-    wait_time.beginBusy ();
-
-    while (time_ < next_)
-    {
-      // SK's Multimedia Class Scheduling Task for this thread prevents
-      //   CPU starvation, but if the service is turned off, implement
-      //     a fail-safe for very low framerate limits.
-      if (! config.render.framerate.enable_mmcss)
-      {
-        const DWORD dwWaitMS =
-          sk::narrow_cast <DWORD> (
-            std::max (0.0, SK_RecalcTimeToNextFrame () * 1000.0)
-          );
-
-        // This is only practical @ 30 FPS or lower.
-        if (dwWaitMS > 4)
-          SK_SleepEx (1, FALSE);
-      }
-
-      SK_YieldProcessor (next_ - SK_QueryPerf ().QuadPart);
-
-      time_ =
-        SK_QueryPerf ().QuadPart;
-    }
-
-    wait_time.endBusy ();
-
-
-    auto _ManageTearing = [&]()
+    auto _ManageTearing = [&]() -> void
     {
       static constexpr int _MAX_FRAMES = 30;
 
@@ -3362,7 +3160,210 @@ SK::Framerate::Limiter::wait (void)
           }
         } break;
       }
-    }();
+    };
+
+    _ManageTearing ();
+
+    if (config.render.framerate.present_interval == 0 && ticks_per_scanline > 1)
+    {
+      __SK_LatentSyncSkip = static_cast <int> (
+        std::round (
+          fps / rb.getActiveRefreshRate ()
+        )
+      );
+
+      if ((! SK_LatentSync_AllowFrameSkip ()) || __SK_LatentSyncSkip < 2)
+      {
+        __SK_LatentSyncSkip = 0;
+      }
+
+      if (__scanline.lock.isPending ())
+      {
+        if (                        __SK_LatentSyncSkip  == 0 ||
+            (__SK_LatentSyncFrame % __SK_LatentSyncSkip) != 0)
+        {    __SK_LatentSyncFrame = __SK_LatentSyncSkip - 1;
+
+          double dTicksPerFrame = 0.0;
+
+          accum_per_frame =
+                  modf ( static_cast <double> (SK_PerfFreq) /
+                         static_cast <double> (fps),     &dTicksPerFrame );
+          ticks_per_frame  = sk::narrow_cast <ULONGLONG> (dTicksPerFrame);
+          ticks_per_frame +=
+            ( ticks_per_frame / ticks_per_refresh ) * config.render.framerate.latent_sync.scanline_error;
+
+          __SK_LatentSync_FrameInterval = ticks_per_frame;
+
+          // Update historical frametimes before restarting limiter
+          frames_of_fame.frames_measured.first.initClock  (__scanline.qpc_t0.QuadPart + __scanline.qpc_tL.QuadPart);
+          frames_of_fame.frames_measured.last.clock_val  = __scanline.qpc_t0.QuadPart + __scanline.qpc_tL.QuadPart;
+          frames_of_fame.frames_measured.first.initFrame  (frames);
+          frames_of_fame.frames_measured.last.frame_idx += frames;
+
+          // Re-sync would slide backwards and allow the limiter to run fast if we didn't handle this
+          while (__scanline.qpc_t0.QuadPart < next_ - ((ticks_per_refresh / 20) * 3)) // Allow moving the target back 15%, no more
+                 __scanline.qpc_t0.QuadPart +=          ticks_per_refresh;
+
+
+          LONGLONG llDelta =
+               (static_cast <LONGLONG> (pDisplay->signal.timing.total_size.cy) - __scanline.lock.target);
+
+          if (__scanline.lock.target < (pDisplay->signal.timing.total_size.cy / 2))
+          {
+            llDelta =
+              -__scanline.lock.target;
+          }
+
+          __scanline.qpc_t0.QuadPart +=
+              llDelta * ticks_per_scanline;
+
+
+          // Restart the limiter because we would drift otherwise
+          WriteRelease64 ( &frames, 0                               );
+          WriteRelease64 ( &start,  __scanline.qpc_t0.QuadPart + __scanline.qpc_tL.QuadPart );
+          WriteRelease64 ( &next,   __scanline.qpc_t0.QuadPart + __scanline.qpc_tL.QuadPart );
+
+          next_                   = __scanline.qpc_t0.QuadPart + __scanline.qpc_tL.QuadPart;
+
+
+          __SK_LatentSyncPostDelay =
+            (config.render.framerate.latent_sync.delay_bias == 0.0f) ? 0
+                                                                     :
+            static_cast <LONGLONG> (
+              static_cast <double> (ticks_per_frame) *
+                           config.render.framerate.latent_sync.delay_bias );
+
+          __scanline.lock.acquired = true;
+          __scanline.lock.resetSignals ();
+        }
+      }
+
+      else if (config.render.framerate.latent_sync.auto_bias)
+      {
+        static constexpr int _MAX_FRAMES = 6;
+
+        struct {
+          double input   [_MAX_FRAMES] = { };
+          double display [_MAX_FRAMES] = { };
+
+          int frames = 0;
+
+          double getInput (void) noexcept
+          {
+            double avg     = 0.0,
+                   samples = 0.0;
+
+            for (int i = 0; i < std::min (frames, _MAX_FRAMES); ++i)
+            {
+              ++samples; avg += input [i];
+            }
+
+            return
+              ( avg / samples );
+          }
+
+          double getDisplay (void) noexcept
+          {
+            double avg     = 0.0,
+                   samples = 0.0;
+
+            for (int i = 0; i < std::min (frames, _MAX_FRAMES); ++i)
+            {
+              ++samples; avg += display [i];
+            }
+
+            return
+              ( avg / samples );
+          }
+        } static latency_avg;
+
+        latency_avg.input   [latency_avg.frames   % _MAX_FRAMES] =
+          (1000.0 / get_limit           ()) -
+                    effective_frametime ();
+        latency_avg.display [latency_avg.frames++ % _MAX_FRAMES] =
+                    effective_frametime ();
+
+        float delta = 0.0f;
+
+        float auto_bias_target_ms      =
+          config.render.framerate.latent_sync.auto_bias_target.ms;
+
+        float auto_bias_target_percent =
+          config.render.framerate.latent_sync.auto_bias_target.percent;
+
+        if (auto_bias_target_percent > 0.0f)
+        {
+          auto_bias_target_ms = static_cast <float> (
+            (latency_avg.getInput () + latency_avg.getDisplay ()) * (1.0f - auto_bias_target_percent)
+          );
+        }
+
+        if (latency_avg.getInput () > (auto_bias_target_ms * 1.05f))
+        {
+          delta = (float)effective_frametime () * SK_LatentSyncDeltaMultiplier;
+
+          config.render.framerate.latent_sync.delay_bias =
+            SK_LatentSyncAlpha * config.render.framerate.latent_sync.delay_bias + (1.0f - SK_LatentSyncAlpha) * delta;
+        }
+
+        else if (latency_avg.getInput () < (auto_bias_target_ms * .95f))
+        {
+          delta = (float)effective_frametime () * SK_LatentSyncDeltaMultiplier * SK_LatentSyncBackOffMultiplier;
+
+          config.render.framerate.latent_sync.delay_bias =
+            SK_LatentSyncAlpha * config.render.framerate.latent_sync.delay_bias - (1.0f - SK_LatentSyncAlpha) * delta;
+          //config.render.framerate.latent_sync.delay_bias -= static_cast <float> (effective_frametime () * 0.000666);
+        }
+
+        config.render.framerate.latent_sync.delay_bias = std::clamp (
+          config.render.framerate.latent_sync.delay_bias,
+          0.0f,
+          auto_bias_target_percent <= 0.0f
+            ? config.render.framerate.latent_sync.max_auto_bias
+            : 1.0f
+        );
+
+        __SK_LatentSyncPostDelay =
+          (config.render.framerate.latent_sync.delay_bias == 0.0f) ? 0
+                                                                   :
+          static_cast <LONGLONG> (
+            static_cast <double> (get_ticks_per_frame ()) *
+                         config.render.framerate.latent_sync.delay_bias );
+      }
+
+      __SK_LatentSyncFrame++;
+
+      next_ -=
+        (__SK_LatentSyncSwapTime / 2);
+    }
+
+
+    wait_time.beginBusy ();
+
+    while (time_ < next_)
+    {
+      // SK's Multimedia Class Scheduling Task for this thread prevents
+      //   CPU starvation, but if the service is turned off, implement
+      //     a fail-safe for very low framerate limits.
+      if (! config.render.framerate.enable_mmcss)
+      {
+        const DWORD dwWaitMS =
+          sk::narrow_cast <DWORD> (
+            std::max (0.0, SK_RecalcTimeToNextFrame () * 1000.0)
+          );
+
+        // This is only practical @ 30 FPS or lower.
+        if (dwWaitMS > 4)
+          SK_SleepEx (1, FALSE);
+      }
+
+      SK_YieldProcessor (next_ - SK_QueryPerf ().QuadPart);
+
+      time_ =
+        SK_QueryPerf ().QuadPart;
+    }
+
+    wait_time.endBusy ();
   }
 
   else [[unlikely]]
