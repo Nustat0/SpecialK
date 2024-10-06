@@ -2277,7 +2277,8 @@ SK::Framerate::Limiter::wait (void)
       // Disable frame skipping in 2x.. mode if FPS is unstable
       if (bIsUnstableFPS)
       {
-        __SK_LatentSyncSkip = 0;
+        __SK_LatentSyncSkip =
+          SK_NoPreference;
       }
 
       static double dWaitSeconds = 0.0;
@@ -2463,7 +2464,8 @@ SK::Framerate::Limiter::wait (void)
         // Prefer tearing, only disable tearing if FPS is unstable
         case SK_TearingMode::AdaptiveOn:
         {
-          __SK_LatentSyncSkip = 0;
+          __SK_LatentSyncSkip =
+            SK_NoPreference;
         }
 
         // Prefer no tearing, only enable tearing if FPS is unstable or Render Latency exceeds 1 frame
@@ -3151,7 +3153,8 @@ SK::Framerate::Limiter::wait (void)
             {
               _EnableTearing ();
 
-              __SK_LatentSyncSkip = 0;
+              __SK_LatentSyncSkip =
+                SK_NoPreference;
             } break;
 
             default:
@@ -3166,11 +3169,14 @@ SK::Framerate::Limiter::wait (void)
 
     if (config.render.framerate.present_interval == 0 && ticks_per_scanline > 1)
     {
-      __SK_LatentSyncSkip = static_cast <int> (
-        std::round (
-          fps / rb.getActiveRefreshRate ()
-        )
-      );
+      if (__SK_LatentSyncSkip > SK_NoPreference)
+      {
+        __SK_LatentSyncSkip = static_cast <int> (
+          std::round (
+            fps / rb.getActiveRefreshRate ()
+          )
+        );
+      }
 
       if ((! SK_LatentSync_AllowFrameSkip ()) || __SK_LatentSyncSkip < 2)
       {
