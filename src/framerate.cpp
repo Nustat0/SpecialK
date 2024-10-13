@@ -3169,7 +3169,7 @@ SK::Framerate::Limiter::wait (void)
 
     if (config.render.framerate.present_interval == 0 && ticks_per_scanline > 1)
     {
-      if (__SK_LatentSyncSkip > SK_NoPreference)
+      if (__SK_LatentSyncSkip != SK_NoPreference)
       {
         __SK_LatentSyncSkip = static_cast <int> (
           std::round (
