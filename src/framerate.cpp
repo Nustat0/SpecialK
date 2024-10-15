@@ -2331,9 +2331,9 @@ SK::Framerate::Limiter::wait (void)
       bool bIsD3D9 =
         SK_API_IsDirect3D9 (rb.api);
 
-      if (config.render.framerate.present_interval != 0)
+      switch (config.render.framerate.present_interval)
       {
-        if (config.render.framerate.present_interval == SK_NoPreference)
+        case SK_NoPreference:
         {
           if ( rb.present_interval >= 1 ||
                rb.isTrueFullscreen ()   ||
@@ -2350,9 +2350,31 @@ SK::Framerate::Limiter::wait (void)
                 ? SK_TearingMode::AlwaysOn
                 : SK_TearingMode::AlwaysOff;
           }
-        }
+        } break;
 
-        else
+        case 0:
+        {
+          switch (config.render.framerate.tearing_mode)
+          {
+            case  SK_TearingMode::AdaptiveOn:
+            case  SK_TearingMode::AdaptiveOff:
+              if (bIsD3D9)
+              {
+                config.render.framerate.tearing_mode =
+                  SK_TearingMode::AlwaysOn;
+              }
+            case  SK_TearingMode::AlwaysOn:
+            case  SK_TearingMode::AlwaysOff:
+            case  SK_TearingMode::AlwaysOff_LowLatency:
+              break;
+            default:
+              config.render.framerate.tearing_mode =
+                  SK_TearingMode::AlwaysOn;
+              break;
+          }
+        } break;
+
+        default:
         {
           switch (config.render.framerate.tearing_mode)
           {
@@ -2370,29 +2392,7 @@ SK::Framerate::Limiter::wait (void)
                   SK_TearingMode::AlwaysOff;
               break;
           }
-        }
-      }
-
-      else
-      {
-        switch (config.render.framerate.tearing_mode)
-        {
-          case  SK_TearingMode::AdaptiveOn:
-          case  SK_TearingMode::AdaptiveOff:
-            if (bIsD3D9)
-            {
-              config.render.framerate.tearing_mode =
-                SK_TearingMode::AlwaysOn;
-            }
-          case  SK_TearingMode::AlwaysOn:
-          case  SK_TearingMode::AlwaysOff:
-          case  SK_TearingMode::AlwaysOff_LowLatency:
-            break;
-          default:
-            config.render.framerate.tearing_mode =
-                SK_TearingMode::AlwaysOn;
-            break;
-        }
+        } break;
       }
 
       int iTearingMode = config.render.framerate.tearing_mode;
