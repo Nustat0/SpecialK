@@ -4426,6 +4426,25 @@ GetWindowInfo_Detour (HWND hwnd, PWINDOWINFO pwi)
        pwi->cbSize == sizeof (WINDOWINFO) &&
        bRet )
   {
+    if (config.window.borderless)
+    {
+      pwi->cxWindowBorders = 0;
+      pwi->cyWindowBorders = 0;
+    }
+
+    // DXGI checks on this during SwapChain creation...
+    //   lie to DXGI if we have to, so that SwapCHain creation succeeds.
+    if (StrStrIW (SK_GetCallerName ().c_str (), L"dxgi.dll"))
+    {
+      pwi->dwExStyle &= ~WS_EX_TOPMOST;
+
+      if ( config.render.framerate.flip_discard ||
+           config.render.framerate.flip_sequential )
+      {
+        pwi->dwExStyle |= WS_EX_NOREDIRECTIONBITMAP;
+      }
+    }
+
     if (SK_WantBackgroundRender ())
     {
       if (hwnd == game_window.hWnd)
@@ -6138,8 +6157,9 @@ SK_DetourWindowProc ( _In_  HWND   hWnd,
       {
         ActivateWindow (hWnd, true, (HWND)wParam);
 
-        if (config.window.background_render        &&
-            config.input.keyboard.disabled_to_game != SK_InputEnablement::Disabled)
+        if ( ( config.window.background_render ||
+               config.window.fix_stuck_keys )  &&
+               config.input.keyboard.disabled_to_game != SK_InputEnablement::Disabled )
         {
           SK_Input_ReleaseCommonStuckKeys ();
         }
