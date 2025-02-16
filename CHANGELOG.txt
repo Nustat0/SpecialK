@@ -1,4 +1,22 @@
-﻿25.2.13
+﻿25.2.16.1
+=========
+ + Add 5 millisecond delay between each of the keys listed in 25.2.16;
+     seems to fix Avowed's menus not working correctly...
+
+25.2.16
+=======
+ + When "Continue Rendering" is enabled, generate fake key release events for
+     Tab, Escape, Alt, Ctrl, Shift, Windows after alt-tabbing back into a game
+       unless keyboard input is set to always block.
+
+    * This should help with games that think Alt, etc. are still down after
+        Alt-Tab when using background render mode.
+
+25.2.15
+=======
+ + Fix for Kingdom Come Deliverance 2 mouse cursor issues.
+
+25.2.13
 =======
  + Added BsSndRpt64.exe to internal injection blacklist; some kind of bs
      crash handler for Kingdom Come Deliverance 2.

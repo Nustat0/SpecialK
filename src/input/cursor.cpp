@@ -87,6 +87,9 @@ HCURSOR
 WINAPI
 SK_SendMsgSetCursor (HCURSOR hCursor)
 {
+  if (! config.input.ui.allow_set_cursor)
+    return SK_GetCursor ();
+
   if (game_window.hWnd != 0 && IsWindow (game_window.hWnd))
   {
     HCURSOR hLastCursor =
@@ -502,7 +505,8 @@ ImGuiCursor_Impl (void)
   {
     if (SK_ImGui_IsMouseRelevant ())
     {
-      SK_SendMsgSetCursor (0);
+      if (config.input.ui.allow_set_cursor)
+        SK_SendMsgSetCursor (0);
     }
 
     io.MouseDrawCursor = (! SK_ImGui_Cursor.idle) && (! SK_ImGui_IsHWCursorVisible);
@@ -534,6 +538,9 @@ sk_imgui_cursor_s::showSystemCursor (bool system)
 void
 sk_imgui_cursor_s::activateWindow (bool active)
 {
+  if (! config.input.ui.allow_set_cursor)
+    return;
+
   if (active && SK_ImGui_WantHWCursor ())
   {
     if (SK_ImGui_IsAnythingHovered ())//SK_ImGui_IsMouseRelevant ())
@@ -873,6 +880,9 @@ ImGui_ToggleCursor (void)
     // Restore the game's cursor
     static auto Send_WM_SETCURSOR = [&](void)
     {
+      if (! config.input.ui.allow_set_cursor)
+        return;
+
       SK_COMPAT_SafeCallProc (&game_window,
               game_window.hWnd,                       WM_SETCURSOR,
       (WPARAM)game_window.hWnd, MAKELPARAM (HTCLIENT, WM_MOUSEMOVE));
@@ -930,6 +940,9 @@ SK_SetCursor (
 {
   HCURSOR hCursorRet = SK_GetCursor ();
 
+  if (! config.input.ui.allow_set_cursor)
+    return hCursorRet;
+
   if (__SK_EnableSetCursor)
   {
     if (SetCursor_Original       != nullptr )
@@ -949,6 +962,12 @@ SetCursor_Detour (
   _In_opt_ HCURSOR hCursor )
 {
   SK_LOG_FIRST_CALL
+
+  if (! config.input.ui.allow_set_cursor)
+  {
+    return
+      SetCursor_Original (hCursor);
+  }
 
   if (hCursor != 0)
     SK_ImGui_Cursor.times_set++;
@@ -972,8 +991,11 @@ GetCursor_Detour (VOID)
 {
   SK_LOG_FIRST_CALL
 
-  //return
-  //  GetCursor_Original ();
+  if (! config.input.ui.allow_set_cursor)
+  {
+    return
+      GetCursor_Original ();
+  }
 
   static auto& io =
     ImGui::GetIO ();
@@ -1024,6 +1046,12 @@ WINAPI
 GetCursorInfo_Detour (PCURSORINFO pci)
 {
   SK_LOG_FIRST_CALL
+
+  if (! config.input.ui.allow_set_cursor)
+  {
+    return
+      SK_GetCursorInfo (pci);
+  }
 
   POINT pt  = pci->ptScreenPos;
   BOOL  ret = SK_GetCursorInfo (pci);
@@ -1343,7 +1371,7 @@ SK_Window_IsCursorActive (void)
 
 bool
 SK_Window_ActivateCursor (bool changed)
-{
+{    
   const bool was_active = last_mouse.cursor;
 
   if (! was_active)
@@ -1352,7 +1380,8 @@ SK_Window_ActivateCursor (bool changed)
     {
       if (SK_ImGui_WantHWCursor ())
       {
-        SK_SendMsgShowCursor (TRUE);
+        if (config.input.ui.allow_set_cursor)
+          SK_SendMsgShowCursor (TRUE);
       }
 
       else

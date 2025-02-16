@@ -5976,8 +5976,11 @@ SK_DetourWindowProc ( _In_  HWND   hWnd,
 
             __SK_EnableSetCursor = bOrig;
 
-            // For a very long time now, we've been handling this message WRONG, return 1 stupid!
-            return 1;
+            if (config.input.ui.allow_set_cursor)
+            {
+              // For a very long time now, we've been handling this message WRONG, return 1 stupid!
+              return 1;
+            }
           }
         }
       }
@@ -6134,6 +6137,12 @@ SK_DetourWindowProc ( _In_  HWND   hWnd,
       if (SK_Window_OnFocusChange (hWnd, (HWND)wParam))
       {
         ActivateWindow (hWnd, true, (HWND)wParam);
+
+        if (config.window.background_render        &&
+            config.input.keyboard.disabled_to_game != SK_InputEnablement::Disabled)
+        {
+          SK_Input_ReleaseCommonStuckKeys ();
+        }
 
         // GeForce Experience Overlay is known to paradoxically set
         //   hWnd == wParam when it activates...
@@ -8630,7 +8639,12 @@ SK_Win32_BackgroundWndProc (HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_SETCURSOR:
       if (game_window.active)
       {
-        SetCursor (NULL);
+        if (       GetCurrentThreadId () !=
+             GetWindowThreadProcessId (game_window.hWnd, nullptr) )
+        {
+          SetCursor (NULL);
+        }
+
         return TRUE;
       }
   }
