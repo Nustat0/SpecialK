@@ -394,9 +394,6 @@ SK_ImGui_LatentSyncConfig (void)
                                   pDisplay->signal.timing.total_size.cy / 3,
                                     "%d Scanlines" );
 
-      auto *pLimiter         =
-        SK::Framerate::GetLimiter (rb.swapchain);
-
       auto _DelayBiasPercent = [&]() -> int
       {
         return static_cast <int> (
@@ -413,19 +410,16 @@ SK_ImGui_LatentSyncConfig (void)
 
       if (config.render.framerate.latent_sync.auto_bias)
       {
-        static double dMilliseconds = 0.0;
+        static DWORD
+          dwLastTime = 0;
 
-        dMilliseconds += std::max (
-          1000.0 / pLimiter->get_limit  (),
-          pLimiter->effective_frametime ()
-        );
-
-        if (dMilliseconds >= 200.0)
+        if (SK_timeGetTime () - dwLastTime >= 200)
         {
           iDelayBiasPercent =
           _DelayBiasPercent ();
 
-          dMilliseconds = 0.0;
+          dwLastTime =
+            SK_timeGetTime  ();
         }
 
         ImGui::PushItemFlag (
@@ -518,6 +512,9 @@ SK_ImGui_LatentSyncConfig (void)
       {
         ImGui::PopItemFlag     (  );
       }
+
+      auto *pLimiter =
+        SK::Framerate::GetLimiter (rb.swapchain);
 
       static constexpr int _MAX_FRAMES = 30;
 
@@ -2102,11 +2099,6 @@ SK::Framerate::Limiter::wait (void)
             0.0  );
     };
 
-  auto _FrametimeSeconds = [&]() -> double
-  {
-    return std::max (effective_ms, ms) / 1000.0;
-  };
-
   if (next_ > 0LL)
   {
     // Flush batched commands before zonking this thread off
@@ -2328,6 +2320,23 @@ SK::Framerate::Limiter::wait (void)
 
       static double dWaitSeconds = 0.0;
 
+      auto _GetTimeDiffInSeconds = [&](bool bReset = false) -> double
+      {
+        static DWORD
+          dwLastTime = 0;
+
+        if (bReset)
+        {
+          dwLastTime =
+            SK_timeGetTime ();
+
+          return dWaitSeconds = 0.0;
+        }
+
+        return static_cast <double> ( SK_timeGetTime () -
+          std::exchange ( dwLastTime, SK_timeGetTime () ) ) / 1000.0;
+      };
+
       // TODO: Adaptive Tearing causes frame drops in HW Legacy Flip
       // -
       // Remove ACTION_FrameBecameStable when it's possible to change
@@ -2347,8 +2356,9 @@ SK::Framerate::Limiter::wait (void)
            ACTION_None;
         }
 
+        _GetTimeDiffInSeconds (true);
+
         __target_fps_temp = 0.0f;
-             dWaitSeconds = 0.00;
       };
 
       auto _EnableTearing = [&](bool bEnableTearing = true) -> void
@@ -2489,7 +2499,7 @@ SK::Framerate::Limiter::wait (void)
           static bool bIsTearingD3D9 =
                       _IsTearingD3D9 ();
 
-          dSeconds += _FrametimeSeconds ();
+          dSeconds += _GetTimeDiffInSeconds ();
 
           if (dSeconds >= dMaxSeconds)
           {
@@ -2579,7 +2589,7 @@ SK::Framerate::Limiter::wait (void)
 
               if (dSeconds < 1.5)
               {
-                dSeconds += _FrametimeSeconds ();
+                dSeconds += _GetTimeDiffInSeconds ();
 
                 if ( bIsTearingModeAdaptiveOff &&
                      bIsUnstableFPS            )
@@ -2773,7 +2783,7 @@ SK::Framerate::Limiter::wait (void)
                     {
                       if (iRenderLatency < iTargetRenderLatency)
                       {
-                        dSeconds += _FrametimeSeconds ();
+                        dSeconds += _GetTimeDiffInSeconds ();
 
                         if (dSeconds > dMaxSeconds + 0.5)
                         {
@@ -2803,9 +2813,9 @@ SK::Framerate::Limiter::wait (void)
                       }
 
                       dSeconds = std::min (
-                        _FrametimeSeconds () +
-                           dSeconds,
-                        dMaxSeconds
+                        _GetTimeDiffInSeconds () +
+                                     dSeconds,
+                                  dMaxSeconds
                       );
 
                       return false;
@@ -2967,7 +2977,7 @@ SK::Framerate::Limiter::wait (void)
 
                       if (! bStopWait)
                       {
-                        if (dWaitSeconds < 0.0)
+                        if (std::signbit (dWaitSeconds))
                         {
                           if (std::abs (dWaitSeconds) >= dMaxWaitSeconds / 1.5)
                           {
@@ -2976,7 +2986,7 @@ SK::Framerate::Limiter::wait (void)
 
                           else
                           {
-                            dWaitSeconds -= _FrametimeSeconds ();
+                            dWaitSeconds -= _GetTimeDiffInSeconds ();
                           }
                         }
 
@@ -2998,7 +3008,7 @@ SK::Framerate::Limiter::wait (void)
 
                             else
                             {
-                              dWaitSeconds += _FrametimeSeconds ();
+                              dWaitSeconds += _GetTimeDiffInSeconds ();
                             }
                           }
                         }
@@ -3013,7 +3023,7 @@ SK::Framerate::Limiter::wait (void)
                       {
                         if (bFirstTry)
                         {
-                          dWaitSeconds = -_FrametimeSeconds ();
+                          dWaitSeconds = -0.0;
                         }
 
                         else
@@ -3083,7 +3093,7 @@ SK::Framerate::Limiter::wait (void)
 
                         else if (dWaitSeconds < dMaxWaitSeconds + 0.05)
                         {
-                          dWaitSeconds += _FrametimeSeconds ();
+                          dWaitSeconds += _GetTimeDiffInSeconds ();
 
                           bHighRenderLatency = true;
                         }
@@ -3097,7 +3107,7 @@ SK::Framerate::Limiter::wait (void)
 
                       if (! bStopWait)
                       {
-                        if (dWaitSeconds < 0.0)
+                        if (std::signbit (dWaitSeconds))
                         {
                           if (std::abs (dWaitSeconds) >= 1.0)
                           {
@@ -3106,7 +3116,7 @@ SK::Framerate::Limiter::wait (void)
 
                           else
                           {
-                            dWaitSeconds -= _FrametimeSeconds ();
+                            dWaitSeconds -= _GetTimeDiffInSeconds ();
                           }
                         }
 
@@ -3137,7 +3147,7 @@ SK::Framerate::Limiter::wait (void)
 
                               else
                               {
-                                dWaitSeconds += _FrametimeSeconds ();
+                                dWaitSeconds += _GetTimeDiffInSeconds ();
                               }
                             }
                           }
@@ -3150,7 +3160,7 @@ SK::Framerate::Limiter::wait (void)
 
                             if (! bStopWait)
                             {
-                              dWaitSeconds += _FrametimeSeconds ();
+                              dWaitSeconds += _GetTimeDiffInSeconds ();
                             }
                           }
                         }
@@ -3166,7 +3176,7 @@ SK::Framerate::Limiter::wait (void)
                         // Avoid rapid Render Latency changes
                         if (bFirstTry && ! (SK_RenderBackend_V2::latency.stale || bIsAboveRefresh))
                         {
-                          dWaitSeconds = -_FrametimeSeconds ();
+                          dWaitSeconds = -0.0;
                         }
 
                         else if (bDontTear)
@@ -3184,7 +3194,7 @@ SK::Framerate::Limiter::wait (void)
                       dWaitSeconds = dMaxWaitSeconds;
                     }
 
-                    if (dWaitSeconds < 0.0)
+                    if (std::signbit (dWaitSeconds))
                     {
                       bDontTear = true;
                     }
@@ -3229,7 +3239,7 @@ SK::Framerate::Limiter::wait (void)
 
                       if (! bStopWait)
                       {
-                        if (dWaitSeconds < 0.0)
+                        if (std::signbit (dWaitSeconds))
                         {
                           if (std::abs (dWaitSeconds) >= 1.0)
                           {
@@ -3238,7 +3248,7 @@ SK::Framerate::Limiter::wait (void)
 
                           else
                           {
-                            dWaitSeconds -= _FrametimeSeconds ();
+                            dWaitSeconds -= _GetTimeDiffInSeconds ();
                           }
                         }
 
@@ -3260,7 +3270,7 @@ SK::Framerate::Limiter::wait (void)
 
                             else
                             {
-                              dWaitSeconds += _FrametimeSeconds ();
+                              dWaitSeconds += _GetTimeDiffInSeconds ();
                             }
                           }
                         }
@@ -3275,7 +3285,7 @@ SK::Framerate::Limiter::wait (void)
                       {
                         if (bFirstTry)
                         {
-                          dWaitSeconds = -_FrametimeSeconds ();
+                          dWaitSeconds = -0.0;
                         }
 
                         else
@@ -3325,7 +3335,7 @@ SK::Framerate::Limiter::wait (void)
 
                       else
                       {
-                        dWaitSeconds += _FrametimeSeconds ();
+                        dWaitSeconds += _GetTimeDiffInSeconds ();
                       }
                     }
 
@@ -3616,19 +3626,33 @@ SK::Framerate::Limiter::wait (void)
         D3DKMTGetScanLine = SK_GetProcAddress (L"gdi32.dll",
        "D3DKMTGetScanLine");
 
-    static bool   bSync = true; // First time signals resync
-    static double dSync = 0.00;
+    static bool bSync = true; // First time signals resync
 
     if (config.render.framerate.latent_sync.scanline_resync != 0.0f)
     {
+      static double
+             dSync = 0.0;
+
+      static DWORD
+        dwLastTime = 0;
+
       bool bResyncInSeconds =
         config.render.framerate.latent_sync.scanline_resync > 0.0f;
 
-      if (! bResyncInSeconds)
+      if (bResyncInSeconds)
       {
-        config.render.framerate.latent_sync.scanline_resync = std::floor (
-          config.render.framerate.latent_sync.scanline_resync
-        );
+        dSync = static_cast <double> (
+          SK_timeGetTime () -
+              dwLastTime
+        ) / 1000.0;
+      }
+
+      else
+      {
+        dSync++;
+
+        config.render.framerate.latent_sync.scanline_resync = std::floor
+       (config.render.framerate.latent_sync.scanline_resync);
       }
 
       float fResync = fabs (
@@ -3641,11 +3665,16 @@ SK::Framerate::Limiter::wait (void)
         fResync *= bResyncInSeconds ? 10.0f : 50.0f;
       }
 
-      dSync += bResyncInSeconds ? _FrametimeSeconds () : 1.0;
-
       if (static_cast <float> (dSync) >= fResync)
       {
         bSync = true;
+        dSync = 0.00;
+
+        if (bResyncInSeconds)
+        {
+          dwLastTime =
+            SK_timeGetTime ();
+        }
       }
     }
 
@@ -3742,7 +3771,6 @@ SK::Framerate::Limiter::wait (void)
                         __scanline.qpc_t0.QuadPart =       tReturn - __scanline.lock.margin;
 
                         bSync = false;
-                        dSync = 0.000;
 
                         __scanline.lock.notifyAcquired ();
 
