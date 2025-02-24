@@ -1061,6 +1061,7 @@ struct sk_config_t
       int     use_sharpening      = SK_NoPreference;
       float   forced_sharpness    =   0.0f;
       int     forced_multiframe   = SK_NoPreference;
+      bool    allow_flip_metering =  false;
       struct {
         float performance         =   0.0f;
         float balanced            =   0.0f;
