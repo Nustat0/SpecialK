@@ -3630,7 +3630,7 @@ SK_BeginBufferSwapEx (BOOL bWaitOnFail)
 
   else if (rb.swapchain.p != nullptr)
   {
-    latency.submitQueuedFrame ((IDXGISwapChain1*)rb.swapchain.p);
+    rb.latency.submitQueuedFrame ((IDXGISwapChain1*)rb.swapchain.p);
   }
 
   if (config.render.framerate.enforcement_policy == 0 && rb.swapchain.p != nullptr)
