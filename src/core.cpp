@@ -3621,8 +3621,17 @@ SK_BeginBufferSwapEx (BOOL bWaitOnFail)
     SK_D3D12_BeginFrame ();
   }
 
-  rb.driverSleepNV      (0);
-  rb.setLatencyMarkerNV (RENDERSUBMIT_END);
+  rb.driverSleepNV (0);
+
+  if (rb.isReflexSupported ())
+  {
+    rb.setLatencyMarkerNV (RENDERSUBMIT_END);
+  }
+
+  else if (rb.swapchain.p != nullptr)
+  {
+    latency.submitQueuedFrame ((IDXGISwapChain1*)rb.swapchain.p);
+  }
 
   if (config.render.framerate.enforcement_policy == 0 && rb.swapchain.p != nullptr)
   {
