@@ -720,6 +720,8 @@ struct sk_config_t
       int     pin_render_thread   = SK_NoPreference;
       int     tearing_mode        = SK_TearingMode::AppControlled;
       bool    turn_vsync_off      = false; // Turns VSync Off in Adaptive VSync mode
+      bool    dynamic_limiter     = false;
+      bool    dynamic_limiter_vrr = false;
       bool    flip_discard        =  true; // Enabled by default (7/6/21)
       bool    flip_sequential     = false;
       bool    disable_flip        = false;

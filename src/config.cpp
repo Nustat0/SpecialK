@@ -867,6 +867,8 @@ struct {
     sk::ParameterInt*     present_interval        = nullptr;
     sk::ParameterInt*     sync_interval_clamp     = nullptr;
     sk::ParameterInt*     tearing_mode            = nullptr;
+    sk::ParameterBool*    dynamic_limiter         = nullptr;
+    sk::ParameterBool*    dynamic_limiter_vrr     = nullptr;
     sk::ParameterInt*     buffer_count            = nullptr;
     sk::ParameterInt*     max_delta_time          = nullptr;
     sk::ParameterBool*    flip_discard            = nullptr;
@@ -1964,6 +1966,8 @@ auto DeclKeybind =
     ConfigEntry (render.framerate.present_interval,      L"Presentation Interval (VSYNC)",                             dll_ini,         L"Render.FrameRate",      L"PresentationInterval"),
     ConfigEntry (render.framerate.sync_interval_clamp,   L"Maximum Sync Interval (Clamp VSYNC)",                       dll_ini,         L"Render.FrameRate",      L"SyncIntervalClamp"),
     ConfigEntry (render.framerate.tearing_mode,          L"Tearing Mode (Always On/Off or Adaptive)",                  dll_ini,         L"Render.FrameRate",      L"TearingMode"),
+    ConfigEntry (render.framerate.dynamic_limiter,       L"Dynamic Frame Limiter",                                     dll_ini,         L"Render.FrameRate",      L"DynamicLimiter"),
+    ConfigEntry (render.framerate.dynamic_limiter_vrr,   L"Dynamic Frame Limiter mode (VRR or double-buffered VSYNC)", dll_ini,         L"Render.FrameRate",      L"DynamicLimiterVRR"),
     ConfigEntry (render.framerate.prerender_limit,       L"Maximum Frames to Render-Ahead",                            dll_ini,         L"Render.FrameRate",      L"PreRenderLimit"),
     ConfigEntry (render.framerate.sleepless_render,      L"Sleep Free Render Thread",                                  dll_ini,         L"Render.FrameRate",      L"SleeplessRenderThread"),
     ConfigEntry (render.framerate.sleepless_window,      L"Sleep Free Window Thread",                                  dll_ini,         L"Render.FrameRate",      L"SleeplessWindowThread"),
@@ -4503,6 +4507,7 @@ auto DeclKeybind =
   render.framerate.present_interval->load    (config.render.framerate.present_interval);
   render.framerate.sync_interval_clamp->load (config.render.framerate.sync_interval_clamp);
   render.framerate.tearing_mode->load        (config.render.framerate.tearing_mode);
+  render.framerate.dynamic_limiter->load     (config.render.framerate.dynamic_limiter);
 
   if (render.framerate.refresh_rate)
   {
@@ -6701,6 +6706,7 @@ SK_SaveConfig ( std::wstring name,
     render.framerate.present_interval->store      (config.render.framerate.present_interval);
     render.framerate.sync_interval_clamp->store   (config.render.framerate.sync_interval_clamp);
     render.framerate.tearing_mode->store          (config.render.framerate.tearing_mode);
+    render.framerate.dynamic_limiter->store       (config.render.framerate.dynamic_limiter);
     render.framerate.enforcement_policy->store    (config.render.framerate.enforcement_policy);
     render.framerate.enable_etw_tracing->store    (config.render.framerate.enable_etw_tracing);
 
