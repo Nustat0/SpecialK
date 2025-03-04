@@ -3178,7 +3178,17 @@ SK::Framerate::Limiter::wait (void)
 
                           if (! bStopWait)
                           {
-                            bIsNewACTION = true;
+                            if ( dwWaitTime >=
+                                 dwMaxWaitTime + 750 )
+                            {
+                              bIsNewACTION = true;
+                            }
+
+                            else
+                            {
+                              __target_fps_temp =
+                              __target_fps - 2.0f;
+                            }
                           }
                         }
                       }
