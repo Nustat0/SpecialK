@@ -3278,13 +3278,14 @@ SK::Framerate::Limiter::wait (void)
 
         default:
         {
-          if (config.render.framerate.dynamic_limiter)
+          if ( config.render.framerate.limiter_mode == SK_LimiterMode::DynamicLimiter_VRR ||
+               config.render.framerate.limiter_mode == SK_LimiterMode::DynamicLimiter     )
           {
             double dMaxInput = latency_avg.getMaxInput ();
 
             if (dMaxInput < 0.0)
             {
-              if (config.render.framerate.dynamic_limiter_vrr)
+              if (config.render.framerate.limiter_mode == SK_LimiterMode::DynamicLimiter_VRR)
               {
                 __target_fps_temp = static_cast <float> (
                   1000.0 / (ms - dMaxInput)
@@ -3293,14 +3294,12 @@ SK::Framerate::Limiter::wait (void)
 
               else
               {
-                double dTargetFPS = static_cast <double> (
-                  __target_fps
-                );
+                double dRefresh =
+                  rb.getActiveRefreshRate ();
 
                 __target_fps_temp = static_cast <float> (
-                  dTargetFPS / std::ceil (
-                    dTargetFPS / (1000.0 / (ms - dMaxInput))
-                  )
+                  dRefresh / std::ceil
+                 (dRefresh / (1000.0 / (ms - dMaxInput)))
                 );
               }
 
