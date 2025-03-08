@@ -119,6 +119,13 @@ enum SK_TearingMode
   AppControlled        = SK_NoPreference
 };
 
+enum SK_LimiterMode
+{
+  RegularLimiter     = 0,
+  DynamicLimiter     = 1,
+  DynamicLimiter_VRR = 2
+};
+
 struct sk_config_t
 {
   sk_config_t (void)
@@ -719,6 +726,7 @@ struct sk_config_t
       int     refresh_denom       =     1;
       int     pin_render_thread   = SK_NoPreference;
       int     tearing_mode        = SK_TearingMode::AppControlled;
+      int     limiter_mode        = SK_LimiterMode::RegularLimiter;
       bool    turn_vsync_off      = false; // Turns VSync Off in Adaptive VSync mode
       bool    flip_discard        =  true; // Enabled by default (7/6/21)
       bool    flip_sequential     = false;

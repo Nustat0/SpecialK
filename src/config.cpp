@@ -867,6 +867,7 @@ struct {
     sk::ParameterInt*     present_interval        = nullptr;
     sk::ParameterInt*     sync_interval_clamp     = nullptr;
     sk::ParameterInt*     tearing_mode            = nullptr;
+    sk::ParameterInt*     limiter_mode            = nullptr;
     sk::ParameterInt*     buffer_count            = nullptr;
     sk::ParameterInt*     max_delta_time          = nullptr;
     sk::ParameterBool*    flip_discard            = nullptr;
@@ -1964,6 +1965,7 @@ auto DeclKeybind =
     ConfigEntry (render.framerate.present_interval,      L"Presentation Interval (VSYNC)",                             dll_ini,         L"Render.FrameRate",      L"PresentationInterval"),
     ConfigEntry (render.framerate.sync_interval_clamp,   L"Maximum Sync Interval (Clamp VSYNC)",                       dll_ini,         L"Render.FrameRate",      L"SyncIntervalClamp"),
     ConfigEntry (render.framerate.tearing_mode,          L"Tearing Mode (Always On/Off or Adaptive)",                  dll_ini,         L"Render.FrameRate",      L"TearingMode"),
+    ConfigEntry (render.framerate.limiter_mode,          L"Limiter Mode (Regular or Dynamic)",                         dll_ini,         L"Render.FrameRate",      L"LimiterMode"),
     ConfigEntry (render.framerate.prerender_limit,       L"Maximum Frames to Render-Ahead",                            dll_ini,         L"Render.FrameRate",      L"PreRenderLimit"),
     ConfigEntry (render.framerate.sleepless_render,      L"Sleep Free Render Thread",                                  dll_ini,         L"Render.FrameRate",      L"SleeplessRenderThread"),
     ConfigEntry (render.framerate.sleepless_window,      L"Sleep Free Window Thread",                                  dll_ini,         L"Render.FrameRate",      L"SleeplessWindowThread"),
@@ -4503,6 +4505,7 @@ auto DeclKeybind =
   render.framerate.present_interval->load    (config.render.framerate.present_interval);
   render.framerate.sync_interval_clamp->load (config.render.framerate.sync_interval_clamp);
   render.framerate.tearing_mode->load        (config.render.framerate.tearing_mode);
+  render.framerate.limiter_mode->load        (config.render.framerate.limiter_mode);
 
   if (render.framerate.refresh_rate)
   {
@@ -6707,6 +6710,7 @@ SK_SaveConfig ( std::wstring name,
     render.framerate.present_interval->store      (config.render.framerate.present_interval);
     render.framerate.sync_interval_clamp->store   (config.render.framerate.sync_interval_clamp);
     render.framerate.tearing_mode->store          (config.render.framerate.tearing_mode);
+    render.framerate.limiter_mode->store          (config.render.framerate.limiter_mode);
     render.framerate.enforcement_policy->store    (config.render.framerate.enforcement_policy);
     render.framerate.enable_etw_tracing->store    (config.render.framerate.enable_etw_tracing);
 

@@ -3294,7 +3294,39 @@ SK::Framerate::Limiter::wait (void)
 
         default:
         {
-          _RevertACTION (true);
+          if ( config.render.framerate.limiter_mode == SK_LimiterMode::DynamicLimiter_VRR ||
+               config.render.framerate.limiter_mode == SK_LimiterMode::DynamicLimiter     )
+          {
+            double dMaxInput = latency_avg.getMaxInput ();
+
+            if (dMaxInput < 0.0)
+            {
+              if (config.render.framerate.limiter_mode == SK_LimiterMode::DynamicLimiter_VRR)
+              {
+                __target_fps_temp = static_cast <float> (
+                  1000.0 / (ms - dMaxInput)
+                );
+              }
+
+              else
+              {
+                double dRefresh =
+                  rb.getActiveRefreshRate ();
+
+                __target_fps_temp = static_cast <float> (
+                  dRefresh / std::ceil
+                 (dRefresh / (1000.0 / (ms - dMaxInput)))
+                );
+              }
+
+              __target_fps_temp -= 0.1f;
+            }
+          }
+
+          else
+          {
+            _RevertACTION (true);
+          }
 
           switch (iTearingMode)
           {
