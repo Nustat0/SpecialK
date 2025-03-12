@@ -4228,7 +4228,7 @@ SK_EndBufferSwap (HRESULT hr, IUnknown* device, SK_TLS* pTLS)
 
   rb.driverSleepNV (1);
 
-  if (config.render.framerate.enforcement_policy == 2)
+  if (config.render.framerate.enforcement_policy == 2 && rb.swapchain.p != nullptr)
   {
     _FrameTick ();
   }
