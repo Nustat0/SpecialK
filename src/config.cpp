@@ -3383,6 +3383,8 @@ auto DeclKeybind =
         apis.OpenGL.hook->store (config.apis.OpenGL.hook);
         config.apis.dxgi.d3d11.hook                =  true;
         config.apis.dxgi.d3d12.hook                =  true;
+        config.render.framerate.sleepless_render   = false;
+        config.render.framerate.sleepless_window   =  true;
         config.window.background_render            =  true; // Workaround focus lost behavior
         config.window.treat_fg_as_active           =  true;
         // Necessary hack for frame generation to work...
@@ -3391,7 +3393,7 @@ auto DeclKeybind =
                                                    =  true;
         config.render.framerate.streamline.enforcement_policy
                                                    =     2;
-      //// This is permissable if native pacing is enabled.
+        //// This is permissable if native pacing is enabled.
         config.nvidia.dlss.allow_flip_metering     =  true;
         config.compatibility.disallow_ll_keyhook   =  true;
 

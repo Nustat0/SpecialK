@@ -1869,10 +1869,13 @@ void*         __SK_ACS_FrameGenTestAddr         = nullptr;
 bool
 SK_ACS_ApplyFrameGenOverride (bool enable)
 {
+  static uintptr_t base_addr =
+    (uintptr_t)SK_Debug_GetImageBaseAddr ();
+
   if (__SK_ACS_OriginalFrameGenCode [0] == 0x0)
   {
     __SK_ACS_FrameGenTestAddr =
-      (void *)((uintptr_t)SK_Debug_GetImageBaseAddr () + 0x3397C56);
+      (void *)(base_addr + 0x3397C56);
 
     if (__SK_ACS_FrameGenTestAddr != nullptr)
     {
@@ -1898,19 +1901,16 @@ SK_ACS_ApplyFrameGenOverride (bool enable)
     DWORD                                                                      dwOrigProt = 0x0;
     if (VirtualProtect (__SK_ACS_FrameGenTestAddr, 4, PAGE_EXECUTE_READWRITE, &dwOrigProt))
     {
-      //auto suspended =
-      //  SK_SuspendAllOtherThreads ();
-
-      bool* pFrameGenEnabled = *(bool **)((uintptr_t)SK_Debug_GetImageBaseAddr () + 0x0B0AF3C8) + 0x24;
-                           if (enable)
-           *pFrameGenEnabled = enable;
+      bool* pFrameGenEnabled =
+        *(bool **)(base_addr + 0x0B0AF3C8) + 0x24;
 
       memcpy           (__SK_ACS_FrameGenTestAddr, enable ? (unsigned char *)"\x90\x90\x90\x90"
                                                           :                  __SK_ACS_OriginalFrameGenCode, 4);
       VirtualProtect   (__SK_ACS_FrameGenTestAddr,  4, dwOrigProt,
                                                       &dwOrigProt);
 
-      //SK_ResumeThreads (suspended);
+      if (                  enable)
+        *pFrameGenEnabled = enable;
 
       return enable;
     }
@@ -1970,6 +1970,25 @@ SK_ACS_PlugInCfg (void)
         {
           _SK_ACS_DLSSG_MultiFrameCount->store (__SK_ACS_DLSSG_MultiFrameCount);
         }
+      }
+
+      if (ImGui::Checkbox ("Allow DLSS Flip Metering", &config.nvidia.dlss.allow_flip_metering))
+      {
+        config.utility.save_async ();
+
+        restart_required = true;
+      }
+
+      if (ImGui::BeginItemTooltip ())
+      {
+        ImGui::TextUnformatted ("Generate DLSS4 Frames Early and Use Hardware Flip Queue to Pace their Presentation");
+        ImGui::Separator       (  );
+        ImGui::BulletText      ("SK's overlay will appear blurred for rapidly changing text, but frame generation smoothness is improved.");
+        ImGui::BulletText      ("Disabling helps software that cannot tell generated and real frames apart (i.e. RTSS), but is discouraged.");
+        ImGui::BulletText      ("Use Special K's \"Native Pacing\" DLSS Frame Generation mode when Flip Metering is enabled.");
+        ImGui::Separator       (  );
+        ImGui::TextUnformatted ("Ignore extra frames in SK's \"Render Latency\" stat -- HW Flip Queue takes care of those.");
+        ImGui::EndTooltip      (  );
       }
     }
 
@@ -2090,6 +2109,9 @@ SK_ACS_InitPlugin (void)
   
           // -1.0f = Unlimited
           *framerate_limit = -1.0f;
+
+          if (                            __SK_ACS_AlwaysUseFrameGen)
+            SK_ACS_ApplyFrameGenOverride (__SK_ACS_AlwaysUseFrameGen);
 
           if (__SK_IsDLSSGActive)
           {
