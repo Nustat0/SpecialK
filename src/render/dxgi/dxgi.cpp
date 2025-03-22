@@ -2782,11 +2782,8 @@ SK_DXGI_PresentBase ( IDXGISwapChain         *This,
       // Turn tearing off when using frame generation
       if (bDLSS3OnVRRDisplay)
       {
-        if (! config.nvidia.dlss.allow_flip_metering)
-        {
-          _Flags &= ~DXGI_PRESENT_ALLOW_TEARING;
-          _SyncInterval = 0;
-        }
+        _Flags &= ~DXGI_PRESENT_ALLOW_TEARING;
+        _SyncInterval = 0;
       }
     }
 
@@ -2923,7 +2920,7 @@ SK_DXGI_PresentBase ( IDXGISwapChain         *This,
       );
     };
 
-  if ((! config.render.dxgi.allow_tearing) || (bDLSS3OnVRRDisplay && (! config.nvidia.dlss.allow_flip_metering)))
+  if ((! config.render.dxgi.allow_tearing) || bDLSS3OnVRRDisplay)
   {                                           // Turn tearing off when using frame generation
     if (Flags & DXGI_PRESENT_ALLOW_TEARING)
     {
@@ -2934,7 +2931,7 @@ SK_DXGI_PresentBase ( IDXGISwapChain         *This,
       Flags &= ~DXGI_PRESENT_ALLOW_TEARING;
     }
 
-    if (bDLSS3OnVRRDisplay && (! config.nvidia.dlss.allow_flip_metering))
+    if (bDLSS3OnVRRDisplay)
     {
       SyncInterval = 0;
     }
@@ -3386,7 +3383,6 @@ SK_DXGI_PresentBase ( IDXGISwapChain         *This,
     //
     // Pending removal of this feature altogether, rather than complicating it with these conditions
     //
-#define SK_REMOVE_DEPRECATED
 #ifndef SK_REMOVE_DEPRECATED
     if ((! __SK_IsDLSSGActive) && ((! config.render.framerate.streamline.enable_native_limit) || (! __SK_HasDLSSGStatusSupport)))
     {

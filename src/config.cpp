@@ -3396,6 +3396,7 @@ auto DeclKeybind =
         //// This is permissable if native pacing is enabled.
         config.nvidia.dlss.allow_flip_metering     =  true;
         config.compatibility.disallow_ll_keyhook   =  true;
+        config.nvidia.dlss.disable_ota_updates     =  true;
 
         // Delay the application of framerate patch in case other mods are
         //   doing the same thing...
