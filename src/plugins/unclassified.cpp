@@ -2070,6 +2070,19 @@ SK_ACS_InitPlugin (void)
       if (                            __SK_ACS_AlwaysUseFrameGen)
         SK_ACS_ApplyFrameGenOverride (__SK_ACS_AlwaysUseFrameGen);
 
+      static const bool is_fg_capable =
+        StrStrW (sk::NVAPI::EnumGPUs_DXGI ()[0].Description, L"RTX " ) != nullptr &&
+        StrStrW (sk::NVAPI::EnumGPUs_DXGI ()[0].Description, L"RTX 2") == nullptr &&
+        StrStrW (sk::NVAPI::EnumGPUs_DXGI ()[0].Description, L"RTX 3") == nullptr;
+
+      // Pull out the trump card and eliminate flaky NGX feature support queries, by
+      // reporting everything as supported as long as an RTX GPU not 2xxx or 3xxx is
+      // installed.
+      if (is_fg_capable)
+      {
+        config.nvidia.dlss.spoof_support = true;
+      }
+
       SK_SaveConfig ();
 
       // Fail-safe incase any code that sets this was missed
@@ -2161,14 +2174,14 @@ SK_ACS_InitPlugin (void)
         // The pointer base addr is stored in the limit_load_addr instruction
         plugin_mgr->begin_frame_fns.insert ([](void)
         {
-          static bool         warned_about_reshade = false;
-          if (__SK_IsDLSSGActive && config.reshade.is_addon)
+          static bool          warned_about_reshade = false;
+          if (__SK_IsDLSSGActive && (config.reshade.is_addon && (! config.reshade.is_addon_hookless)))
           {
             SK_ImGui_CreateNotification ( "ACShadows.ReShadeFG",
                                        SK_ImGui_Toast::Error,
               "ReShade is incompatible with DLSS Frame Generation in this game"
               "\r\n\r\n\t"
-              "Please use AMD FSR Frame Generation instead",
+              "Please use AMD FSR Frame Generation, or load ReShade as a 'Compatibility Mode' Plug-In instead",
                                   "ReShade Incompatibility", INFINITE,
                                        SK_ImGui_Toast::UseDuration  |
                                        SK_ImGui_Toast::ShowCaption  |
