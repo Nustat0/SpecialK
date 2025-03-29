@@ -8616,6 +8616,8 @@ SK_HookDXGI (void)
 
   if (! InterlockedCompareExchangeAcquire (&hooked, TRUE, FALSE))
   {
+    SK_PROFILE_FIRST_CALL
+
     // Serves as both D3D11 and DXGI
     bool d3d11 =
       ( SK_GetDLLRole () & DLL_ROLE::D3D11 );
@@ -11489,6 +11491,8 @@ SK_DXGI_QuickHook (void)
   static volatile LONG                      quick_hooked    =   FALSE;
   if (! InterlockedCompareExchangeAcquire (&quick_hooked, TRUE, FALSE))
   {
+    SK_PROFILE_FIRST_CALL
+
     SK_D3D11_QuickHook ();
 
     sk_hook_cache_enablement_s state =
