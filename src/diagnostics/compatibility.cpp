@@ -1180,7 +1180,7 @@ using  slIsFeatureSupported_pfn = sl::Result (*)(sl::Feature feature, const sl::
 static slIsFeatureSupported_pfn
        slIsFeatureSupported_Original = nullptr;
 
-using  slInit_pfn = sl::Result (*)(const sl::Preferences &pref, uint64_t sdkVersion);
+using  slInit_pfn = sl::Result (*)(sl::Preferences *pref, uint64_t sdkVersion);
 static slInit_pfn
        slInit_Original = nullptr;
 
@@ -1194,44 +1194,42 @@ slIsFeatureSupported_Detour (sl::Feature feature, const sl::AdapterInfo& adapter
 }
 
 sl::Result
-slInit_Detour (const sl::Preferences &pref, uint64_t sdkVersion = sl::kSDKVersion)
+slInit_Detour (sl::Preferences *pref, uint64_t sdkVersion = sl::kSDKVersion)
 {
   SK_LOG_FIRST_CALL
 
-  SK_LOGi0 (L"[!] slInit (pref.structVersion=%d, sdkVersion=%d)",
-                          pref.structVersion,    sdkVersion);
+  SK_LOGi0 (L"[!] slInit (pref->structVersion=%d, sdkVersion=%d)",
+                          pref->structVersion,    sdkVersion);
 
   // For versions of Streamline using a compatible preferences struct,
   //   start overriding stuff for compatibility.
-  if (pref.structVersion == sl::kStructVersion1)
+  if (pref->structVersion <= sl::kStructVersion1)
   {
-    sl::Preferences pref_copy = pref;
-
     //
     // Always print Streamline debug output to Special K's game_output.log,
     //   disable any log redirection the game would ordinarily do on its own.
     //
-    pref_copy.logMessageCallback = nullptr;
+    pref->logMessageCallback = nullptr;
 #ifdef _DEBUG
-    pref_copy.logLevel           = sl::LogLevel::eVerbose;
+    pref->logLevel           = sl::LogLevel::eVerbose;
 #else
-    pref_copy.logLevel           = sl::LogLevel::eDefault;
+    pref->logLevel           = sl::LogLevel::eDefault;
 #endif
 
     // Make forcing proxies into an option
-    //pref_copy.flags |=
+    //pref->flags |=
     //  sl::PreferenceFlags::eUseDXGIFactoryProxy;
 
     if (SK_IsCurrentGame (SK_GAME_ID::AssassinsCreed_Shadows))
     {
       // Fix Assassin's Creed Shadows not passing sl::PreferenceFlags::eLoadDownloadedPlugins
-      pref_copy.flags |= (sl::PreferenceFlags::eAllowOTA |
-                          sl::PreferenceFlags::eLoadDownloadedPlugins);
-      pref_copy.flags |=  sl::PreferenceFlags::eBypassOSVersionCheck;
+      pref->flags |= (sl::PreferenceFlags::eAllowOTA |
+                      sl::PreferenceFlags::eLoadDownloadedPlugins);
+      pref->flags |=  sl::PreferenceFlags::eBypassOSVersionCheck;
     }
 
     return
-      slInit_Original (pref_copy, sdkVersion);
+      slInit_Original (pref, sdkVersion);
   }
 
   SK_LOGi0 (
@@ -1242,40 +1240,42 @@ slInit_Detour (const sl::Preferences &pref, uint64_t sdkVersion = sl::kSDKVersio
     slInit_Original (pref, sdkVersion);
 }
 
-bool
-SK_COMPAT_CheckStreamlineSupport (void)
+void
+SK_COMPAT_InstallStreamlineHooks (const wchar_t* sl_interposer_dll)
 {
-  if (SK_IsModuleLoaded (L"sl.interposer.dll"))
+  SK_PROFILE_FIRST_CALL
+
+  SK_CreateDLLHook (         sl_interposer_dll,
+                            "slInit",
+                             slInit_Detour,
+    static_cast_p2p <void> (&slInit_Original));
+
+  // Feature Spoofing
+/*
+    SK_CreateDLLHook (        sl_interposer_dll,
+                             "slIsFeatureSupported",
+                              slIsFeatureSupported_Detour,
+     static_cast_p2p <void> (&slIsFeatureSupported_Original));
+*/
+}
+
+bool
+SK_COMPAT_CheckStreamlineSupport (HMODULE hModInterposer)
+{
+  if (hModInterposer != nullptr)
   {
     SK_RunOnce (
-      SK_CreateDLLHook2 (      L"sl.interposer.dll",
-                                "slInit",
-                                 slInit_Detour,
-        static_cast_p2p <void> (&slInit_Original));
-
-      bool bDisabled =
-        SK_EnableApplyQueuedHooks ();
-
-      SK_ApplyQueuedHooks ();
-
-      if (bDisabled)
-        SK_DisableApplyQueuedHooks ();
+      SK_COMPAT_InstallStreamlineHooks (
+        SK_GetModuleFullName (hModInterposer).c_str ()
+      )
     );
-
-    // Feature Spoofing
-/*
-      SK_CreateDLLHook2 (      L"sl.interposer.dll",
-                                "slIsFeatureSupported",
-                                 slIsFeatureSupported_Detour,
-        static_cast_p2p <void> (&slIsFeatureSupported_Original));
-*/
   }
 
-  return true;
+  //
+  // As of 23.9.13, basic compatibility in all known games is perfect!
+  //
 
-  //
-  // As of 23.9.13, compatibility in all known games is perfect!
-  //
+  return true;
 }
 
 // It is never necessary to call this, it can be implemented using QueryInterface
