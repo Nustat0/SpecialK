@@ -595,6 +595,9 @@ SK_ACS_InitPlugin (void)
 
     plugin_mgr->config_fns.emplace (SK_ACS_PlugInCfg);
 
+    // Pattern scanning timeouts are not required on this thread
+    SK_TLS_Bottom ()->memory->memory_scans_should_timeout = FALSE;
+
     __SK_ACS_ClothSimAddr =
       (uintptr_t)SK_ScanAlignedExec ("\x4C\x00\x00\x00\x49\x00\x00\x00\x45\x0F\x00\x00\x00\x00\x00\x00\x0F\x00\x00\x00\x00\x00\x00\x83\x00\x00\x49\x00\x00\x01", 30,
                                      "\x4C\x00\x00\x00\x49\x00\x00\x00\x45\x0F\x00\x00\x00\x00\x00\x00\x0F\x00\x00\x00\x00\x00\x00\x83\x00\x00\x49\x00\x00\x01",
@@ -614,9 +617,6 @@ SK_ACS_InitPlugin (void)
     {
       SK_ACS_ApplyBlackBarRemoval (__SK_ACS_RemoveBlackBars);
     }
-
-    while (SK_GetFramesDrawn () < 30)
-           SK_SleepEx (150UL, FALSE);
 
     __SK_ACS_FOVSliderAddr =
       (uintptr_t)SK_ScanAlignedExec ("\xE9\x00\x00\x00\x00\x48\x00\x00\x48\x00\x00\x48\x00\x00\xFF\x00\x00\x00\x00\x00\x48\x00\x00\x00\x00\xC5", 26,
@@ -976,5 +976,5 @@ SK_ACS_InitPlugin (void)
     SK_Thread_CloseSelf ();
 
     return 0;
-  });
+  }, L"[SK] Plug-In Init");
 }
