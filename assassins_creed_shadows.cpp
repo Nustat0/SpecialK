@@ -38,47 +38,75 @@
 #endif
 #define __SK_SUBSYSTEM__ L"AC Shadows"
 
+bool               __SK_ACS_IsMultiFrameCapable   = false;
+bool               __SK_ACS_AlwaysUseFrameGen     =  true;
+bool               __SK_ACS_ShowFMVIndicator      = false;
+bool               __SK_ACS_UncapFramerate        =  true;
+int                __SK_ACS_DLSSG_MultiFrameCount =     1;
+bool               __SK_ACS_RemoveBlackBars       =  true;
+bool               __SK_ACS_ExpandFOVRange        =  true;
+
+sk::ParameterBool*  _SK_ACS_AlwaysUseFrameGen;
+sk::ParameterBool*  _SK_ACS_ShowFMVIndicator;
+sk::ParameterBool*  _SK_ACS_UncapFramerate;
+sk::ParameterBool*  _SK_ACS_DynamicCloth;
+sk::ParameterBool*  _SK_ACS_RemoveBlackBars;
+sk::ParameterBool*  _SK_ACS_ExpandFOVRange;
+sk::ParameterInt*   _SK_ACS_DLSSG_MultiFrameCount;
+
+using slGetPluginFunction_pfn = void*      (*)(const char* functionName);
+using slDLSSGSetOptions_pfn   = sl::Result (*)(const sl::ViewportHandle& viewport, sl::DLSSGOptions& options);
+      slDLSSGSetOptions_pfn
+      slDLSSGSetOptions_ACS_Original = nullptr;
+
+static          DWORD  LastTimeFMVChecked     = 0;
+static          HANDLE LastFMVHandle          = 0;
+static volatile ULONG  FrameGenDisabledForFMV = FALSE;
+static bool*          pFrameGenEnabled        = nullptr;
+
 uintptr_t      __SK_ACS_BlackBarsAddr       =       0;
 uintptr_t      __SK_ACS_ClothSimAddr        =       0;
+uintptr_t      __SK_ACS_FOVSliderAddr       =       0;
+uintptr_t      __SK_ACS_FOVMultiplierAddr   =       0;
 bool           __SK_ACS_DynamicCloth        =    true;
-SafetyHookMid* __SK_ACS_ClothPhysicsMidHook = nullptr;
 
 void
 SK_ACS_ApplyClothPhysicsFix (bool enable)
 {
-  if (enable && __SK_ACS_ClothPhysicsMidHook == nullptr
-             && __SK_ACS_ClothSimAddr        != 0)
+  __SK_ACS_DynamicCloth = enable;
+
+  if (__SK_ACS_ClothSimAddr != 0)
   {
     // From ACShadowsFix (https://github.com/Lyall/ACShadowsFix/blob/5b53a3c84fa8dee39a1ed49b60995b334a119d97/src/dllmain.cpp#L246C1-L256C20)
-    __SK_ACS_ClothPhysicsMidHook = new SafetyHookMid (
+    static SafetyHookMid ClothPhysicsMidHook =
       safetyhook::create_mid (__SK_ACS_ClothSimAddr,
         [](SafetyHookContext& ctx)
         {
-          if (! ctx.rcx) return;
+          if (! ctx.rcx)
+            return;
 
           // By default the game appears to use 60fps cloth physics during gameplay and 30fps cloth physics during cutscenes.
 
           if (__SK_ACS_DynamicCloth)
           {
-            // Use current frametime for cloth physics instead of fixed 0.01666/0.03333 values.
-            if (uintptr_t pFramerate = *reinterpret_cast <uintptr_t *>(ctx.rcx + 0x70))
-              ctx.xmm0.f32 [0] = *reinterpret_cast<float *>(pFramerate + 0x78); // Current frametime
+            // Use Special K's target framerate and lock to that, this keeps
+            //   a fixed timestep, but uses SK's framerate limit as the timestep.
+            if (__target_fps > 0.0f)
+            {
+              ctx.xmm0.f32 [0] =
+                (1.0f / (__target_fps * (pFrameGenEnabled != nullptr &&
+                                        *pFrameGenEnabled ? 0.5f : 1.0f)));
+            }
+
+            else
+            {
+              // Use current frametime for cloth physics instead of fixed 0.01666/0.03333 values.
+              if (uintptr_t pFramerate = *reinterpret_cast <uintptr_t *>(ctx.rcx + 0x70))
+                ctx.xmm0.f32 [0] = *reinterpret_cast<float *>(pFramerate + 0x78); // Current frametime
+            }
           }
         }
-      )
-    );
-  }
-
-  if (enable)
-  {
-    if (__SK_ACS_ClothPhysicsMidHook != nullptr)
-        std::ignore = __SK_ACS_ClothPhysicsMidHook->enable ();
-  }
-
-  else
-  {
-    if (__SK_ACS_ClothPhysicsMidHook != nullptr)
-        std::ignore = __SK_ACS_ClothPhysicsMidHook->disable ();
+      );
   }
 }
 
@@ -96,32 +124,61 @@ SK_ACS_ApplyBlackBarRemoval (bool remove)
   }
 }
 
-bool               __SK_ACS_IsMultiFrameCapable   = false;
-bool               __SK_ACS_AlwaysUseFrameGen     =  true;
-bool               __SK_ACS_ShowFMVIndicator      = false;
-bool               __SK_ACS_UncapFramerate        =  true;
-int                __SK_ACS_DLSSG_MultiFrameCount =     1;
-bool               __SK_ACS_RemoveBlackBars       =  true;
-
-sk::ParameterBool*  _SK_ACS_AlwaysUseFrameGen;
-sk::ParameterBool*  _SK_ACS_ShowFMVIndicator;
-sk::ParameterBool*  _SK_ACS_UncapFramerate;
-sk::ParameterBool*  _SK_ACS_DynamicCloth;
-sk::ParameterBool*  _SK_ACS_RemoveBlackBars;
-sk::ParameterInt*   _SK_ACS_DLSSG_MultiFrameCount;
-
-using slGetPluginFunction_pfn = void*      (*)(const char* functionName);
-using slDLSSGSetOptions_pfn   = sl::Result (*)(const sl::ViewportHandle& viewport, sl::DLSSGOptions& options);
-      slDLSSGSetOptions_pfn
-      slDLSSGSetOptions_ACS_Original = nullptr;
-
-static          DWORD  LastTimeFMVChecked     = 0;
-static          HANDLE LastFMVHandle          = 0;
-static volatile ULONG  FrameGenDisabledForFMV = FALSE;
-static bool*          pFrameGenEnabled        = nullptr;
-
 void
-SK_ACS_ApplyClothPhysicsFix (bool enable);
+SK_ACS_ApplyExpandedFOV (bool enable)
+{
+  __SK_ACS_ExpandFOVRange = enable;
+
+  // From ACShadowsFix (https://github.com/Lyall/ACShadowsFix/)
+
+  if ( __SK_ACS_FOVSliderAddr     != 0 &&
+       __SK_ACS_FOVMultiplierAddr != 0 )
+  {
+    static SafetyHookMid FOVSliderPercentageMidHook =
+      safetyhook::create_mid (__SK_ACS_FOVSliderAddr + 0x8,
+        [](SafetyHookContext& ctx)
+        {
+          if (! ctx.rdi)
+            return;
+
+          if (! __SK_ACS_ExpandFOVRange)
+            return;
+
+          // Get slider min/max
+          float* fMin = reinterpret_cast <float *> (ctx.rdi + 0x38);
+          float* fMax = reinterpret_cast <float *> (ctx.rdi + 0x3C);
+          
+          // FOV slider is 85-115
+          if (*fMin == 85.00f && *fMax == 115.00f)
+          {
+            // Widen to 70-150
+            *fMin = 70.00f;
+            *fMax = 150.00f;
+          }
+        }
+      );
+
+    static SafetyHookMid FOVSliderMultiplierMidHook =
+      safetyhook::create_mid (__SK_ACS_FOVMultiplierAddr + 0x9,
+        [](SafetyHookContext& ctx)
+        {
+          if (! ctx.rcx)
+            return; // RCX is loaded from RSI in the previous instruction
+
+          if (! __SK_ACS_ExpandFOVRange)
+            return;
+
+          // Widen the FOV multiplier range to match
+          const char*  currentSetting = *reinterpret_cast <char **> (ctx.rsi + 0x18);
+          if (strncmp (currentSetting, "FieldOfViewMultiplier", sizeof ("FieldOfViewMultiplier") - 1) == 0)
+          {
+            *reinterpret_cast <float *> (ctx.rcx + 0x8) = 0.70f;
+            *reinterpret_cast <float *> (ctx.rcx + 0xC) = 1.50f;
+          }
+        }
+      );
+  }
+}
 
 bool
 SK_ACS_ApplyFrameGenOverride (bool enable)
@@ -270,6 +327,9 @@ SK_ACS_PlugInCfg (void)
     bool always_use_framegen =
       __SK_ACS_AlwaysUseFrameGen;
 
+    ImGui::SeparatorText ("Framerate");
+    ImGui::TreePush      ("Framerate");
+
     ImGui::BeginGroup ();
 
     if (ImGui::Checkbox ("Allow Cutscene Frame Generation",
@@ -366,7 +426,7 @@ SK_ACS_PlugInCfg (void)
     {
       ImGui::TextUnformatted ("Uncap Framerate in Menus and Cutscenes");
       ImGui::Separator       ();
-      ImGui::BulletText      ("ersh has a similar standalone mod that you may use.");
+      ImGui::BulletText      ("ersh and Lyall have similar standalone mods that you may use.");
       ImGui::BulletText      ("Turning this back on may require opening and closing the game's menu before limits reapply.");
       ImGui::EndTooltip      ();
     }
@@ -391,6 +451,29 @@ SK_ACS_PlugInCfg (void)
       }
     }
 
+    ImGui::EndGroup ();
+    
+    if (__target_fps != config.render.framerate.target_fps)
+    {
+      last_game_fps_limit = __target_fps;
+
+      ImGui::SameLine        (  );
+      ImGui::BeginGroup      (  );
+      ImGui::SetCursorPosY   (y_pos);
+      ImGui::PushStyleColor  (ImGuiCol_Text, ImColor::HSV (0.075f, 0.8f, 0.9f).Value);
+      ImGui::BulletText      ("Using game-defined framerate limit:  ");
+      ImGui::SameLine        (  );
+      ImGui::SetCursorPosY   (y_pos);
+      ImGui::TextColored     (ImColor (1.f, 1.f, 0.f).Value, "%3.0f fps", __target_fps);
+      ImGui::PopStyleColor   (  );
+      ImGui::EndGroup        (  );
+    }
+
+    ImGui::TreePop ();
+
+    ImGui::SeparatorText ("Aspect Ratio");
+    ImGui::TreePush      ("Aspect Ratio");
+
     if (__SK_ACS_BlackBarsAddr != 0)
     {
       if (ImGui::Checkbox ("Disable Cutscene Blackbars", &__SK_ACS_RemoveBlackBars))
@@ -411,29 +494,36 @@ SK_ACS_PlugInCfg (void)
       }
     }
 
+    if ( __SK_ACS_FOVSliderAddr     != 0 &&
+         __SK_ACS_FOVMultiplierAddr != 0 )
+    {
+      ImGui::SameLine ();
+
+      if (ImGui::Checkbox ("Expand FOV Range", &__SK_ACS_ExpandFOVRange))
+      {
+        changed = true;
+
+        _SK_ACS_ExpandFOVRange->store (__SK_ACS_ExpandFOVRange);
+
+        SK_ACS_ApplyExpandedFOV (__SK_ACS_ExpandFOVRange);
+      }
+
+      if (ImGui::BeginItemTooltip ())
+      {
+        ImGui::TextUnformatted ("Expand FOV Slider Range from 85-115 to 70-150.");
+        ImGui::Separator       ();
+        ImGui::BulletText      ("This feature comes thanks to Lyall's ACShadowsFix mod, refer to GitHub.");
+        ImGui::EndTooltip      ();
+      }
+    }
+
+    ImGui::TreePop ();
+
     if (restart_required)
     {
       ImGui::PushStyleColor (ImGuiCol_Text, ImColor::HSV (.3f, .8f, .9f).Value);
       ImGui::BulletText     ("Game Restart Required");
       ImGui::PopStyleColor  ();
-    }
-
-    ImGui::EndGroup ();
-    
-    if (__target_fps != config.render.framerate.target_fps)
-    {
-      last_game_fps_limit = __target_fps;
-
-      ImGui::SameLine        (  );
-      ImGui::BeginGroup      (  );
-      ImGui::SetCursorPosY   (y_pos);
-      ImGui::PushStyleColor  (ImGuiCol_Text, ImColor::HSV (0.075f, 0.8f, 0.9f).Value);
-      ImGui::BulletText      ("Using game-defined framerate limit:  ");
-      ImGui::SameLine        (  );
-      ImGui::SetCursorPosY   (y_pos);
-      ImGui::TextColored     (ImColor (1.f, 1.f, 0.f).Value, "%3.0f fps", __target_fps);
-      ImGui::PopStyleColor   (  );
-      ImGui::EndGroup        (  );
     }
 
     if (changed)
@@ -457,6 +547,8 @@ SK_ACS_InitPlugin (void)
   static HANDLE hInitThread =
   SK_Thread_CreateEx ([](LPVOID)->DWORD
   {
+    SK_Thread_SetCurrentPriority (THREAD_PRIORITY_HIGHEST);
+
     static void* img_base_addr = 
       SK_Debug_GetImageBaseAddr ();
   
@@ -490,6 +582,16 @@ SK_ACS_InitPlugin (void)
                                    L"RemoveCutsceneBlackBars", __SK_ACS_RemoveBlackBars,
                                    L"Remove Aspect Ratio Black Bars from Cutscenes" );
 
+    _SK_ACS_RemoveBlackBars =
+      _CreateConfigParameterBool ( L"AssassinsCreed.AspectRatio",
+                                   L"RemoveCutsceneBlackBars", __SK_ACS_RemoveBlackBars,
+                                   L"Remove Aspect Ratio Black Bars from Cutscenes" );
+
+    _SK_ACS_ExpandFOVRange =
+      _CreateConfigParameterBool ( L"AssassinsCreed.AspectRatio",
+                                   L"ExpandFOVRange", __SK_ACS_ExpandFOVRange,
+                                   L"Enable Wider Range of Adjustment in FOV Slider" );
+
     plugin_mgr->config_fns.emplace (SK_ACS_PlugInCfg);
 
     __SK_ACS_ClothSimAddr =
@@ -497,19 +599,40 @@ SK_ACS_InitPlugin (void)
                                      "\x4C\x00\x00\x00\x49\x00\x00\x00\x45\x0F\x00\x00\x00\x00\x00\x00\x0F\x00\x00\x00\x00\x00\x00\x83\x00\x00\x49\x00\x00\x01",
                                      (void*)img_base_addr);
 
-    __SK_ACS_BlackBarsAddr =
-      (uintptr_t)SK_ScanAlignedExec ("\x84\xC0\x74\x00\xC5\xFA\x00\x00\x00\x00\xC5\xFA\x00\x00\x00\x00\xC5\xFA\x00\x00\xC5\x00\x57\x00\xC5\xFA", 26,
-                                     "\x84\xC0\x74\x00\xC5\xFA\x00\x00\x00\x00\xC5\xFA\x00\x00\x00\x00\xC5\xFA\x00\x00\xC5\x00\x57\x00\xC5\xFA",
-                                     (void*)img_base_addr);
-
     if (__SK_ACS_ClothSimAddr != 0)
     {
       SK_ACS_ApplyClothPhysicsFix (__SK_ACS_DynamicCloth);
     }
 
+    __SK_ACS_BlackBarsAddr =
+      (uintptr_t)SK_ScanAlignedExec ("\x84\xC0\x74\x00\xC5\xFA\x00\x00\x00\x00\xC5\xFA\x00\x00\x00\x00\xC5\xFA\x00\x00\xC5\x00\x57\x00\xC5\xFA", 26,
+                                     "\x84\xC0\x74\x00\xC5\xFA\x00\x00\x00\x00\xC5\xFA\x00\x00\x00\x00\xC5\xFA\x00\x00\xC5\x00\x57\x00\xC5\xFA",
+                                     (void*)img_base_addr);
+
     if (__SK_ACS_BlackBarsAddr != 0)
     {
       SK_ACS_ApplyBlackBarRemoval (__SK_ACS_RemoveBlackBars);
+    }
+
+    while (SK_GetFramesDrawn () < 30)
+           SK_SleepEx (150UL, FALSE);
+
+    __SK_ACS_FOVSliderAddr =
+      (uintptr_t)SK_ScanAlignedExec ("\xE9\x00\x00\x00\x00\x48\x00\x00\x48\x00\x00\x48\x00\x00\xFF\x00\x00\x00\x00\x00\x48\x00\x00\x00\x00\xC5", 26,
+                                     "\xFF\x00\x00\x00\x00\xFF\x00\x00\xFF\x00\x00\xFF\x00\x00\xFF\x00\x00\x00\x00\x00\xFF\x00\x00\x00\x00\xFF",
+                                     (void*)img_base_addr, 0x2);
+
+    __SK_ACS_FOVMultiplierAddr =
+      (uintptr_t)SK_ScanAlignedExec ("\x77\x00\x48\x8B\x00\x00\x00\x00\x00\x48\x85\x00\x74\x00\x48\x8B\x00\xFF\x00\x00\x00\x00\x00\xC5\xFA\x00\x00\x00\xC5\xFA\x00\x00\x00\x00\x00\x00\x48\x8B", 38,
+                                     "\xFF\x00\xFF\xFF\x00\x00\x00\x00\x00\xFF\xFF\x00\xFF\x00\xFF\xFF\x00\xFF\x00\x00\x00\x00\x00\xFF\xFF\x00\x00\x00\xFF\xFF\x00\x00\x00\x00\x00\x00\xFF\xFF",
+                                     (void*)img_base_addr, 0x2);
+
+    if ( __SK_ACS_FOVSliderAddr     != 0 &&
+         __SK_ACS_FOVMultiplierAddr != 0 )
+    {
+      SK_LOGi1 (L"Found FOV addresses: %p and %p", __SK_ACS_FOVSliderAddr, __SK_ACS_FOVMultiplierAddr);
+
+      SK_ACS_ApplyExpandedFOV (__SK_ACS_ExpandFOVRange);
     }
 
     while (SK_GetFramesDrawn () < 480)

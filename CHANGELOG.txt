@@ -1,4 +1,13 @@
-﻿25.4.6.2
+﻿25.4.7.1
+========
+ + Use Special K's target frametime as cloth simulation's fixed timestep in
+     Assassin's Creed Shadows instead of using the game's internal clock.
+
+25.4.7
+======
+ + Integrated Lyall's FOV slider range expansion for Assassin's Creed Shadows.
+
+25.4.6.2
 ========
  + Added cutscene blackbar removal option for Assasin's Creed Shadows,
      again based on Lyall's ACShadowsFix.
