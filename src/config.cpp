@@ -390,7 +390,9 @@ SK_GetCurrentGameID (void)
         if (! config.compatibility.using_wine)
         {
           if (config.system.log_level == 0)
+          {
             config.system.silent = true;
+          }
         }
       }
 
@@ -7182,7 +7184,7 @@ SK_SaveConfig ( std::wstring name,
     crash_suppression->store                   (config.system.suppress_crashes);
   }
 
-  silent_crash->store(config.system.silent_crash);
+  silent_crash->store                          (config.system.silent_crash);
 
   game_output->store                           (config.system.game_output);
 
@@ -8797,6 +8799,10 @@ sk_config_t::utility_functions_s::save_async_if (bool predicate)
 void
 sk_config_t::utility_functions_s::save_async (void)
 {
+  // Don't write anything for launchers
+  if (SK_GetCurrentGameID () == SK_GAME_ID::Launcher || SK_GetHostAppUtil ()->isBlacklisted ())
+    return;
+
   SK_RunOnce (
     SK_Thread_CreateEx ([](LPVOID) -> DWORD
     {
