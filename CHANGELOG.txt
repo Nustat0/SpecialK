@@ -1,4 +1,8 @@
-﻿25.4.8.5
+﻿25.4.9
+======
+ + Updated Assassin's Creed Shadows Plug-In for 1.0.2 patch.
+
+25.4.8.5
 ========
  + Eliminate implicit reference on the original SwapChain when using the new
      undocumented SwapChain interface.
