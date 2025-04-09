@@ -1,4 +1,15 @@
-﻿25.4.9.2
+﻿25.4.9.4
+========
+ + Added options to swap A/B and X/Y on Xbox controllers to match Nintendo.
+
+25.4.9.3
+========
+ + Disable Clean Exit system, because it leads to config files not being saved
+     for games that launch multiple copies of themselves.
+ + Added Cloth Physics Fix support for suckers who gave Valve money in exchange
+     for an even buggier version of Assassin's Creed Shadows.
+
+25.4.9.2
 ========
  + Disable Cloth Physics Fix for users who do not have SK's framerate limiter
      enabled in Assassin's Creed Shadows (...why?!).
