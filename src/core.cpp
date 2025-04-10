@@ -2157,6 +2157,7 @@ SK_StartupCore (const wchar_t* backend, void* callback)
     dll_log->LogEx (false, L"done!\n");
   }
 
+  SK_ReShadeAddOn_Init ();
 
   SK_RunOnce (
   {
@@ -5236,3 +5237,38 @@ void SK_Perf_PrintProfiledTasks (void)
     }
   }
 }
+
+SK_AutoProfileAccumulator::SK_AutoProfileAccumulator (const wchar_t* wszTaskName)
+{
+  if (config.profiling.enable_tasks)
+  {
+    name  = wszTaskName;
+    start = SK_ProfiledTask_Begin ();
+  }
+};
+
+SK_AutoProfileAccumulator::~SK_AutoProfileAccumulator (void)
+{
+  if (config.profiling.enable_tasks)
+  {
+    SK_ProfiledTask_End (name, start);
+  }
+};
+
+SK_AutoEventMarker::SK_AutoEventMarker (const wchar_t* wszEventName)
+{
+  if (config.profiling.enable_events)
+  {
+    name = wszEventName;
+    
+    SK_PerfEvent_Begin (name);
+  }
+};
+
+SK_AutoEventMarker::~SK_AutoEventMarker (void)
+{
+  if (config.profiling.enable_events)
+  {
+    SK_PerfEvent_End (name);
+  }
+};
