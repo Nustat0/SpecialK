@@ -85,8 +85,61 @@ SK_ReShade_IsLocalDLLPresent (void)
     SK_RunLHIfBitness (64, L"ReShade64.dll",
                            L"ReShade32.dll");
 
-  return
-    PathFileExistsW (wszDLL);
+  wchar_t          wszReShadePath [MAX_PATH] = {};
+  SK_PathCombineW (wszReShadePath, SK_GetHostPath (), wszDLL);
+
+  bool bLocalRaw =
+    PathFileExistsW (wszReShadePath);
+
+  if (! bLocalRaw)
+  {
+    SK_PathCombineW     (wszReShadePath, SK_GetHostPath (), L"dxgi.dll");
+    if (PathFileExistsW (wszReShadePath))
+    {
+      if (GetProcAddress (SK_LoadLibraryW (wszReShadePath), "ReShadeRegisterAddon"))
+      {
+        return true;
+      }
+    }
+
+    SK_PathCombineW     (wszReShadePath, SK_GetHostPath (), L"d3d11.dll");
+    if (PathFileExistsW (wszReShadePath))
+    {
+      if (GetProcAddress (SK_LoadLibraryW (wszReShadePath), "ReShadeRegisterAddon"))
+      {
+        return true;
+      }
+    }
+
+    SK_PathCombineW     (wszReShadePath, SK_GetHostPath (), L"d3d12.dll");
+    if (PathFileExistsW (wszReShadePath))
+    {
+      if (GetProcAddress (SK_LoadLibraryW (wszReShadePath), "ReShadeRegisterAddon"))
+      {
+        return true;
+      }
+    }
+
+    SK_PathCombineW     (wszReShadePath, SK_GetHostPath (), L"d3d9.dll");
+    if (PathFileExistsW (wszReShadePath))
+    {
+      if (GetProcAddress (SK_LoadLibraryW (wszReShadePath), "ReShadeRegisterAddon"))
+      {
+        return true;
+      }
+    }
+
+    SK_PathCombineW     (wszReShadePath, SK_GetHostPath (), L"OpenGL32.dll");
+    if (PathFileExistsW (wszReShadePath))
+    {
+      if (GetProcAddress (SK_LoadLibraryW (wszReShadePath), "ReShadeRegisterAddon"))
+      {
+        return true;
+      }
+    }
+  }
+
+  return bLocalRaw;
 }
 
 void
@@ -101,12 +154,18 @@ SK_ReShade_LoadIfPresent (void)
     SK_RunLHIfBitness (64, L"ReShade64.dll",
                            L"ReShade32.dll");
 
-  if (PathFileExistsW (wszDLL))
+  wchar_t          wszReShadePath [MAX_PATH] = {};
+  SK_PathCombineW (wszReShadePath, SK_GetHostPath (), wszDLL);
+
+  if (PathFileExistsW (wszReShadePath))
   {
-    if (! PathFileExistsW (L"ReShade.ini"))
+    wchar_t          wszReShadeINIPath [MAX_PATH] = {};
+    SK_PathCombineW (wszReShadeINIPath, SK_GetHostPath (), L"ReShade.ini");
+
+    if (! PathFileExistsW (wszReShadeINIPath))
     {
       FILE *fINI =
-        fopen ("ReShade.ini", "w+");
+        _wfopen (wszReShadeINIPath, L"w+");
 
       if (fINI != nullptr)
       {
@@ -130,7 +189,7 @@ StyleIndex=2)", fINI);
       }
     }
 
-    LoadLibraryW (wszDLL);
+    LoadLibraryW (wszReShadePath);
   }
 
   SK_ReShadeAddOn_Init ();
@@ -1140,10 +1199,71 @@ SK_ReShadeAddOn_Present (       reshade::api::command_queue *queue,
 bool SK_ReShadeAddOn_HadLocalINI = true;
 BOOL SK_ReShade_HasRenoDX (void)
 {
+  auto _= [&](BOOL bRet) -> BOOL
+  {
+    if (bRet && (! config.reshade.allow_unsafe_addons))
+    {
+      if (SK_API_IsLayeredOnD3D12 (SK_GetCurrentRenderBackend ().api))
+      {
+        SK_RunOnce (
+          const auto reshade_dll_path =
+            SK_GetModuleName (reshade::internal::get_reshade_module_handle ());
+
+          if (StrStrIW (reshade_dll_path.c_str (), L"dxgi")  ||
+              StrStrIW (reshade_dll_path.c_str (), L"d3d11") ||
+              StrStrIW (reshade_dll_path.c_str (), L"d3d12"))
+          {
+            if (! (__SK_HDR_10BitSwap || __SK_HDR_16BitSwap))
+            {
+              SK_ComQIPtr <IDXGISwapChain> pSwapChain (
+                SK_Render_GetSwapChain ()
+              );
+
+              DXGI_SWAP_CHAIN_DESC swapDesc =
+              {
+                .BufferDesc = {
+                  .Format = DXGI_FORMAT_R10G10B10A2_UNORM
+                }
+              };
+
+              if (pSwapChain.p != nullptr)
+                  pSwapChain->GetDesc (&swapDesc);
+
+              bool bHDR10 =
+                (swapDesc.BufferDesc.Format == DXGI_FORMAT_R10G10B10A2_UNORM );
+              bool bScRGB =
+                (swapDesc.BufferDesc.Format == DXGI_FORMAT_R16G16B16A16_FLOAT);
+
+              if (! (bHDR10 || bScRGB))
+                     bHDR10 = true;
+
+              void
+              SK_HDR_SetOverridesForGame (bool bScRGB, bool bHDR10);
+              SK_HDR_SetOverridesForGame (     bScRGB,      bHDR10);
+            }
+
+            SK_ImGui_CreateNotification (
+              "AddOn.Incompatible", SK_ImGui_Toast::Warning,
+              "If RenoDX does not work, try loading ReShade as a Plug-In\n\n"
+              "  Option 1:   ReShade64.dll in game directory\n"
+              "  Option 2:   Global Plug-In (Lazy Load Order)\n\n"
+              " * Remove dxgi/d3d11/d3d12.dll or set UnsafeAddOns=true to ignore.",
+                "Potential RenoDX Incompatibility",
+                  20000, SK_ImGui_Toast::UseDuration |
+                         SK_ImGui_Toast::ShowCaption |
+                         SK_ImGui_Toast::ShowTitle );
+          }
+        );
+      }
+    }
+
+    return bRet;
+  };
+
   if (SK_GetFramesDrawn () < 1)
   {
     return
-      reshade::internal::has_addon (L"RenoDX");
+      _(reshade::internal::has_addon (L"RenoDX"));
   }
 
   // After 1 frame is drawn, we have a definitive answer,
@@ -1151,18 +1271,22 @@ BOOL SK_ReShade_HasRenoDX (void)
   static BOOL _HasRenoDX =
     reshade::internal::has_addon (L"RenoDX");
 
-  return _HasRenoDX;
+  return
+    _(_HasRenoDX);
 }
 
 const std::filesystem::path
 SK_ReShadeGetBasePath (void)
 {
+  wchar_t          wszReShadeINIPath [MAX_PATH] = {};
+  SK_PathCombineW (wszReShadeINIPath, SK_GetHostPath (), L"ReShade.ini");
+
   SK_ReShadeAddOn_HadLocalINI =
-    PathFileExistsW (L"ReShade.ini");
+    PathFileExistsW (wszReShadeINIPath);
 
   std::filesystem::path
       reshade_base_path (SK_ReShadeAddOn_HadLocalINI?
-  L".\\":std::filesystem::path (SK_GetConfigPath ()) / L"ReShade");
+  SK_GetHostPath ():std::filesystem::path (SK_GetConfigPath ()) / L"ReShade");
 
   return reshade_base_path;
 }
@@ -1200,6 +1324,9 @@ SK_ReShadeAddOn_Init (HMODULE reshade_module)
   if (reshade_module == nullptr)
       reshade_module = reshade::internal::get_reshade_module_handle (reshade_module);
 
+  bool is_plugin =
+    StrStrIW (SK_GetModuleName (reshade_module).c_str (), L"ReShade");
+
   const auto reshade_base_path =
     SK_ReShadeGetBasePath ();
 
@@ -1219,7 +1346,7 @@ SK_ReShadeAddOn_Init (HMODULE reshade_module)
 
   std::scoped_lock <SK_Thread_HybridSpinlock> lock (_init_lock);
 
-  registered =
+  registered = (! is_plugin) ||
     reshade::register_addon (SK_GetDLL (), reshade_module);
 
   if (registered)
@@ -1235,17 +1362,6 @@ SK_ReShadeAddOn_Init (HMODULE reshade_module)
     if (! PathIsDirectoryW (shared_addon_path.c_str ()))
           CreateDirectoryW (shared_addon_path.c_str (), nullptr);
 
-    config.reshade.is_addon = true;
-
-    reshade::register_event <reshade::addon_event::present>                (SK_ReShadeAddOn_Present);
-    reshade::register_event <reshade::addon_event::init_effect_runtime>    (SK_ReShadeAddOn_InitRuntime);
-    reshade::register_event <reshade::addon_event::destroy_effect_runtime> (SK_ReShadeAddOn_DestroyRuntime);
-    reshade::register_event <reshade::addon_event::destroy_device>         (SK_ReShadeAddOn_DestroyDevice);
-    reshade::register_event <reshade::addon_event::destroy_swapchain>      (SK_ReShadeAddOn_DestroySwapChain);
-    reshade::register_event <reshade::addon_event::destroy_command_queue>  (SK_ReShadeAddOn_DestroyCmdQueue);
-    reshade::register_event <reshade::addon_event::reshade_open_overlay>   (SK_ReShadeAddOn_OverlayActivation);
-    //reshade::register_event <reshade::addon_event::display_change>         (SK_ReShadeAddOn_DisplayChange);
-
     auto _AutoLoadAddOns = [&](void)
     {
       using namespace std::filesystem;
@@ -1258,10 +1374,12 @@ SK_ReShadeAddOn_Init (HMODULE reshade_module)
       std::error_code                                                            ec;
       recursive_directory_iterator  profile_dir (profile_addon_path,             ec);
       recursive_directory_iterator  global_dir  (  shared_base_path / L"AddOns", ec);
+                directory_iterator  local_dir   (SK_GetHostPath (),              ec);
       std::vector <directory_entry> files;
 
       for (const auto& file : profile_dir) if (StrStrIW (file.path ().extension ().c_str (), L".AddOn")) files.emplace_back (file);
       for (const auto& file :  global_dir) if (StrStrIW (file.path ().extension ().c_str (), L".AddOn")) files.emplace_back (file);
+      for (const auto& file :   local_dir) if (StrStrIW (file.path ().extension ().c_str (), L".AddOn")) files.emplace_back (file);
       for (const auto& file :                                                                            files)
       {
         const auto& path =
@@ -1317,6 +1435,30 @@ SK_ReShadeAddOn_Init (HMODULE reshade_module)
     };
 
     _AutoLoadAddOns ();
+
+    if (is_plugin || !SK_ReShade_HasRenoDX ())
+    {
+      // As long as RenoDX is not loaded, late-register SK's AddOn for a normal install of ReShade
+      if (! is_plugin)
+      {
+        registered =
+          reshade::register_addon (SK_GetDLL (), reshade_module);
+      }
+
+      if (registered)
+      {
+        config.reshade.is_addon = true;
+
+        reshade::register_event <reshade::addon_event::present>                (SK_ReShadeAddOn_Present);
+        reshade::register_event <reshade::addon_event::init_effect_runtime>    (SK_ReShadeAddOn_InitRuntime);
+        reshade::register_event <reshade::addon_event::destroy_effect_runtime> (SK_ReShadeAddOn_DestroyRuntime);
+        reshade::register_event <reshade::addon_event::destroy_device>         (SK_ReShadeAddOn_DestroyDevice);
+        reshade::register_event <reshade::addon_event::destroy_swapchain>      (SK_ReShadeAddOn_DestroySwapChain);
+        reshade::register_event <reshade::addon_event::destroy_command_queue>  (SK_ReShadeAddOn_DestroyCmdQueue);
+        reshade::register_event <reshade::addon_event::reshade_open_overlay>   (SK_ReShadeAddOn_OverlayActivation);
+        //reshade::register_event <reshade::addon_event::display_change>         (SK_ReShadeAddOn_DisplayChange);
+      }
+    }
   }
 
   return

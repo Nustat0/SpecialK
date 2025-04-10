@@ -1674,9 +1674,14 @@ SK_EstablishRootPath (void)
   SK_PROFILE_FIRST_CALL
 
   wchar_t   wszConfigPath [MAX_PATH + 2] = { };
+#if 0
   GetCurrentDirectory     (MAX_PATH,
             wszConfigPath);
-  lstrcatW (wszConfigPath, LR"(\)");
+#else
+  wcsncpy_s (wszConfigPath, MAX_PATH,
+            SK_GetHostPath (), _TRUNCATE);
+#endif
+  lstrcatW  (wszConfigPath, LR"(\)");
 
   // File permissions don't permit us to store logs in the game's directory,
   //   so implicitly turn on the option to relocate this stuff.
@@ -2152,7 +2157,6 @@ SK_StartupCore (const wchar_t* backend, void* callback)
     dll_log->LogEx (false, L"done!\n");
   }
 
-  SK_ReShadeAddOn_Init ();
 
   SK_RunOnce (
   {
