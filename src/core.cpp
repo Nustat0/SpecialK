@@ -3647,7 +3647,8 @@ SK_FrameCallback ( SK_RenderBackend& rb,
 
             std::wstring url =
               SK_FormatStringW (
-                LR"(https://www.pcgamingwiki.com/w/index.php?search=%ws)", SK_UTF8ToWideChar (appname).c_str ());
+                LR"(https://www.pcgamingwiki.com/w/index.php?search=%ws)", SK_Network_MakeEscapeSequencedURL (SK_Platform_RemoveTrademarkSymbols (SK_UTF8ToWideChar (appname))).c_str ()
+              );
 
             SK_Network_EnqueueDownload (
               sk_download_request_s (L"pcgw_entry.html", url.data (),
@@ -5256,6 +5257,20 @@ SK_GetStoreOverlayState (bool bReal)
   }
 
   return s_LastState.load ();
+}
+
+std::wstring
+SK_Platform_RemoveTrademarkSymbols (std::wstring name)
+{
+  std::wstring out;
+
+  for ( auto& wc : name )
+  {
+    if (wc != L'™' && wc != L'®')
+      out += wc;
+  }
+
+  return out;
 }
 
 SK_LazyGlobal <iSK_Logger> dll_log;

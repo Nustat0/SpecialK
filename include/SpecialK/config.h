@@ -236,6 +236,18 @@ struct sk_config_t
     float  duration       = 20.0F;
   } version_banner;
 
+  struct control_panel_s {
+    struct keybind_s {
+      SK_ConfigSerializedKeybind
+        toggle = {
+          SK_Keybind {
+            "Open / Close Control Panel", L"Ctrl+Shift+Backspace",
+             true, true, false, VK_BACK
+          }, L"ControlPanelToggle"
+        };
+    } keys;
+  } control_panel;
+
   struct time_osd_s {
     LONG   format         = LOCALE_USER_DEFAULT;
 
@@ -297,7 +309,7 @@ struct sk_config_t
       SK_ConfigSerializedKeybind
         console_toggle = {
           SK_Keybind {
-            "Toggle SK's Command Console", L"Ctrl+Shift+Tab",
+            "Toggle Command Console", L"Ctrl+Shift+Tab",
              true, true, false, VK_TAB
           }, L"ConsoleToggle"
         };
@@ -1283,7 +1295,7 @@ struct sk_config_t
       bool    disable_ime         = false; //   ignore "disabled_to_game"
       bool    prevent_no_legacy   = false;
       bool    prevent_no_hotkeys  = false;
-      bool    ctrl_shift_backsp   =  true;
+      bool    allow_imgui_toggle  =  true;
     } keyboard;
 
     struct mouse_s {

@@ -1,4 +1,32 @@
-﻿25.8.28.2
+﻿25.8.30.3
+=========
+ + Make the Ctrl+Shift+Backspace keybinding for toggling SK's Control Panel
+     a standard configurable keybinding.
+
+     * The binding can be edited under Input Management | Keyboard.
+
+25.8.30.2
+=========
+ + Query the NVIDIA driver setting for ReBar before installing NvAPI hooks,
+     to prevent rare race conditions in 32-bit application init.
+
+25.8.30.1
+=========
+ + Improved Ubisoft+ and Steam platform identification.
+ + Improved GOG platform detection in Unreal Engine games.
+
+25.8.30
+=======
+ + Handle Steam AppId lookup for games with Unicode characters in their name.
+ + Remove Trademark symbols before performing Steam AppId lookup.
+
+25.8.29
+=======
+ + Download achievement lock/unlock icons for non-Steam games.
+ + Augment non-Steam games with achievement rarity info from Steam.
+ + Add in-game Player Count to bottom of SK's control panel for Epic/GOG/Xbox.
+
+25.8.28.2
 =========
  + Identify a game's storefront platform as (and record in INI) one of:
 
