@@ -6102,21 +6102,17 @@ static constexpr uint32_t UPLAY_OVERLAY_PS_CRC32C  { 0x35ae281c };
               rb.windows.device.getDevCaps ().res.refresh
             ) * 1.25f;
 
-          if ( ImGui::DragFloat ( label, &target_mag,
+          if ( ImGui::DragFloat ( label, &target,
                                       1.0f, 24.0f, max_limit, target > 0 ?
                           ( active ? "%6.3f fps  (Limit Engaged)" :
                                      "%6.3f fps  (~Window State)" )
                                                                   :
                                                            target < 0 ?
-                                             "%6.3f fps  (Graphing Only)"
+                              std::format ("{:6.3f} fps  (Graphing Only)", target_mag).c_str ()
                                                                   :
                                              "VSYNC Rate (No Preference)" )
              )
           {
-            target =
-              ( ( target < 0.0f ) ? (-1.0f * target_mag) :
-                                             target_mag    );
-
             if (target > 10.0f || target == 0.0f)
               cp->ProcessCommandFormatted ("%s %f", command, target);
             else if (target < 0.0f)
@@ -6129,6 +6125,8 @@ static constexpr uint32_t UPLAY_OVERLAY_PS_CRC32C  { 0x35ae281c };
               target = bBackgroundFPS ?
               target_orig_bg          :
               target_orig;
+
+            target_mag = fabs (target);
           }
           ImGui::PopStyleColor ();
 
