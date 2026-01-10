@@ -513,6 +513,9 @@ SK_TraceLoadLibrary (       HMODULE hCallingMod,
     else if (   StrStrI  (lpFileName, SK_TEXT("GameInput.dll")) ||
                 StrStrIW (wszCallingMod,     L"GameInput.dll")  )
       SK_RunOnce (SK_Input_HookGameInput ());
+    else if (   StrStrI  (lpFileName, SK_TEXT("GameInputRedist.dll")) ||
+                StrStrIW (wszCallingMod,     L"GameInputRedist.dll")  )
+      SK_RunOnce (SK_Input_HookGameInput ());
     else if (   //SK_XInput_LinkedVersion.empty () &&
                 StrStrI (lpFileName, SK_TEXT("xinput1_3.dll")) )
                      SK_RunOnce (SK_Input_HookXInput1_3 ());
@@ -1115,6 +1118,20 @@ LoadLibrary_Marshal ( LPVOID   lpRet,
             SK_NGX_EstablishDLSSGVersion (compliant_path);
           }
         }
+      }
+    }
+
+    else if (StrStrIW (compliant_path, L"discord_hook-1\\discord_hook"))
+    {
+      if (config.discord.disable_hooks)
+      {
+        SK_RunOnce (
+          dll_log->Log (L"[DLL Loader]  ** Disabling Discord Hook because it is unstable.")
+        );
+
+        SK_SetLastError (ERROR_MOD_NOT_FOUND);
+
+        hMod = nullptr;
       }
     }
 
@@ -2105,7 +2122,7 @@ SK_WalkModules_StepImpl (       HMODULE       hMod,
            StrStrIW (wszModName, wszSteamClientDLL) ||
            StrStrIW (wszModName, L"steamwrapper") )
       {
-        if (SK_GetCurrentGameID () != SK_GAME_ID::JustCause3)
+        if (! config.steam.disable_integration)
         {
           BOOL
           SK_Steam_PreHookCore (const wchar_t* wszTry = nullptr);
@@ -2115,22 +2132,6 @@ SK_WalkModules_StepImpl (       HMODULE       hMod,
 
           if (SK_HookSteamAPI () > 0)
             new_hooks = true;
-        }
-
-        else
-        {
-          static volatile               LONG __init = 0;
-          if (! InterlockedCompareExchange (&__init, TRUE, FALSE))
-          {
-            SK_Thread_Create ([](LPVOID) -> DWORD
-            {
-              SK_HookSteamAPI ();
-
-              SK_Thread_CloseSelf ();
-
-              return 0;
-            });
-          }
         }
       }
     }
@@ -2454,6 +2455,7 @@ BlacklistLibrary (const _T* lpFileName)
                       (LoadLibrary_pfn) &SK_LoadLibraryW :
                       (LoadLibrary_pfn) &SK_LoadLibraryA );
 
+#if 0
   if (true/*config.compatibility.disable_streamline_incompatible_software*/)
   {
     static bool has_streamline =
@@ -2479,6 +2481,7 @@ BlacklistLibrary (const _T* lpFileName)
       }
     }
   }
+#endif
 
   if (config.compatibility.disable_nv_bloat)
   {
@@ -2548,6 +2551,7 @@ BlacklistLibrary (const _T* lpFileName)
 #pragma pop_macro ("StrStrI")
 #pragma pop_macro ("GetModuleHandleEx")
 #pragma pop_macro ("LoadLibrary")
+
 #endif
 
   return FALSE;

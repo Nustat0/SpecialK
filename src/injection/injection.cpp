@@ -461,9 +461,14 @@ SK_Inject_ValidateProcesses (void)
   }
 }
 
+HANDLE SK_Inject_PidSignature = INVALID_HANDLE_VALUE;
+
 void
 SK_Inject_ReleaseProcess (void)
 {
+  if (SK_Inject_PidSignature != INVALID_HANDLE_VALUE)
+    CloseHandle (SK_Inject_PidSignature);
+
   if (! SK_IsInjected ())
     return;
 
@@ -552,6 +557,13 @@ SetPermissions (wchar_t* wszFilePath)
 void
 SK_Inject_AcquireProcess (void)
 {
+  wchar_t     wszInjectionSignature [33] = {};
+  _snwprintf (wszInjectionSignature, 32, LR"(Local\SK_InjectedPid_%d)", GetCurrentProcessId ());
+
+  SK_Inject_PidSignature =
+    SK_CreateEvent ( nullptr,
+      TRUE, FALSE, wszInjectionSignature );
+
   if (! SK_IsInjected ())
     return;
 
@@ -910,6 +922,11 @@ struct {
   void reset   (void)     { bLowPriv = bQuotaFull = false; }
 } static focus_ctx;
 
+
+namespace SK_PresentMon {
+  extern void DisableProviders (TRACEHANDLE sessionHandle);
+};
+
 std::string
 SK_Etw_RegisterSession (const char* szPrefix, bool bReuse)
 {
@@ -953,12 +970,38 @@ SK_Etw_RegisterSession (const char* szPrefix, bool bReuse)
                    GetExitCodeProcess ( hProcess, &dwExitCode) &&
                                                    dwExitCode  != STILL_ACTIVE )
               {
+                hProcess.Close ();
                 first_free_idx = i;
               }
 
-              else if (hProcess == nullptr)
+              if (hProcess == nullptr)
               {
-                first_free_idx = i;
+                if (pSharedMem->EtwSessions.PresentMonEx [i].hTrace != INVALID_PROCESSTRACE_HANDLE)
+                {
+                                 CloseTrace       (pSharedMem->EtwSessions.PresentMonEx [i].hTrace);
+                  SK_PresentMon::DisableProviders (pSharedMem->EtwSessions.PresentMonEx [i].hSession);
+
+                  struct TraceProperties : public EVENT_TRACE_PROPERTIES {
+                    wchar_t mSessionName [MAX_PATH];
+                  };
+
+                  TraceProperties
+                    sessionProps                  = {                              };
+                    sessionProps.Wnode.BufferSize = (ULONG) sizeof (TraceProperties);
+                    sessionProps.LoggerNameOffset = offsetof (TraceProperties, mSessionName);
+
+                  ControlTraceW (pSharedMem->EtwSessions.PresentMonEx [i].hSession, nullptr, &sessionProps, EVENT_TRACE_CONTROL_STOP);
+                }
+
+                  pSharedMem->EtwSessions.PresentMonEx [i].hTrace   = INVALID_PROCESSTRACE_HANDLE;
+                  pSharedMem->EtwSessions.PresentMonEx [i].hSession = 0;
+                  pSharedMem->EtwSessions.PresentMon   [i].dwPid    = 0;
+                 *pSharedMem->EtwSessions.PresentMon   [i].szName   = '\0';
+
+                if (first_uninit_idx == __MaxPresentMonSessions)
+                    first_uninit_idx = i;
+                if (first_free_idx   == __MaxPresentMonSessions)
+                    first_free_idx   = i;
               }
             }
 

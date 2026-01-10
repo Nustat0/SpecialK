@@ -362,10 +362,6 @@ SK_HID_DeviceFile::isInputAllowed (void) const
   if (bDisableDevice)
     return false;
 
-  // Blocking the HID file read/writes is unnecessary because
-  //   we have Unity's InControl code hooked.
-  extern bool SK_Unity_FixablePlayStationRumble;
-
   switch (device_type)
   {
     case sk_input_dev_type::Mouse:
@@ -373,7 +369,7 @@ SK_HID_DeviceFile::isInputAllowed (void) const
     case sk_input_dev_type::Keyboard:
       return (! SK_ImGui_WantKeyboardCapture ());
     case sk_input_dev_type::Gamepad:
-      return (! SK_ImGui_WantGamepadCapture ()) || (SK_Unity_FixablePlayStationRumble);
+      return (! SK_ImGui_WantGamepadCapture ());
     default: // No idea what this is, ignore it...
       break;
   }
@@ -449,6 +445,9 @@ volatile ULONG64 hid_to_xi_time = 0;
 bool
 SK_HID_FilterPreparsedData (PHIDP_PREPARSED_DATA pData)
 {
+  if (SK_HidP_GetCaps == nullptr)
+    return false;
+
   bool filter = false;
 
         HIDP_CAPS caps;
@@ -2769,6 +2768,11 @@ USHORT GetTypeIndexByName (std::wstring TypeName)
 void
 SK_Input_EnumOpenHIDFiles (void)
 {
+  // If HID input is disabled, it is not safe to attempt to enumerate and manage
+  //   HID device files that we did not have hooks installed to witness being opened.
+  if (config.input.gamepad.disable_hid)
+    return;
+
   static HANDLE hDeviceEnumThread =
   SK_Thread_CreateEx ([](LPVOID)->DWORD
   {

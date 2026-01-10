@@ -1,4 +1,343 @@
-﻿25.10.22
+﻿26.1.7
+=======
+ + Add workaround for a product called Smart Game Booster's overlay.
+
+25.12.30
+========
+ + Added support for APOLLO_CLIENT_FPS as a substitute for Sunshine's original
+     SUNSHINE_CLIENT_FPS environment variable. Silly forked projects are going
+       to define a million different environment variables if this continues :)
+
+25.12.24
+========
+ + Added updated Assassin's Creed: Shadows 1.1.7 exception memory addresses.
+ + Disable Haptic Lowpass Filter and Set Speaker Volume on DualSense controllers
+     to maximum on controller initialization, to fix missing or weak haptics in
+       DualSense-enhanced games.
+
+25.12.23
+========
+ + Disable DualSense Edge -> DualSense PID spoofing for Unity Engine games from
+     Hoyoverse (Genshin Impact, Honkai Star Rail, etc) because those games use
+       libScePad for haptics and the PID spoofing breaks haptics in libScePad.
+
+  * Default policy is still to downcast DualSense Edge to DualSense for all
+      other Unity games since Unity native as well as InControl and ReWired
+        input plug-ins do not recognize the DSE as a PlayStation controller.
+
+25.12.13
+========
+ + Added support for UnityEngine.Time.fixedDeltaTime management in Unity games
+     that use il2cpp.
+
+   * This will not work in all games, but will at least indicate the game's
+       hard-coded fixed timestep in the control panel's slider.
+
+25.12.6
+=======
+ + Disable features that anger Age of Empire 4's anti-cheat system.
+
+25.12.3
+=======
+ + Added new INI setting to prevent software from seeing input on gamepads
+     using the RawInput API.
+
+    [Input.Gamepad]
+    HideRawInput={true|false}  Default: false
+
+25.12.2.5
+=========
+ + Fixed errant %s in scanf format string during dumped texture enumeration
+     that could cause stack overflows when used with DumpOnFirstLoad.
+
+25.12.2.4
+=========
+ + Disable il2cpp support in 32-bit Unity games because not all of them use
+     fastcall calling convention for il2cpp exports, which causes crashes.
+
+25.12.2.3
+=========
+ + Allow audio device selection in the control panel using a gamepad.
+ + Update the audio widget in real-time if the active audio device changes.
+
+25.12.2.2
+=========
+ + Added proper keyboard scancode and extended flags to lParam for synthesized
+     WM_KEYUP and WM_SYSKEYUP messages when background rendering is enabled.
+
+25.12.2.1
+=========
+ + Change opaque window coverage test introduced in 25.12.2 to only test
+     against other processes with Special K injected.
+ + Added Local\SK_InjectedPid_<pid> named event to indicate which pids have
+     Special K injected.
+
+   * This is necessary for 32-bit/64-bit mixed injection scenarios where one
+       process architecture cannot read the other's memory space to determine
+         SK is injected; a named object is used instead of DLL shared memory.
+
+25.12.2
+=======
+ + Blacklist UnityCrashHandler{32|64}.exe from injection
+ + Do not attempt to manage already-open HID device files when HID is being
+     blocked to games or it may cause some Unity plug-ins to fail.
+ + Ignore gamepad input when background render mode is enabled and an opaque
+     window covers the game window while the game is out of focus.
+
+25.12.1
+=======
+ + Added "Reset Achievements" button to the Achievements control panel
+     to allow resetting all achievements for the current game.
+
+   * This is only supported for Steam and GOG; EGS lacks the needed APIs :-\
+
+25.11.30
+========
+ + Enable D3D11 Deferred Context Isolation mode for eFootball PES 2021, because
+     of a change made in 24.12.26.1.
+
+25.11.29.1
+==========
+ + Fixed same problem as 25.11.29, for games that use il2cpp instead of Mono :)
+
+25.11.29
+========
+ + Fixed potential crash in Unity engine games that do not use Assembly-CSharp,
+     while checking to see if InControl is present.
+
+25.11.27.2
+==========
+ + Remove cosmetic glitch from games that use SteamAPI and Galaxy API together,
+     where SK's overlay would report the game to be Steam even if SteamAPI
+       callbacks are not actually running.
+ + Remove recently added debug log spam for RawInput window registration,
+     unless log level is >= 1.
+ + Added the code to spoof SwapChain backbuffer format back to KCD2 because
+     it is necessary in SDR to prevent constant SwapChain resizes by the game.
+
+    * The spoofed format will match the last game-requested format instead of
+        being hardcoded to R8G8B8A8_UNORM like before, allowing SDR and HDR.
+
+25.11.27.1
+==========
+ + Remove Kingdom Come: Deliverance 2's code to spoof the SwapChain backbuffer
+     format to R8G8B8A8_UNORM, since the game now natively supports HDR.
+
+25.11.27
+========
+ + Handle the great IListenerRegistrar schism of GOG Galaxy API 1.148.1...
+
+    * Three types of Galaxy API events went from deprecated to removed:
+
+        10 (SERVER_NETWORKING)
+        22 (OVERLAY_STATE_CHANGE)
+        35 (STORAGE_SYNCHRONIZATION)
+
+    Various registered listener types need to be re-numbered in versions of
+      Galaxy API older than 1.148.1 in order to correctly fetch achievements.
+
+  => This is bad API design from CD Projekt yet again, ids should never be
+       removed from enum values for production APIs... it shuffles the order
+         of existing constants. Discontinuities are fine, re-ordering is NOT!
+
+25.11.26.2
+==========
+ + Automatically remove errant steam_appid.txt files in GOG games, if they
+     are not supposed to be there.
+
+25.11.26.1
+==========
+ + Added GOG Galaxy enhancement support for 32-bit GOG games; support is
+     limited to modern versions of GOG Galaxy API (~1.120+), same as 64-bit.
+
+25.11.26
+========
+ + Remove log spam for Win32 High Resolution Timer Upgrades unless the log
+     level is >= 1.
+ + Add support for hooking Unity's InControl input backend if it is located
+     in AssemblyCSharp-firstpass instead of Assembly-CSharp for Mono/il2cpp.
+ + Use SK_ApplyQueuedHooks (...) for DirectInput 8 hooks.
+ + Forcefully block Phoenix Wright: Ace Attorney Trilogy from accessing HID
+     or DirectInput, because the version of InControl that it uses breaks
+       when newer PlayStation controllers are connected and is incapable
+         of getting any input (i.e. DualSense breaks the game!).
+
+    * XInput emulation will be enabled in its place, and the option to
+        change button icons in Unity is provided.
+
+25.11.25
+========
+ + Ensure that wglSwapBuffers hooks always call wglSwapBuffers rather than
+     SwapBuffers.
+ + Address potential deadlock in idTech2 games during shutdown by adding a
+     5 second timeout on ExitProcess (...).
+
+25.11.24.1
+==========
+ + Prevent turning off native DualSense haptics in games using haptics without
+     ever using DualSense HID output (i.e. Prince of Persia: The Lost Crown).
+
+25.11.24
+========
+ + Optimized DirectInput 8 hook initialization to queue multiple hooks
+     instead of installing them one at a time.
+ + Fixed rumble emulation on PlayStation controllers not stopping in
+     some Unity engine games.
+
+25.11.23.1
+==========
+ + Correctly re-implement Keyboard Disabled = Always option when
+     background rendering is enabled.
+
+25.11.23
+========
+ + Improved SDL keyboard input blocking when background render is enabled.
+ + Improved Unity keyboard input blocking (RawInput) when background render
+     is enabled.
+ + Rogue keyboard glyphs should not appear in any games when alt-tabbing with
+     background render enabled now, but some games may still keep you moving
+       in the direction you were going after alt-tabbing until you release the
+         movement key or alt-tab back in.
+
+25.11.22
+========
+ + Handle breaking change in SDL3 for the hint environment variables
+     controlling Alt+F4, "Topmost" and DirectInput.
+ + Disable Alt+F4 handling in SDL games if continue rendering is enabled,
+     because SDL is incapable of determining the correct state of the Alt key.
+
+25.11.20.2
+==========
+ + Removed no longer supported INI variables:
+
+    [Platform.System]       WarnedEOSIncompat
+    [SpecialK.System]       StrictCompliant
+    [Compatibility.General] AllowFakeStreamline
+    [Window.System]         FixMouseCoords
+    [Render.FrameRate]      StreamlineEnforcementPolicy
+    [Render.DXGI]           SkipSwapChainPresentTest
+
+25.11.20.1
+==========
+ + Added weak initialization synchronization for compatibility with ReShade AddOns
+     like RenoDX; will increase launch time in most games by ~100 ms.
+
+25.11.20
+========
+ + Disabled NVIDIA Streamline debug log and added INI option to turn it back on.
+ + Replaced XInput Latency Tester with simplified XInput Report Rate Tester.
+ + Fixed "Failed to Install Hook for '5' in 'OPENGL32.dll'!" warning > 25.11.7.
+ + Hook win32u!NtUserSetWindowsHookEx instead of user32!SetWindowsHookExA/W, to
+     avoid the elephant in the room undocumented SetWindowsHookExAW function that
+       some old games and weird DRM/anti-debug schemes call directly.
+
+    * All of the documented functions call into user32!SetWindowsHookExAW, which
+        then calls win32u!NtUserSetWindowsHookEx internally on Windows.
+
+25.11.19.4
+==========
+ + Change Ninja Gaiden 4 to use synchronous initialization to prevent DirectInput
+     initialization races (i.e. "Please connect controller screen").
+ + Prevent input icon switching when keyboard is blocked to The Outer Worlds 2.
+
+    Keyboard input had been blocked but the game still knew there was a keyboard
+      event (that didn't actually change keyboard state) and would switch icons
+        without analyzing the input state for actual changes.
+
+25.11.19.3
+==========
+ + Fixed temporary keyboard unblock after triggering a gamepad key binding
+     or opening ReShade's overlay; it was permanently allowing keyboard
+       input even when Disabled to Game was selected.
+
+25.11.19.2
+==========
+ + Correctly identify VK_CANCEL as a key rather than a mouse button :)
+ + Allow polling the state of Virtual Key 0xFF, even though it's unmapped.
+ + Fixed not being able to block keyboard input in some games that call
+     GetKeyState (...).
+
+25.11.19.1
+==========
+ + Made AutoVRR mode configuration more intuitive when changing global policy.
+ + Allow notifications and achievements while ImGui is drawing popups dialogs.
+ + Improved recovery from stalled/dead real-time PresentMon ETW trace sessions.
+ + Decreased maximum concurrent PresentMon ETW trace sessions to 4.
+ + Tweaked handling of Alt-Tab while Background Render mode is enabled;
+
+    - Tab will unconditionally generate a key release event when the game regains
+        keyboard focus, even if the key is technically still held down.
+
+     * Limit the rest of the generated key release events to modifiers
+         (i.e. Alt, Ctrl, Shift) rather than standard keys.
+
+      @ The game window thread's keyboard state is now cleared upon keyboard focus
+          loss when Background Render is enabled.
+
+25.11.19
+========
+ + Added experimental option to upgrade all Waitable Timers created in a game to
+     the new High-Res variant introduced in Windows 10. 99.9% of games do not use
+       Waitable Timers, and the ones that do tend to use the old low-res codepath.
+
+    @ Setting is in "Framerate Limiter | Advanced" next to 'Reduce CPUs'.
+
+    * Please look at SpecialK.log if turning this feature on, let us know about
+        any DLLs that are spamming CreateWaitableTimer* (...) calls.
+
+    - Results generally require a full game restart.
+
+25.11.18.1
+==========
+ + Eliminate redundant Power Policy changes that would spam Windows Event Viewer
+     during game start/exit.
+ + Set DualSense Adaptive Trigger Force Feedback to "Off" instead of "Vibration",
+    when there is no emulated rumble input to process.
+
+25.11.18
+========
+ + Improved reliability of blocking gamepad input to DirectInput games.
+ + Improved detection and auto-disable of SteamAPI hooks in Unity Engine games
+     that use Manual Callback Dispatch (i.e. use Steamworks.NET).
+
+    * SK's Steam functionality can still be used, but certain game overrides do
+        not work because SK must maintain a separate instance of SteamAPI for its
+          use from the one the game is using to prevent SteamAPI callback failures.
+
+25.11.17.1
+==========
+ + Apply 25.11.17 changes only to games using ReWired_WindowsGameInput.dll.
+
+25.11.17
+========
+ + Allow Windows.Gaming.Input by default in Unity Engine 2022 and newer games.
+
+25.11.13
+========
+ + Disable Hypnotoad Helper in Zenless Zone Zero and games of a similar
+     persuasion.
+ + Removed broken "Maximum Lag Reduction" option from Unity engine games.
+
+25.11.8.2
+=========
+ + Add 1.5 second GalaxyAPI init delay for compatability with Unity
+     games on GOG.
+ + Disable il2cpp hooks in some games that do not support it.
+
+25.11.8.1
+=========
+ + Fixed SecxuROM issues in F.E.A.R. games.
+
+25.11.8
+=======
+ + Disabled SteamAPI integration in Tainted Grail: Fall of Avalon
+     (other Unity cross-store games may need this also).
+
+25.11.7
+=======
+ + Added support for some older idTech (Quake 2 era) games.
+
+25.10.22
 ========
  + Disable DirectInput 8 hooks in Ninja Gaiden 4.
 

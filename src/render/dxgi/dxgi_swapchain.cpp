@@ -410,10 +410,6 @@ HRESULT
 STDMETHODCALLTYPE
 IWrapDXGISwapChain::SetPrivateData (REFGUID Name, UINT DataSize, const void *pData)
 {
-  if (Name == SKID_DXGI_SwapChainSkipBackbufferCopy_D3D11)
-  {
-  }
-
   return
     pReal->SetPrivateData (Name, DataSize, pData);
 }
@@ -957,8 +953,8 @@ IWrapDXGISwapChain::GetDesc (DXGI_SWAP_CHAIN_DESC *pDesc)
   {
     std::scoped_lock lock (_backbufferLock);
 
-    if (config.render.dxgi.fake_swapchain_desc != DXGI_FORMAT_UNKNOWN)
-      pDesc->BufferDesc.Format = config.render.dxgi.fake_swapchain_desc;
+    if (_last_requested_format != DXGI_FORMAT_UNKNOWN)
+      pDesc->BufferDesc.Format = _last_requested_format;
 
     if ( (! _backbuffers.empty ()) &&
             _backbuffers [0].p != nullptr )
@@ -1004,6 +1000,17 @@ IWrapDXGISwapChain::ResizeBuffers ( UINT        BufferCount,
 
   if (SUCCEEDED (hr))
   {
+    if (NewFormat != DXGI_FORMAT_UNKNOWN &&
+                     DXGI_FORMAT_UNKNOWN !=
+                     _last_requested_format &&
+        NewFormat != _last_requested_format)
+    {
+      SK_LOGi0 (L"Caching New SwapChain Format: %hs",
+                   SK_DXGI_FormatToStr (NewFormat).data () );
+    }
+
+    _last_requested_format = NewFormat;
+
     state_cache._stalebuffers = false;
 
     // D3D12 is already Flip Model and doesn't need this
@@ -1084,8 +1091,24 @@ HRESULT
 STDMETHODCALLTYPE
 IWrapDXGISwapChain::ResizeTarget (const DXGI_MODE_DESC *pNewTargetParameters)
 {
-  return
+  HRESULT hr =
     pReal->ResizeTarget (pNewTargetParameters);
+
+  if (SUCCEEDED (hr))
+  {
+    if (pNewTargetParameters->Format != DXGI_FORMAT_UNKNOWN &&
+                                        DXGI_FORMAT_UNKNOWN !=
+                                        _last_requested_format &&
+        pNewTargetParameters->Format != _last_requested_format)
+    {
+      SK_LOGi0 (L"Caching New SwapChain Format: %hs",
+                   SK_DXGI_FormatToStr (pNewTargetParameters->Format).data () );
+    }
+
+    _last_requested_format = pNewTargetParameters->Format;
+  }
+
+  return hr;
 }
 
 HRESULT
@@ -1110,7 +1133,6 @@ IWrapDXGISwapChain::GetFrameStatistics (DXGI_FRAME_STATISTICS *pStats)
   {
     extern HANDLE SK_Unity_GetFrameStatsWaitEvent;
     extern bool   SK_Unity_PaceGameThread;
-    extern bool   SK_Unity_OneFrameLag;
 
     if (SK_Unity_PaceGameThread)
     {
@@ -1126,7 +1148,7 @@ IWrapDXGISwapChain::GetFrameStatistics (DXGI_FRAME_STATISTICS *pStats)
         SK::Framerate::GetLimiter (SK_GetCurrentRenderBackend ().swapchain);
       if (pLimiter != nullptr)
       {
-        next_frame = pLimiter->get_next_tick () + (SK_Unity_OneFrameLag ? pLimiter->get_ticks_per_frame () : 0);
+        next_frame = pLimiter->get_next_tick ();
       }
 
       //DWORD dwTimeStart = SK_timeGetTime ();

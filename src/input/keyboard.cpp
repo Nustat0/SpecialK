@@ -201,8 +201,9 @@ SK_ImGui_WantKeyboardCapture (bool update)
     return false;
   }
 
-  // Allow keyboard input while ReShade overlay is active
-  if (SK_ReShadeAddOn_IsOverlayActive ())
+  // Allow keyboard input while ReShade / Steam / EOS overlays are active
+  if (SK_ReShadeAddOn_IsOverlayActive () ||
+      SK_Platform_GetOverlayState (true))
   {
     config.input.mouse   .disabled_to_game = 2;
     config.input.keyboard.disabled_to_game = 2;
@@ -210,19 +211,13 @@ SK_ImGui_WantKeyboardCapture (bool update)
 
     return !SK_IsGameWindowActive ();
   }
+
   else
   {
     config.input.mouse.       disabled_to_game =
     config.input.mouse.   org_disabled_to_game;
     config.input.keyboard.    disabled_to_game =
     config.input.keyboard.org_disabled_to_game;
-  }
-
-  // Allow keyboard input while Steam /EOS overlays are active
-  if (SK_Platform_GetOverlayState (true))
-  {
-    capture.store (false);
-    return false;
   }
 
   const auto framesDrawn =
@@ -266,7 +261,7 @@ SK_ImGui_WantKeyboardCapture (bool update)
     else
     {
       // Poke through input for a special-case
-      if (temp_poke_frame > 0 && framesDrawn > temp_poke_frame + 40)
+      if (temp_poke_frame > 0 && framesDrawn < temp_poke_frame + 40)
       {
         imgui_capture = false;
       }
@@ -433,17 +428,25 @@ SK_GetSharedKeyState_Impl (int vKey, GetAsyncKeyState_pfn pfnGetFunc)
   if (pfnGetFunc == nullptr)
     return 0;
 
-  const SK_RenderBackend& rb =
-    SK_GetCurrentRenderBackend ();
-
   auto SK_ConsumeVKey = [&](int vKey) ->
   SHORT
   {
     SHORT sKeyState =
       pfnGetFunc (vKey);
 
-    sKeyState &= ~(1 << 15); // High-Order Bit = 0
-    sKeyState &= ~1;         // Low-Order Bit  = 0
+    SHORT sToggleState =
+      (vKey == VK_CAPITAL ||
+       vKey == VK_NUMLOCK ||
+       vKey == VK_SCROLL) ? static_cast <SHORT> (sKeyState & 1) : 0;
+
+    // High-Order Bit = 0  (Key is Up)
+    sKeyState = 0;
+
+    if (pfnGetFunc == GetKeyState_Original)
+    {
+      sKeyState = sToggleState; // For actual toggle keys, preserve toggle state
+                                // Everything else gets a simple 0 low-order bit
+    }
 
     if (pfnGetFunc == GetAsyncKeyState_Original)
       SK_Win32_Backend->markHidden (sk_win32_func::GetAsyncKeystate);
@@ -461,26 +464,16 @@ SK_GetSharedKeyState_Impl (int vKey, GetAsyncKeyState_pfn pfnGetFunc)
       SK_ConsumeVKey (vKey);
   }
 
-  // Block keyboard input to the game while it's in the background
+  // Block keyboard input to the game while it's in the background, because it
+  //   has no idea that focus changed and will still try to read keyboard state.
   if (game_window.wantBackgroundRender () && (! SK_IsGameWindowActive ()))
   {
-    if (pfnGetFunc == GetAsyncKeyState_Original)
-    {
-      bool fullscreen =
-        ( SK_GetFramesDrawn () && (rb.d3d12.command_queue.p != nullptr ||
-                                   rb.d3d11.immediate_ctx   != nullptr)
-                               &&  rb.isTrueFullscreen () );
-
-      if (fullscreen)
-      {
-        return
-          SK_ConsumeVKey (vKey);
-      }
-    }
+    return
+      SK_ConsumeVKey (vKey);
   }
 
-  // Valid Keys:  8 - 255
-  if ((vKey & 0xF8) != 0)
+  // Valid Keys:  3, 8 - 255
+  if (vKey >= VK_BACK || vKey == VK_CANCEL)
   {
     if (SK_ImGui_WantKeyboardCapture ())
     {
@@ -489,8 +482,8 @@ SK_GetSharedKeyState_Impl (int vKey, GetAsyncKeyState_pfn pfnGetFunc)
     }
   }
 
-  // 0-8 = Mouse + Unused Buttons
-  else if (vKey < 8)
+  // 1,2 4,5,6 = Mouse
+  else if (vKey >= VK_LBUTTON && vKey <= VK_XBUTTON2)
   {
     // Some games use this API for mouse buttons, for reasons that are beyond me...
     if (SK_ImGui_WantMouseCapture ())
@@ -505,8 +498,17 @@ SK_GetSharedKeyState_Impl (int vKey, GetAsyncKeyState_pfn pfnGetFunc)
   else if (pfnGetFunc == GetKeyState_Original)
     SK_Win32_Backend->markRead (sk_win32_func::GetKeyState);
 
-  return
+  SHORT sKeyState =
     pfnGetFunc (vKey);
+
+  if (pfnGetFunc == GetAsyncKeyState_Original)
+  {
+    // Remove this stupid bit it is unrealiable and we are better off
+    //   not trying to emulate Windows 16 cooperative multitasking behavior.
+    sKeyState &= ~0x1;
+  }
+
+  return sKeyState;
 }
 
 SHORT
@@ -575,20 +577,23 @@ GetKeyboardState_Detour (PBYTE lpKeyState)
     // All-at-once
     if (capture_mouse && capture_keyboard)
     {
-      RtlZeroMemory (lpKeyState, 255);
+      RtlZeroMemory (lpKeyState, 256);
     }
 
     else
     {
       if (capture_keyboard)
       {
-        RtlZeroMemory (&lpKeyState [7], 247);
+                        lpKeyState [VK_CANCEL] = 0;
+        RtlZeroMemory (&lpKeyState [8], 248);
       }
 
       // Some games use this API for mouse buttons, for reasons that are beyond me...
       if (capture_mouse)
       {
-        RtlZeroMemory (lpKeyState, 7);
+        lpKeyState [VK_LBUTTON ] = lpKeyState [VK_RBUTTON ] =
+        lpKeyState [VK_MBUTTON ] = lpKeyState [VK_XBUTTON1] =
+        lpKeyState [VK_XBUTTON2] = 0;
       }
     }
 

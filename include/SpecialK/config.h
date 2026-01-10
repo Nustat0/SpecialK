@@ -481,6 +481,8 @@ struct sk_config_t
     bool        auto_inject           =  true;  // Control implicit steam_api.dll bootstrapping
     bool        disable_overlay       = false;  // Sets an Env. Var to prevent drawing
     bool        crapcom_mode          = false;  // Workaround for CAPCOM DRM
+    bool        disable_integration   = false;  // Specifically disables Steam integration,
+                                                //   while allowing other stores...
 
     struct screenshot_handler_s {
       bool      enable_hook           =  true;
@@ -534,7 +536,6 @@ struct sk_config_t
     std::string app_name              = "";
     float       overlay_luminance     = 4.375F; // 350 nits
     bool        present               = false;  // Is the overlay detected?
-    bool        warned_online         = false;
   } epic;
 
   struct uplay_s {
@@ -553,6 +554,7 @@ struct sk_config_t
     float       overlay_luminance     = 4.375F; // 350 nits
     bool        present               = false;  // Is the overlay detected?
     bool        allow_windowed_mode   = false;  // Allow Discord to draw a Win32 window on top of the game?
+    bool        disable_hooks         = false;
   } discord;
 
   struct rtss_s {
@@ -838,13 +840,14 @@ struct sk_config_t
       struct {
         bool  enable_native_limit  =  false;
         float target_fps           =   0.0f;
-        int   enforcement_policy   =      4;
+        int   enforcement_policy   =      4; // Pending removal
       } streamline;
       struct {
         int  allow_latency_wait    = -1;
         int  allow_wait_for_vblank = -1;
       } engine_overrides;
       bool   max_timer_resolution  = true;
+      bool   force_high_res_timers = true;
     } framerate;
     struct d3d9_s {
       bool    force_d3d9ex         = false;
@@ -888,7 +891,6 @@ struct sk_config_t
       bool    safe_fullscreen      = false;
       bool    enhanced_depth       = false;
       bool    deferred_isolation   = false;
-      bool    present_test_skip    = false;
       bool    hide_hdr_support     = false; // Games won't know HDR is supported
       int     hdr_metadata_override=
                            SK_NoPreference; // -1 = Don't Care, -2 Disable outright
@@ -1121,7 +1123,7 @@ struct sk_config_t
       float   forced_sharpness    =   0.0f;
       int     forced_multiframe   = SK_NoPreference;
       bool    allow_flip_metering =  false;
-      bool    streamline_dbg_out  =   true;
+      bool    streamline_dbg_out  =  false;
       struct {
         float performance         =   0.0f;
         float balanced            =   0.0f;
@@ -1218,6 +1220,10 @@ struct sk_config_t
       struct {
         bool  blackout_api        = false;
       } windows_gaming_input;
+
+      struct {
+        bool  blackout_api        = false;
+      } raw_input;
 
       struct dinput_s {
         bool  blackout_gamepads   = false;
@@ -1417,7 +1423,6 @@ struct sk_config_t
     bool     disable_dx12_vk_interop  = false;
     bool     reshade_mode             = false;
     bool     fsr3_mode                = false;
-    bool     allow_fake_streamline    =  true;
     int      sdl_sanity_level         =     1;
     struct sdl_s {
       int    allow_wgi                =    -1;
@@ -1508,7 +1513,7 @@ struct sk_config_t
     bool    trace_create_thread = false;
 #endif
     bool    trace_load_library  =  true;
-    bool    strict_compliance   = false;
+    bool    strict_compliance   = false; // No longer configurable
     bool    silent              = false;
     bool    handle_crashes      =  true;
     bool    silent_crash        = false;
@@ -1926,6 +1931,11 @@ enum class SK_GAME_ID
   Stellaris,                    // stellaris.exe
   PrinceOfPersia_TheLostCrown,  // TheLostCrown.exe, TheLostCrown_plus.exe
   NinjaGaiden4,                 // NINJAGAIDEN4-WinGDK.exe, NINJAGAIDEN4-Steam.exe
+  TaintedGrail_FallOfAvalon,    // Fall of Avalon.exe
+  FEAR_Perseus_Mandate,         // ??
+  PhoenixWright_Trilogy,        // PWAAT.exe
+  eFootball_PES_2021,           // PES2021.exe
+  AgeOfEmpires4,                // RelicCardinal.exe
 
   UNKNOWN_GAME               = 0xffff
 };

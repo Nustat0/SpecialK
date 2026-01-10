@@ -1473,6 +1473,23 @@ RoGetActivationFactory_Detour ( _In_  HSTRING activatableClassId,
     {
       SK_LOGi0 (L"RoGetActivationFactory (IID_IGamepadStatics)");
 
+
+      // Some Unity plug-ins implement WGI well...
+      if (! config.input.gamepad.xinput.blackout_api && GetModuleHandleW (L"UnityPlayer.dll") != nullptr)
+      {
+        if (GetModuleHandleW (L"Rewired_WindowsGamingInput.dll"))
+        {
+          // However, this API still cannot get input in the background, so if this setting
+          //   is necessary then do not do this.
+          if (! (config.window.background_render && config.input.gamepad.disabled_to_game == SK_InputEnablement::Enabled))
+          {
+            config.input.gamepad.windows_gaming_input.blackout_api = false;
+            config.utility.save_async ();
+          }
+        }
+      }
+
+
       if (config.input.gamepad.windows_gaming_input.blackout_api)
       {
         SK_LOGi0 (L" => Disabling Interface for Current Game.");

@@ -83,7 +83,7 @@ bool  SK_Unity_GlyphCacheDirty          = false;
 
 HANDLE SK_Unity_GetFrameStatsWaitEvent = 0;
 bool   SK_Unity_PaceGameThread         = true;
-bool   SK_Unity_OneFrameLag            = false;
+bool   SK_Unity_FullIl2cppEngineTime   = true; // Il2cpp may strip out setter functions from UnityEngine.Time
 
 bool SK_Unity_HookMonoInit        (void);
 void SK_Unity_SetInputPollingFreq (float PollingHz);
@@ -134,6 +134,14 @@ SK_Unity_PlugInCfg (void)
           ImGui::TextColored    (ImVec4 (0.333f, 0.666f, 0.999f, 1.f), ICON_FA_INFO_CIRCLE);
           ImGui::SameLine       ();
           ImGui::SetItemTooltip ("Unity games will run smoother if you match Framerate to Fixed Delta Time.");
+          ImGui::SameLine       ();
+        }
+
+        if (! SK_Unity_FullIl2cppEngineTime)
+        {
+          ImGui::TextColored    (ImVec4 (0.666f, 0.333f, 0.0f, 1.f), ICON_FA_EXCLAMATION_TRIANGLE);
+          ImGui::SameLine       ();
+          ImGui::SetItemTooltip ("Game uses il2cpp and does not include UnityEngine.Time.set_fixedDeltaTime (...), this setting may have no effect.");
           ImGui::SameLine       ();
         }
 
@@ -228,12 +236,6 @@ SK_Unity_PlugInCfg (void)
         ImGui::Separator       ();
         ImGui::TextUnformatted ("Latency reduction is not reflected in Reflex timing diagram.");
         ImGui::EndTooltip ();
-      }
-
-      if (SK_Unity_PaceGameThread)
-      {
-        ImGui::SameLine ();
-        ImGui::Checkbox ("Maximum Lag Reduction", &SK_Unity_OneFrameLag);
       }
     }
 
@@ -822,7 +824,7 @@ SK_Unity_HookMonoInit (void)
                              mono_jit_init_version_Detour,
     static_cast_p2p <void> (&mono_jit_init_version_Original),
                            &pfnMonoJitInitVersion );
-  SK_EnableHook    (        pfnMonoJitInitVersion );
+  SK_QueueEnableHook (      pfnMonoJitInitVersion );
 
   void*                   pfnMonoJitExec = nullptr;
   SK_CreateDLLHook (  loaded_mono_dll,
@@ -830,7 +832,8 @@ SK_Unity_HookMonoInit (void)
                              mono_jit_exec_Detour,
     static_cast_p2p <void> (&mono_jit_exec_Original),
                            &pfnMonoJitExec );
-  SK_EnableHook    (        pfnMonoJitExec );
+  SK_QueueEnableHook (      pfnMonoJitExec );
+  SK_ApplyQueuedHooks();
 
   // If this was pre-loaded, then the above hooks never run and we should initialize everything immediately...
   if (SK_GetModuleHandleW (L"BepInEx.Core.dll"))
@@ -863,9 +866,10 @@ void SK_Unity_OnInitMono (MonoDomain* domain)
 }
 
 struct {
-  MonoImage* assemblyCSharp    = nullptr;
-  MonoImage* assemblyInControl = nullptr;
-  MonoImage* assemblyRewired   = nullptr;
+  MonoImage* assemblyCSharp           = nullptr;
+  MonoImage* assemblyCSharp_firstpass = nullptr;
+  MonoImage* assemblyInControl        = nullptr;
+  MonoImage* assemblyRewired          = nullptr;
 } SK_Unity_MonoAssemblies;
 
 struct {
@@ -898,7 +902,6 @@ il2cpp_init_Detour (const char* domain_name)
 
   auto ret =
     il2cpp_init_Original (domain_name);
-
   SK_Unity_SetupInputHooks_il2cpp ();
 
   return ret;
@@ -931,6 +934,12 @@ il2cpp_shutdown_Detour (void)
 bool
 SK_Unity_Hookil2cppInit (void)
 {
+  // Calling convention for some 32-bit games is incompatible; do not bother
+  //   trying to support il2cpp if it's 32-bit.
+#ifndef _M_AMD64
+  return false;
+#endif
+
   static bool
       once = false;
   if (once)
@@ -944,33 +953,41 @@ SK_Unity_Hookil2cppInit (void)
 
   once = true;
 
-  Il2cpp::initialize ();
+  if (SK_GetProcAddress (L"GameAssembly.dll", "il2cpp_init"))
+  {
+    Il2cpp::initialize ();
 
-  void*                   pfnil2cpp_init = nullptr;
-  SK_CreateDLLHook (       L"GameAssembly.dll",
-                            "il2cpp_init",
-                             il2cpp_init_Detour,
-    static_cast_p2p <void> (&il2cpp_init_Original),
-                         &pfnil2cpp_init );
-  SK_EnableHook    (      pfnil2cpp_init );
+    void*                   pfnil2cpp_init = nullptr;
+    SK_CreateDLLHook (       L"GameAssembly.dll",
+                              "il2cpp_init",
+                               il2cpp_init_Detour,
+      static_cast_p2p <void> (&il2cpp_init_Original),
+                           &pfnil2cpp_init );
+    SK_QueueEnableHook (    pfnil2cpp_init );
 
-  void*                   pfnil2cpp_init_utf16 = nullptr;
-  SK_CreateDLLHook (       L"GameAssembly.dll",
-                            "il2cpp_init_utf16",
-                             il2cpp_init_utf16_Detour,
-    static_cast_p2p <void> (&il2cpp_init_utf16_Original),
-                         &pfnil2cpp_init_utf16 );
-  SK_EnableHook    (      pfnil2cpp_init_utf16 );
+    void*                   pfnil2cpp_init_utf16 = nullptr;
+    SK_CreateDLLHook (       L"GameAssembly.dll",
+                              "il2cpp_init_utf16",
+                               il2cpp_init_utf16_Detour,
+      static_cast_p2p <void> (&il2cpp_init_utf16_Original),
+                           &pfnil2cpp_init_utf16 );
+    SK_QueueEnableHook (    pfnil2cpp_init_utf16 );
 
-  return true;
+    SK_ApplyQueuedHooks ();
+
+    return true;
+  }
+
+  return false;
 }
 
 il2cpp::Wrapper* SK_il2cpp_Wrapper = nullptr;
 
 struct {  
-  Image* assemblyCSharp    = nullptr;
-  Image* assemblyInControl = nullptr;
-  Image* assemblyRewired   = nullptr;
+  Image* assemblyCSharp           = nullptr;
+  Image* assemblyCSharp_firstpass = nullptr;
+  Image* assemblyInControl        = nullptr;
+  Image* assemblyRewired          = nullptr;
 } SK_Unity_il2cppAssemblies;
 
 struct {
@@ -1651,6 +1668,58 @@ SK_Unity_SetInputPollingFreq (float PollingHz)
   DetachCurrentThreadIfNotNative ();
 }
 
+using UnityEngine_Time_set_fixedDeltaTime_pfn = void (*)(MonoObject*, float deltaTime);
+using UnityEngine_Time_set_timeScale_pfn      = void (*)(MonoObject*, float timeScale);
+
+static UnityEngine_Time_set_fixedDeltaTime_pfn UnityEngine_Time_set_fixedDeltaTime_Original = nullptr;
+static UnityEngine_Time_set_timeScale_pfn      UnityEngine_Time_set_timeScale_Original      = nullptr;
+
+void
+UnityEngine_Time_set_fixedDeltaTime_Detour (MonoObject* __this, float fixedDeltaTime)
+{
+  SK_LOG_FIRST_CALL
+
+  UnityEngine_Time_set_fixedDeltaTime_Original (__this, fixedDeltaTime);
+}
+
+void
+UnityEngine_Time_set_timeScale_Detour (MonoObject* __this, float timeScale)
+{
+  SK_LOG_FIRST_CALL
+
+  if (timeScale != 1.0f && timeScale != 0.0f)
+  {
+    SK_RunOnce (
+      SK_LOGi0 (L"Non-standard time scale set: %f", timeScale)
+    );
+  }
+
+  UnityEngine_Time_set_timeScale_Original (__this, timeScale);
+}
+
+using  UnityEngine_Time_get_fixedDeltaTime_il2cpp_pfn = float (__fastcall *)(void*);
+static UnityEngine_Time_get_fixedDeltaTime_il2cpp_pfn
+       UnityEngine_Time_get_fixedDeltaTime_il2cpp_Original = nullptr;
+
+float
+UnityEngine_Time_get_fixedDeltaTime_il2cpp_Detour (void* __this)
+{
+  SK_LOG_FIRST_CALL
+
+  float original_fixed_delta_time =
+    UnityEngine_Time_get_fixedDeltaTime_il2cpp_Original (__this);
+
+  if (SK_Unity_Cfg.time_fixed_delta_time != 0.0f &&
+      SK_Unity_Cfg.time_fixed_delta_time != original_fixed_delta_time)
+  {
+    return
+      SK_Unity_Cfg.time_fixed_delta_time;
+  }
+
+  return
+    original_fixed_delta_time;
+}
+
 void
 SK_Unity_SetFixedDeltaTime (float fixed_delta_time)
 {
@@ -1666,14 +1735,56 @@ SK_Unity_SetFixedDeltaTime (float fixed_delta_time)
       SK_RunOnce (LoadMonoAssembly ("UnityEngine.CoreModule"));
       SK_RunOnce (LoadMonoAssembly ("UnityEngine"));
 
-      auto core_module = SK_mono_image_loaded ("UnityEngine.CoreModule");
-      if (!core_module)
-           core_module = SK_mono_image_loaded ("UnityEngine");
+      auto                                     core_module_file = "UnityEngine.CoreModule";
+      auto core_module = SK_mono_image_loaded (core_module_file);
+      if (!core_module) {                      core_module_file = "UnityEngine";
+           core_module = SK_mono_image_loaded (core_module_file);
+      }
 
       static auto klass = SK_mono_class_from_name (core_module, "UnityEngine", "Time");
 
       static MonoMethod* set_fixedDeltaTime = klass != nullptr ? SK_mono_class_get_method_from_name (klass, "set_fixedDeltaTime", 1) : nullptr;
       static MonoMethod* get_fixedDeltaTime = klass != nullptr ? SK_mono_class_get_method_from_name (klass, "get_fixedDeltaTime", 0) : nullptr;
+
+      static MonoMethod* set_timeScale = klass != nullptr ? SK_mono_class_get_method_from_name (klass, "set_timeScale", 1) : nullptr;
+      static MonoMethod* get_timeScale = klass != nullptr ? SK_mono_class_get_method_from_name (klass, "get_timeScale", 0) : nullptr;
+
+      if (set_fixedDeltaTime != nullptr &&
+          set_timeScale      != nullptr)
+      {
+        SK_RunOnce (
+          void* pfnUnityEngine_Time_set_fixedDeltaTime = nullptr;
+          void* pfnUnityEngine_Time_set_timeScale      = nullptr;
+
+          pfnUnityEngine_Time_set_fixedDeltaTime =
+            CompileMethod ("UnityEngine", "Time", "set_fixedDeltaTime", 1, core_module_file);
+          pfnUnityEngine_Time_set_timeScale =
+            CompileMethod ("UnityEngine", "Time", "set_timeScale",      1, core_module_file);
+
+          if (pfnUnityEngine_Time_set_fixedDeltaTime != nullptr)
+          {
+            SK_CreateFuncHook (      L"UnityEngine.Time.set_fixedDeltaTime",
+                                    pfnUnityEngine_Time_set_fixedDeltaTime,
+                                       UnityEngine_Time_set_fixedDeltaTime_Detour,
+              static_cast_p2p <void> (&UnityEngine_Time_set_fixedDeltaTime_Original) );
+          }
+
+          if (pfnUnityEngine_Time_set_timeScale != nullptr)
+          {
+            SK_CreateFuncHook (      L"UnityEngine.Time.set_timeScale",
+                                    pfnUnityEngine_Time_set_timeScale,
+                                       UnityEngine_Time_set_timeScale_Detour,
+              static_cast_p2p <void> (&UnityEngine_Time_set_timeScale_Original) );
+          }
+
+          if (         pfnUnityEngine_Time_set_fixedDeltaTime != nullptr &&
+              *(void**)pfnUnityEngine_Time_set_fixedDeltaTime != nullptr) SK_QueueEnableHook (*(void**)pfnUnityEngine_Time_set_fixedDeltaTime);
+          if (         pfnUnityEngine_Time_set_timeScale      != nullptr &&
+              *(void**)pfnUnityEngine_Time_set_timeScale      != nullptr) SK_QueueEnableHook (*(void**)pfnUnityEngine_Time_set_timeScale);
+
+          SK_ApplyQueuedHooks ();
+        );
+      }
 
       if (set_fixedDeltaTime != nullptr &&
           get_fixedDeltaTime != nullptr)
@@ -1692,6 +1803,27 @@ SK_Unity_SetFixedDeltaTime (float fixed_delta_time)
 
         if (fixed_delta_time_static != 0.0f)
         {
+          // If this is not 0.0f or 1.0f, then set_fixedDeltaTime (...) potentially
+          //   introduces game-breaking behavior!
+          float fTimeScale = 1.0f;
+
+          if (get_timeScale != nullptr)
+          {
+            MonoObject* exc = nullptr;
+            MonoObject* timeScale =
+              SK_mono_runtime_invoke (get_timeScale, nullptr, nullptr, &exc);
+
+            if (timeScale != nullptr)
+            {
+              fTimeScale = *(float *)SK_mono_object_unbox (timeScale);
+
+              if (fTimeScale != 1.0f && fTimeScale != 0.0f)
+                SK_LOGi0 (L"Non-standard timeScale detected: %f", fTimeScale);
+            }
+          }
+
+          SK_ReleaseAssert (fTimeScale == 0.0f || fTimeScale == 1.0f);
+
           void* params [1] = { &fixed_delta_time_static };
 
           SK_mono_runtime_invoke (set_fixedDeltaTime, nullptr, params, nullptr);
@@ -1729,9 +1861,31 @@ SK_Unity_SetFixedDeltaTime (float fixed_delta_time)
       static Method* set_fixedDeltaTime = klass != nullptr ? klass->get_method ("set_fixedDeltaTime", 1) : nullptr;
       static Method* get_fixedDeltaTime = klass != nullptr ? klass->get_method ("get_fixedDeltaTime", 0) : nullptr;
 
-      if (set_fixedDeltaTime != nullptr &&
-          get_fixedDeltaTime != nullptr)
+      SK_RunOnce (
+        void* pfnUnityEngine_Time_get_fixedDeltaTime = nullptr;
+              pfnUnityEngine_Time_get_fixedDeltaTime = get_fixedDeltaTime;
+
+        if (pfnUnityEngine_Time_get_fixedDeltaTime != nullptr && *(void**)pfnUnityEngine_Time_get_fixedDeltaTime != nullptr)
+        {
+          SK_CreateFuncHook (      L"UnityEngine.Time.get_fixedDeltaTime",
+                         *(void**)pfnUnityEngine_Time_get_fixedDeltaTime,
+                                     UnityEngine_Time_get_fixedDeltaTime_il2cpp_Detour,
+            static_cast_p2p <void> (&UnityEngine_Time_get_fixedDeltaTime_il2cpp_Original) );
+
+          if (*(void**)pfnUnityEngine_Time_get_fixedDeltaTime != nullptr) SK_QueueEnableHook (*(void**)pfnUnityEngine_Time_get_fixedDeltaTime);
+
+          SK_ApplyQueuedHooks ();
+        }
+      );
+
+
+      if (get_fixedDeltaTime != nullptr)
       {
+        if (set_fixedDeltaTime == nullptr)
+        {
+          SK_Unity_FullIl2cppEngineTime = false;
+        }
+
         if (SK_Unity_OriginalFixedDeltaTime == 0.0f)
         {
           void* exc = nullptr;
@@ -1743,14 +1897,14 @@ SK_Unity_SetFixedDeltaTime (float fixed_delta_time)
           }
         }
 
-        if (fixed_delta_time_static != 0.0f)
+        if (fixed_delta_time_static != 0.0f && set_fixedDeltaTime != nullptr)
         {
           void* params [1] = { &fixed_delta_time_static };
 
           Il2cpp::method_call (set_fixedDeltaTime, nullptr, params, nullptr);
         }
 
-        else
+        else if (set_fixedDeltaTime != nullptr)
         {
           void* params [1] = { &SK_Unity_OriginalFixedDeltaTime };
 
@@ -1784,10 +1938,7 @@ SK_Unity_UpdateGlyphOverride (void)
     {
       AttachThread ();
 
-      static auto assemblyInControl =
-        SK_Unity_MonoAssemblies.assemblyInControl != nullptr ?
-        SK_Unity_MonoAssemblies.assemblyInControl            :
-        SK_Unity_MonoAssemblies.assemblyCSharp;
+      static auto assemblyInControl = SK_Unity_MonoAssemblies.assemblyInControl;
 
       static MonoClass* DeviceStyle =
         SK_mono_class_from_name (assemblyInControl, "InControl", "InputDeviceStyle");
@@ -1841,10 +1992,7 @@ SK_Unity_UpdateGlyphOverride (void)
     {
       Il2cpp::thread_attach (Il2cpp::get_domain ());
 
-      static auto assemblyInControl =
-        SK_Unity_il2cppAssemblies.assemblyInControl != nullptr ?
-        SK_Unity_il2cppAssemblies.assemblyInControl            :
-        SK_Unity_il2cppAssemblies.assemblyCSharp;
+      static auto assemblyInControl = SK_Unity_il2cppAssemblies.assemblyInControl;
 
       static Class* DeviceStyle =
         assemblyInControl->get_class ("InputDeviceStyle", "InControl");
@@ -1902,10 +2050,7 @@ static void SK_Unity_InControl_SetDeviceStyle (MonoObject* device)
   if (SK_Unity_GlyphEnumVal == -1)
     return;
 
-  static auto image =
-    (SK_Unity_MonoAssemblies.assemblyInControl != nullptr) ?
-                                    GetImage ("InControl") :
-                              GetImage ("Assembly-CSharp");
+  static auto image = SK_Unity_MonoAssemblies.assemblyInControl;
 
   if (image == nullptr)
     return;
@@ -1972,8 +2117,10 @@ static void InControl_NativeInputDevice_Vibrate_Detour (MonoObject* __this, floa
 {
   SK_LOG_FIRST_CALL
 
-  if (SK_Unity_Cfg.gamepad_fix_playstation)
+  if (SK_Unity_Cfg.gamepad_fix_playstation && !SK_ImGui_WantGamepadCapture () && !config.input.gamepad.disable_rumble)
   {
+    //SK_LOGi0 (L"Vibrate (%f, %f)", leftSpeed, rightSpeed);
+
     if (SK_ImGui_HasPlayStationController ())
         SK_HID_GetActivePlayStationDevice ()->setVibration (
           static_cast <USHORT> (std::clamp (leftSpeed  * static_cast <float> (USHORT_MAX), 0.0f, 65535.0f)),
@@ -1982,6 +2129,11 @@ static void InControl_NativeInputDevice_Vibrate_Detour (MonoObject* __this, floa
   }
 
   InControl_NativeInputDevice_Vibrate_Original (__this, leftSpeed, rightSpeed);
+
+  // This should be per-device, but is global; OnAttached (...) will be necessary
+  //   to change glyphs on a system with more than one input device active.
+  if (std::exchange (SK_Unity_GlyphCacheDirty, false))
+    SK_Unity_InControl_SetDeviceStyle (__this);
 }
 
 using InControl_InputDevice_OnAttached_il2cpp_pfn    = void (__fastcall *)(void*);
@@ -2001,9 +2153,7 @@ static void SK_Unity_InControl_SetDeviceStyle_il2cpp (void* device)
     return;
 
   static auto image =
-    SK_Unity_il2cppAssemblies.assemblyInControl != nullptr ?
-    SK_Unity_il2cppAssemblies.assemblyInControl            :
-    SK_Unity_il2cppAssemblies.assemblyCSharp;
+    SK_Unity_il2cppAssemblies.assemblyInControl;
 
   if (image == nullptr)
     return;
@@ -2012,6 +2162,8 @@ static void SK_Unity_InControl_SetDeviceStyle_il2cpp (void* device)
         method = image->get_class ("InputDevice", "InControl")->get_method ("set_DeviceStyle", 1);
   if (! method)
     return;
+
+  SK_LOG_FIRST_CALL
 
   void* params [1] = { &SK_Unity_GlyphEnumVal };
 
@@ -2043,18 +2195,6 @@ static void __fastcall InControl_NativeInputDevice_Update_il2cpp_Detour (void* _
     {
       Il2cpp::method_call ((Method *)ClearInputState, __this, nullptr, nullptr);
     }
-
-#if 0
-    if (! config.input.gamepad.disable_rumble)
-    {
-      InvokeMethod ( "InControl",
-                     "NativeInputDevice",
-                     "SendStatusUpdates", 0, __this,
-        SK_Unity_MonoAssemblies.assemblyInControl != nullptr ?
-                                                 "InControl" :
-                                           "Assembly-CSharp" );
-    }
-#endif
     return;
   }
 
@@ -2070,8 +2210,10 @@ static void __fastcall InControl_NativeInputDevice_Vibrate_il2cpp_Detour (void* 
 {
   SK_LOG_FIRST_CALL
 
-  if (SK_Unity_Cfg.gamepad_fix_playstation)
+  if (SK_Unity_Cfg.gamepad_fix_playstation && !SK_ImGui_WantGamepadCapture () && !config.input.gamepad.disable_rumble)
   {
+    //SK_LOGi0 (L"Vibrate (%f, %f)", leftSpeed, rightSpeed);
+
     if (SK_ImGui_HasPlayStationController ())
         SK_HID_GetActivePlayStationDevice ()->setVibration (
           static_cast <USHORT> (std::clamp (leftSpeed  * static_cast <float> (USHORT_MAX), 0.0f, 65535.0f)),
@@ -2080,6 +2222,11 @@ static void __fastcall InControl_NativeInputDevice_Vibrate_il2cpp_Detour (void* 
   }
 
   InControl_NativeInputDevice_Vibrate_il2cpp_Original (__this, leftSpeed, rightSpeed);
+
+  // This should be per-device, but is global; OnAttached (...) will be necessary
+  //   to change glyphs on a system with more than one input device active.
+  if (std::exchange (SK_Unity_GlyphCacheDirty, false))
+    SK_Unity_InControl_SetDeviceStyle_il2cpp (__this);
 }
 
 
@@ -2124,6 +2271,9 @@ void Rewired_Joystick_SetVibration_Impl (float leftMotorLevel, float rightMotorL
       while (WaitForSingleObject (__SK_DLL_TeardownEvent, 5) != WAIT_OBJECT_0)
       {
         if (! SK_Unity_Cfg.gamepad_fix_playstation)
+          continue;
+
+        if (SK_ImGui_WantGamepadCapture () || config.input.gamepad.disable_rumble)
           continue;
 
         auto controller = SK_HID_GetActivePlayStationDevice (false);
@@ -2281,8 +2431,8 @@ SK_Unity_SetupInputHooks_il2cpp (void)
   static auto Aetherim = il2cpp::Wrapper ();
               Aetherim = il2cpp::Wrapper ();
 
-  if (! Aetherim.get_image ("Assembly-CSharp.dll"))
-  {
+  if (! (Aetherim.get_image ("Assembly-CSharp.dll") || Aetherim.get_image ("Assembly-CSharp-firstpass.dll")))
+  {  
     return false;
   }
 
@@ -2295,14 +2445,32 @@ SK_Unity_SetupInputHooks_il2cpp (void)
     {
       Il2cpp::thread_attach (Il2cpp::get_domain ());
 
-      SK_Unity_il2cppAssemblies.assemblyCSharp    = Aetherim.get_image ("Assembly-CSharp.dll");
-      SK_Unity_il2cppAssemblies.assemblyInControl = Aetherim.get_image ("InControl.dll");
-      SK_Unity_il2cppAssemblies.assemblyRewired   = Aetherim.get_image ("Rewired_Core.dll");
+      SK_Unity_il2cppAssemblies.assemblyCSharp           = Aetherim.get_image ("Assembly-CSharp.dll");
+      SK_Unity_il2cppAssemblies.assemblyCSharp_firstpass = Aetherim.get_image ("Assembly-CSharp-firstpass.dll");
+      SK_Unity_il2cppAssemblies.assemblyInControl        = Aetherim.get_image ("InControl.dll");
+      SK_Unity_il2cppAssemblies.assemblyRewired          = Aetherim.get_image ("Rewired_Core.dll");
 
       auto assemblyInControl =
         SK_Unity_il2cppAssemblies.assemblyInControl != nullptr ?
         SK_Unity_il2cppAssemblies.assemblyInControl            :
         SK_Unity_il2cppAssemblies.assemblyCSharp;
+
+      if (assemblyInControl == SK_Unity_il2cppAssemblies.assemblyCSharp &&
+          assemblyInControl != nullptr                                  &&
+          assemblyInControl->get_class ("InputDevice", "InControl") == nullptr)
+      {
+        assemblyInControl = SK_Unity_il2cppAssemblies.assemblyCSharp_firstpass;
+
+        if (assemblyInControl != nullptr &&
+            assemblyInControl->get_class ("InputDevice", "InControl") != nullptr)
+        {
+          SK_LOGi0 (
+            L"InControl not found in Assembly-CSharp, but was found in Assembly-CSharp-firstpass!"
+          );
+        }
+      }
+
+      SK_Unity_il2cppAssemblies.assemblyInControl = assemblyInControl;
 
       SK_Unity_il2cppClasses.InControl.InputDevice =
                                  assemblyInControl == nullptr ?
@@ -2313,7 +2481,8 @@ SK_Unity_SetupInputHooks_il2cpp (void)
       void* pfnInControl_NativeInputDevice_Update  = nullptr;
       void* pfnInControl_InputDevice_OnAttached    = nullptr;
 
-      if (SK_Unity_il2cppClasses.InControl.InputDevice != nullptr)
+      if (SK_Unity_il2cppClasses.InControl.InputDevice != nullptr &&
+                                                 assemblyInControl->get_class ("NativeInputDevice", "InControl") != nullptr)
       {
         pfnInControl_NativeInputDevice_Vibrate = assemblyInControl->get_class ("NativeInputDevice", "InControl")->get_method ("Vibrate",    2);
         pfnInControl_NativeInputDevice_Update  = assemblyInControl->get_class ("NativeInputDevice", "InControl")->get_method ("Update",     2);
@@ -2344,7 +2513,8 @@ SK_Unity_SetupInputHooks_il2cpp (void)
         }
       }
 
-      if (SK_Unity_il2cppAssemblies.assemblyRewired != nullptr)
+      if (SK_Unity_il2cppAssemblies.assemblyRewired != nullptr &&
+                                                            SK_Unity_il2cppAssemblies.assemblyRewired->get_class ("Joystick", "Rewired") != nullptr)
       {
         void* pfnRewired_Joystick_get_supportsVibration   = SK_Unity_il2cppAssemblies.assemblyRewired->get_class ("Joystick", "Rewired")->get_method ("get_supportsVibration",   0);
         void* pfnRewired_Joystick_get_vibrationMotorCount = SK_Unity_il2cppAssemblies.assemblyRewired->get_class ("Joystick", "Rewired")->get_method ("get_vibrationMotorCount", 0);
@@ -2353,7 +2523,8 @@ SK_Unity_SetupInputHooks_il2cpp (void)
         void* pfnRewired_Joystick_StopVibration           = SK_Unity_il2cppAssemblies.assemblyRewired->get_class ("Joystick", "Rewired")->get_method ("StopVibration",           0);
         void* pfnVibrationController_Rumble               = nullptr;
 
-        if (                              SK_Unity_il2cppAssemblies.assemblyCSharp->get_class ("VibrationController", "") != nullptr)
+        if (                              SK_Unity_il2cppAssemblies.assemblyCSharp != nullptr &&
+                                          SK_Unity_il2cppAssemblies.assemblyCSharp->get_class ("VibrationController", "") != nullptr)
           pfnVibrationController_Rumble = SK_Unity_il2cppAssemblies.assemblyCSharp->get_class ("VibrationController", "")->get_method ("Rumble", 3);
 
         if (pfnRewired_Joystick_get_supportsVibration != nullptr && *(void**)pfnRewired_Joystick_get_supportsVibration != nullptr)
@@ -2414,20 +2585,20 @@ SK_Unity_SetupInputHooks_il2cpp (void)
             pfnRewired_Joystick_SetVibration4           != nullptr &&
             pfnRewired_Joystick_SetVibration2           != nullptr)))
         {
-          if (*(void**)pfnRewired_Joystick_get_supportsVibration   != nullptr) SK_QueueEnableHook (*(void**)pfnRewired_Joystick_get_supportsVibration);
-          if (*(void**)pfnRewired_Joystick_StopVibration           != nullptr) SK_QueueEnableHook (*(void**)pfnRewired_Joystick_StopVibration);
+          if (*(void**)pfnRewired_Joystick_get_supportsVibration     != nullptr) SK_QueueEnableHook (*(void**)pfnRewired_Joystick_get_supportsVibration);
+          if (*(void**)pfnRewired_Joystick_StopVibration             != nullptr) SK_QueueEnableHook (*(void**)pfnRewired_Joystick_StopVibration);
 
           if (pfnVibrationController_Rumble)
           {
             if (*(void**)pfnVibrationController_Rumble               != nullptr) SK_QueueEnableHook (*(void**)pfnVibrationController_Rumble);
           }
+
           else
           {
             if (*(void**)pfnRewired_Joystick_get_vibrationMotorCount != nullptr) SK_QueueEnableHook (*(void**)pfnRewired_Joystick_get_vibrationMotorCount);
             if (*(void**)pfnRewired_Joystick_SetVibration4           != nullptr) SK_QueueEnableHook (*(void**)pfnRewired_Joystick_SetVibration4);
             if (*(void**)pfnRewired_Joystick_SetVibration2           != nullptr) SK_QueueEnableHook (*(void**)pfnRewired_Joystick_SetVibration2);
           }
-          
 
           SK_ApplyQueuedHooks ();
 
@@ -2608,18 +2779,42 @@ SK_Unity_SetupInputHooks (void)
       AttachThread ();
 
       // Optional, may not exist.
+      LoadMonoAssembly ("Assembly-CSharp-firstpass");
       LoadMonoAssembly ("InControl");
       LoadMonoAssembly ("Rewired_Core");
       LoadMonoAssembly ("UnityEngine.CoreModule");
 
-      SK_Unity_MonoAssemblies.assemblyCSharp    = SK_mono_image_loaded ("Assembly-CSharp");
-      SK_Unity_MonoAssemblies.assemblyInControl = SK_mono_image_loaded ("InControl");
-      SK_Unity_MonoAssemblies.assemblyRewired   = SK_mono_image_loaded ("Rewired_Core");
+      SK_Unity_MonoAssemblies.assemblyCSharp           = SK_mono_image_loaded ("Assembly-CSharp");
+      SK_Unity_MonoAssemblies.assemblyCSharp_firstpass = SK_mono_image_loaded ("Assembly-CSharp-firstpass");
+      SK_Unity_MonoAssemblies.assemblyInControl        = SK_mono_image_loaded ("InControl");
+      SK_Unity_MonoAssemblies.assemblyRewired          = SK_mono_image_loaded ("Rewired_Core");
 
       auto assemblyInControl =
         SK_Unity_MonoAssemblies.assemblyInControl != nullptr ?
         SK_Unity_MonoAssemblies.assemblyInControl            :
         SK_Unity_MonoAssemblies.assemblyCSharp;
+
+      if (assemblyInControl == SK_Unity_MonoAssemblies.assemblyCSharp &&
+          assemblyInControl != nullptr                                &&
+          SK_mono_class_from_name (assemblyInControl, "InControl", "InputDevice") == nullptr)
+      {
+        assemblyInControl = SK_Unity_MonoAssemblies.assemblyCSharp_firstpass;
+
+        if (                         assemblyInControl != nullptr &&
+            SK_mono_class_from_name (assemblyInControl, "InControl", "InputDevice"))
+        {
+          SK_LOGi0 (
+            L"InControl not found in Assembly-CSharp, but was found in Assembly-CSharp-firstpass!"
+          );
+        }
+      }
+
+      const char* assemblyInControl_filename =
+        assemblyInControl == SK_Unity_MonoAssemblies.assemblyCSharp           ? "Assembly-CSharp" :
+        assemblyInControl == SK_Unity_MonoAssemblies.assemblyCSharp_firstpass ? "Assembly-CSharp-firstpass"
+                                                                              : "InControl";
+
+      SK_Unity_MonoAssemblies.assemblyInControl = assemblyInControl;
 
       SK_Unity_MonoClasses.InControl.InputDevice =
                                  assemblyInControl == nullptr ?
@@ -2633,22 +2828,11 @@ SK_Unity_SetupInputHooks (void)
       if (SK_Unity_MonoClasses.InControl.InputDevice != nullptr)
       {
         pfnInControl_NativeInputDevice_Vibrate =
-          CompileMethod ("InControl", "NativeInputDevice", "Vibrate",    2);
+          CompileMethod ("InControl", "NativeInputDevice", "Vibrate",    2, assemblyInControl_filename);
         pfnInControl_NativeInputDevice_Update =
-          CompileMethod ("InControl", "NativeInputDevice", "Update",     2);
+          CompileMethod ("InControl", "NativeInputDevice", "Update",     2, assemblyInControl_filename);
         pfnInControl_InputDevice_OnAttached =
-          CompileMethod ("InControl",       "InputDevice", "OnAttached", 0);
-
-        // Sometimes this ships as a separate DLL (InControl.dll)
-        if (pfnInControl_NativeInputDevice_Vibrate == nullptr)
-        {
-          pfnInControl_NativeInputDevice_Vibrate =
-            CompileMethod ("InControl", "NativeInputDevice", "Vibrate",    2, "InControl");
-          pfnInControl_NativeInputDevice_Update =
-            CompileMethod ("InControl", "NativeInputDevice", "Update",     2, "InControl");
-          pfnInControl_InputDevice_OnAttached =
-            CompileMethod ("InControl",       "InputDevice", "OnAttached", 0, "InControl");
-        }
+          CompileMethod ("InControl",       "InputDevice", "OnAttached", 0, assemblyInControl_filename);
 
         if (pfnInControl_NativeInputDevice_Vibrate != nullptr)
         {

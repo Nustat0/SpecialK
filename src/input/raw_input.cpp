@@ -529,6 +529,14 @@ RegisterRawInputDevices_Detour (
          (pDevices [i].usUsage     ==  HID_USAGE_GENERIC_KEYBOARD ||
           match_any_in_page))
       {
+        // The game must be allowed to receive Raw Input while in the background,
+        //   or keyboard input will behave as though keys are stuck in bg mode.
+        if (config.window.background_render)
+        {
+          if (pDevices [i].hwndTarget != 0)
+              pDevices [i].dwFlags |= RIDEV_INPUTSINK;
+        }
+
         if (! match_any_in_page) // This only works for Mouse and Keyboard Usages
         {
           if (pDevices [i].dwFlags & RIDEV_NOLEGACY)
@@ -839,7 +847,7 @@ GetRawInputBuffer_Detour (_Out_opt_ PRAWINPUT pData,
 
       default:
         SK_RAWINPUT_READ (sk_input_dev_type::Gamepad)
-        if (filter || SK_ImGui_WantGamepadCapture () || config.input.gamepad.disable_hid)
+        if (filter || SK_ImGui_WantGamepadCapture () || config.input.gamepad.disable_hid || config.input.gamepad.raw_input.blackout_api)
         {
           SK_RAWINPUT_HIDE (sk_input_dev_type::Gamepad);
           remove = true;

@@ -315,6 +315,14 @@ SK_GetCurrentGameID (void)
           { L"TheLostCrown_plus.exe",                  SK_GAME_ID::PrinceOfPersia_TheLostCrown  },
           { L"NINJAGAIDEN4-Steam.exe",                 SK_GAME_ID::NinjaGaiden4                 }, // Steam Version
           { L"NINJAGAIDEN4-WinGDK.exe",                SK_GAME_ID::NinjaGaiden4                 }, // Microsoft Store Version
+          { L"Fall of Avalon.exe",                     SK_GAME_ID::TaintedGrail_FallOfAvalon    },
+          { L"FEARXP2.exe",                            SK_GAME_ID::FEAR_Perseus_Mandate         },
+          { L"FEARXP.exe",                             SK_GAME_ID::FEAR_Perseus_Mandate         },
+          { L"FEAR.exe",                               SK_GAME_ID::FEAR_Perseus_Mandate         },
+          { L"FEARMP.exe",                             SK_GAME_ID::FEAR_Perseus_Mandate         },
+          { L"PWAAT.exe",                              SK_GAME_ID::PhoenixWright_Trilogy        },
+          { L"PES2021.exe",                            SK_GAME_ID::eFootball_PES_2021           },
+          { L"RelicCardinal.exe",                      SK_GAME_ID::AgeOfEmpires4                },
         };
 
     first_check  = false;
@@ -691,7 +699,6 @@ struct {
 struct {
   struct
   {
-    sk::ParameterBool*    warned_online           = nullptr;
   } system;
 } eos;
 
@@ -877,6 +884,7 @@ struct {
     sk::ParameterBool*    allow_scrgb             = nullptr;
     sk::ParameterBool*    allow_flip_metering     = nullptr;
     sk::ParameterBool*    spoof_feature_support   = nullptr;
+    sk::ParameterBool*    streamline_dbg_out      = nullptr;
   } dlss;
 } nvidia;
 
@@ -907,7 +915,6 @@ sk::ParameterBool*        crash_suppression       = nullptr;
 sk::ParameterBool*        prefer_fahrenheit       = nullptr;
 sk::ParameterInt*         log_level               = nullptr;
 sk::ParameterBool*        trace_libraries         = nullptr;
-sk::ParameterBool*        strict_compliance       = nullptr;
 sk::ParameterBool*        silent                  = nullptr;
 sk::ParameterFloat*       init_delay              = nullptr;
 sk::ParameterBool*        return_to_skif          = nullptr;
@@ -958,6 +965,7 @@ struct {
     sk::ParameterBool*    force_vk_mailbox        = nullptr;
     sk::ParameterBool*    force_vk_adaptive       = nullptr;
     sk::ParameterBool*    max_timer_resolution    = nullptr;
+    sk::ParameterBool*    force_high_res_timers   = nullptr;
 
     struct
     {
@@ -1143,6 +1151,7 @@ struct {
     sk::ParameterBool*    disable_hid             = nullptr;
     sk::ParameterBool*    disable_winmm           = nullptr;
     sk::ParameterBool*    hide_windows_gaming     = nullptr;
+    sk::ParameterBool*    hide_raw_input          = nullptr;
     sk::ParameterBool*    rehook_xinput           = nullptr;
     sk::ParameterBool*    haptic_ui               = nullptr;
     sk::ParameterBool*    disable_rumble          = nullptr;
@@ -1294,7 +1303,6 @@ struct {
   sk::ParameterBool*      async_init              = nullptr;
   sk::ParameterBool*      reshade_mode            = nullptr;
   sk::ParameterBool*      fsr3_mode               = nullptr;
-  sk::ParameterBool*      allow_fake_streamline   = nullptr;
   sk::ParameterInt*       sdl_sanity_level        = nullptr;
   struct {
     sk::ParameterInt*     allow_wgi               = nullptr;
@@ -1860,6 +1868,8 @@ auto DeclKeybind =
     ConfigEntry (input.gamepad.disable_hid,              L"Disable HID Input (prevent double-input if XInput is used)",dll_ini,         L"Input.Gamepad",         L"DisableHID"),
     ConfigEntry (input.gamepad.disable_winmm,            L"Disable WinMM Joystick Input",                              dll_ini,         L"Input.Gamepad",         L"DisableWinMM"),
     ConfigEntry (input.gamepad.hide_windows_gaming,      L"Hide Windows.Gaming.Input Support from the game",           dll_ini,         L"Input.Gamepad",         L"HideWindowsGamingInput"),
+    ConfigEntry (input.gamepad.hide_raw_input,           L"Prevent game from seeing RawInput at all, useful in some "
+                                                         L" Unity Engine games that get duplicate input otherwise.",   dll_ini,         L"Input.Gamepad",         L"HideRawInput"),
     ConfigEntry (input.gamepad.haptic_ui,                L"Give tactile feedback on gamepads when navigating the UI",  dll_ini,         L"Input.Gamepad",         L"AllowHapticUI"),
     ConfigEntry (input.gamepad.hook_windows_gaming,      L"Install hooks for Windows.Gaming.Input",                    dll_ini,         L"Input.Gamepad",         L"EnableWindowsGamingInput"),
     ConfigEntry (input.gamepad.hook_raw_input,           L"Install hooks for RawInput and process WM_INPUT messages",  dll_ini,         L"Input.Gamepad",         L"EnableRawInput"),
@@ -1990,7 +2000,6 @@ auto DeclKeybind =
     ConfigEntry (compatibility.async_init,               L"Runs hook initialization on a separate thread; high safety",dll_ini,         L"Compatibility.General", L"AsyncInit"),
     ConfigEntry (compatibility.reshade_mode,             L"Initializes hooks in a way that ReShade will not interfere",dll_ini,         L"Compatibility.General", L"ReShadeMode"),
     ConfigEntry (compatibility.fsr3_mode,                L"Avoid hooks on CreateSwapChainForHwnd",                     dll_ini,         L"Compatibility.General", L"FSR3Mode"),
-    ConfigEntry (compatibility.allow_fake_streamline,    L"Allow invalid stuff, that might let fake DLSS3 mods work.", dll_ini,         L"Compatibility.General", L"AllowFakeStreamline"),
     ConfigEntry (compatibility.sdl_sanity_level,         L"Set Default (1) or Override (2) SDL input/window behavior.",dll_ini,         L"Compatibility.General", L"SDLSanityLevel"),
     // Refer to SDL_hints.h, only the most useful options are exposed here...
     ConfigEntry (compatibility.sdl.allow_wgi,            L"SDL_JOYSTICK_WGI",                                          dll_ini,         L"Compatibility.SDL",     L"SDL_JOYSTICK_WGI"),
@@ -2035,7 +2044,6 @@ auto DeclKeybind =
     //////////////////////////////////////////////////////////////////////////
 
     ConfigEntry (silent,                                 L"Log Silence",                                               dll_ini,         L"SpecialK.System",       L"Silent"),
-    ConfigEntry (strict_compliance,                      L"Strict DLL Loader Compliance",                              dll_ini,         L"SpecialK.System",       L"StrictCompliant"),
     ConfigEntry (trace_libraries,                        L"Trace DLL Loading (needed for dynamic API detection)",      dll_ini,         L"SpecialK.System",       L"TraceLoadLibrary"),
     ConfigEntry (log_level,                              L"Log Verbosity (0=General, 5=Insane Debug)",                 dll_ini,         L"SpecialK.System",       L"LogLevel"),
     ConfigEntry (handle_crashes,                         L"Use Custom Crash Handler",                                  dll_ini,         L"SpecialK.System",       L"UseCrashHandler"),
@@ -2096,6 +2104,7 @@ auto DeclKeybind =
                                       allow_latency_wait,L"Allow the game to use a Latency Waitable SwapChain.",       dll_ini,         L"FrameRate.Engine",      L"AllowDXGILatencyWait"),
     ConfigEntry (render.framerate.override_cpu_count,    L"Number of CPU cores to tell the game about",                dll_ini,         L"FrameRate.Engine",      L"OverrideCPUCoreCount"),
     ConfigEntry (render.framerate.max_timer_resolution,  L"Set the process timer resolution to the maximum supported", dll_ini,         L"FrameRate.Engine",      L"UseMaxTimerResolution"),
+    ConfigEntry (render.framerate.force_high_res_timers, L"Force Waitable Timer code to use Win10 High-Res Timers",    dll_ini,         L"FrameRate.Engine",      L"ForceHighResTimers"),
     ConfigEntry (render.framerate.latent_sync.offset,    L"Offset in Scanlines from Top of Screen to Steer Tearing",   dll_ini,         L"FrameRate.LatentSync",  L"TearlineOffset"),
     ConfigEntry (render.framerate.latent_sync.resync,    L"Frequency (in -frames or milliseconds) to Resync Timing",   dll_ini,         L"FrameRate.LatentSync",  L"ResyncFrequency"),
     ConfigEntry (render.framerate.latent_sync.bias,      L"Controls Distribution of Idle Time Per-Delayed Frame",      dll_ini,         L"FrameRate.LatentSync",  L"DelayBias"),
@@ -2150,6 +2159,7 @@ auto DeclKeybind =
     ConfigEntry (nvidia.dlss.allow_scrgb,                L"Allow scRGB even if DLSS-G DLLs are detected",              dll_ini,         L"NVIDIA.DLSS",           L"AllowSCRGBinDLSSG"),
     ConfigEntry (nvidia.dlss.allow_flip_metering,        L"Allow fake frame pacing stats for fake frames?",            dll_ini,         L"NVIDIA.DLSS",           L"AllowFlipMetering"),
     ConfigEntry (nvidia.dlss.spoof_feature_support,      L"Report all NGX (D3D11/D3D12) features supported on all HW.",dll_ini,         L"NVIDIA.DLSS",           L"SpoofFeatureSupport"),
+    ConfigEntry (nvidia.dlss.streamline_dbg_out,         L"Output Streamline Framework's Debug to game_output.log.",   dll_ini,         L"NVIDIA.DLSS",           L"UseStreamlineDebugLog"),
 
     ConfigEntry (render.hdr.enable_32bpc,                L"Experimental - Use 32bpc for HDR",                          dll_ini,         L"SpecialK.HDR",          L"Enable128BitPipeline"),
     ConfigEntry (render.hdr.remaster_8bpc_as_unorm,      L"Do not use Floating-Point RTs when re-mastering 8-bpc+ RTs",dll_ini,         L"SpecialK.HDR",          L"Keep8BpcRemastersUNORM"),
@@ -2358,8 +2368,6 @@ auto DeclKeybind =
     // This option is per-game, since it has potential compatibility issues...
     ConfigEntry (steam.screenshots.smart_capture,        L"Enhanced screenshot speed and HUD options; D3D11-only.",    dll_ini,         L"Steam.Screenshots",     L"EnableSmartCapture"),
     ConfigEntry (screenshots.include_osd_default,        L"Should a screenshot triggered BY Steam include SK's OSD?",  platform_ini,    L"Steam.Screenshots",     L"DefaultKeybindCapturesOSD"),
-
-    ConfigEntry (eos.system.warned_online,               L"Has user been told about EOS incompatibility?",             dll_ini,         L"Platform.System",       L"WarnedEOSIncompat"),
 
     ConfigEntry (galaxy.system.spawn_mini_client,        L"Start GalaxyCommunication.exe if Galaxy is not running.",   dll_ini,         L"Galaxy.System",         L"SpawnGalaxyCommunication"),
     ConfigEntry (galaxy.system.require_online_mode,      L"Enable if the current game is unsuitable for offline-only.",dll_ini,         L"Galaxy.System",         L"RequireOnlineGalaxyMode"),
@@ -2658,14 +2666,6 @@ auto DeclKeybind =
                                             //
                                             //  NEEDED for injector API detect
 
-
-  config.system.strict_compliance  = false; // Will deadlock in DLLs that call
-                                            //   LoadLibrary from DllMain
-                                            //
-                                            //  * NVIDIA Ansel, MSI Nahimic,
-                                            //      Razer *, RTSS (Sometimes)
-                                            //
-
   // Default = Don't Care
   config.render.dxgi.exception_mode = SK_NoPreference;
   config.render.dxgi.scaling_mode   = SK_NoPreference;
@@ -2707,8 +2707,6 @@ auto DeclKeybind =
         // Not a Steam game :(
         config.platform.silent                 = true;
 
-        config.system.strict_compliance        = false; // Uses NVIDIA Ansel, so this won't work!
-
         config.apis.d3d9.hook                  = false;
         config.apis.d3d9ex.hook                = false;
         config.apis.OpenGL.hook                = false;
@@ -2727,7 +2725,6 @@ auto DeclKeybind =
 
       case SK_GAME_ID::Dreamfall_Chapters:
         config.system.trace_load_library       = true;
-        config.system.strict_compliance        = false;
 
         // Chances are good that we will not catch SteamAPI early enough to hook callbacks, so
         //   auto-pump.
@@ -2745,7 +2742,6 @@ auto DeclKeybind =
 
       case SK_GAME_ID::TheWitness:
         config.system.trace_load_library    = true;
-        config.system.strict_compliance     = false; // Uses Ansel
 
         config.render.d3d11.track_map_and_unmap = false;
 
@@ -2757,13 +2753,10 @@ auto DeclKeybind =
       case SK_GAME_ID::ResidentEvil7:
       case SK_GAME_ID::Obduction:
         config.system.trace_load_library = true;  // Need to catch SteamAPI DLL load
-        config.system.strict_compliance  = false; // Cannot block threads while loading DLLs
-                                                  //   (uses an incorrectly written DLL)
         break;
 
 
       case SK_GAME_ID::TheWitcher3:
-        config.system.strict_compliance   = false; // Uses NVIDIA Ansel, so this won't work!
         config.steam.filter_stat_callback = true;  // Will stop running SteamAPI when it receives
                                                    //   data it didn't ask for
 
@@ -2779,9 +2772,6 @@ auto DeclKeybind =
         config.textures.d3d11.cache            = false; // Fix grass artifacts
         // Hacks for HDR in KCD2 due to messed up window management
         config.window.background_render        = true;
-        // Fake it, otherwise once per-frame the game's going to try to
-        //   ReSizeBuffers (...)
-        config.render.dxgi.fake_swapchain_desc = DXGI_FORMAT_R8G8B8A8_UNORM;
 
         config.render.d3d12.force_anisotropic  = false;
         config.input.ui.use_hw_cursor          =  true;
@@ -2808,8 +2798,6 @@ auto DeclKeybind =
         config.compatibility.disable_nv_bloat = true;  // PREVENT DEADLOCK CAUSED BY NVIDIA!
 
         config.system.trace_load_library      = true;  // Need to catch NVIDIA Bloat DLLs
-        config.system.strict_compliance       = false; // Cannot block threads while loading DLLs
-                                                       //   (uses an incorrectly written DLL)
 
         config.steam.auto_pump_callbacks      = false;
         config.steam.preload_client           = true;
@@ -3020,10 +3008,6 @@ auto DeclKeybind =
         break;
 
       case SK_GAME_ID::FinalFantasyXV:
-        // On many systems, people have third-party software that is behaving
-        //   incorrectly when the game issues DXGI_PRESENT_TEST; so disable
-        //     this feature to improve performance and compat.
-        config.render.dxgi.present_test_skip  = false;
         config.render.dxgi.deferred_isolation = false;
 
         // Replace sleep calls that would normally block the message queue with
@@ -3272,8 +3256,11 @@ auto DeclKeybind =
         config.apis.d3d9.hook            = false;
         config.apis.d3d9ex.hook          = false;
 
-        // Game now has native PlayStation support
-        config.input.gamepad.xinput.emulate = false;
+        // Game has native PlayStation support through libScePad and
+        //   haptics will not work if the PID is spoofed.
+        config.input.gamepad.scepad.hide_ds_edge_pid = SK_Disabled;
+        config.input.gamepad.xinput.emulate          = false;
+        input.gamepad.scepad.hide_ds_edge_pid->store (config.input.gamepad.scepad.hide_ds_edge_pid);
       } break;
 
       case SK_GAME_ID::PathOfExile:
@@ -3584,6 +3571,7 @@ auto DeclKeybind =
         config.steam.auto_inject          = true;
         config.steam.auto_pump_callbacks  = true;
         config.platform.silent            = true;
+        config.steam.disable_integration  = true;
       } break;
 
       case SK_GAME_ID::Hello_Kitty_Island_Adventure:
@@ -4071,18 +4059,26 @@ auto DeclKeybind =
 
       case SK_GAME_ID::ZenlessZoneZero:
         // Work-around anti-cheat
-        config.window.dont_hook_wndproc             =  true;
-        config.compatibility.disable_debug_features =  true;
-        config.system.handle_crashes                = false;
+        config.window.dont_hook_wndproc              =  true;
+        config.compatibility.disable_debug_features  =  true;
+        config.system.handle_crashes                 = false;
+        // Game has native PlayStation support through libScePad and
+        //   haptics will not work if the PID is spoofed.
+        config.input.gamepad.scepad.hide_ds_edge_pid = SK_Disabled;
+        config.input.gamepad.xinput.emulate          = false;
+        input.gamepad.scepad.hide_ds_edge_pid->store (config.input.gamepad.scepad.hide_ds_edge_pid);
         break;
 
       case SK_GAME_ID::HonkaiStarRail:
         // Work-around anti-cheat
-        config.window.dont_hook_wndproc             =  true;
-        config.compatibility.disable_debug_features =  true;
-        config.system.handle_crashes                = false;
-        // Game has native PlayStation support
-        config.input.gamepad.xinput.emulate         = false;
+        config.window.dont_hook_wndproc              =  true;
+        config.compatibility.disable_debug_features  =  true;
+        config.system.handle_crashes                 = false;
+        // Game has native PlayStation support through libScePad and
+        //   haptics will not work if the PID is spoofed.
+        config.input.gamepad.scepad.hide_ds_edge_pid = SK_Disabled;
+        config.input.gamepad.xinput.emulate          = false;
+        input.gamepad.scepad.hide_ds_edge_pid->store (config.input.gamepad.scepad.hide_ds_edge_pid);
         break;
 
       case SK_GAME_ID::FinalFantasyXIV:
@@ -4349,6 +4345,43 @@ auto DeclKeybind =
         // Force DirectInput 8 hooks off to avoid controller disconnect messages
         config.input.gamepad.hook_dinput8 = false;
         input.gamepad.hook_dinput8->store (config.input.gamepad.hook_dinput8);
+
+        // Go synchronous to avoid initialization races
+        config.compatibility.init_on_separate_thread = false;
+        config.input.gamepad.xinput.placehold [0]    = true;
+        config.window.dont_hook_wndproc              = true;
+        config.compatibility.disable_debug_features  = true;
+        break;
+
+      case SK_GAME_ID::TaintedGrail_FallOfAvalon:
+        config.steam.disable_integration = true;
+        break;
+
+      case SK_GAME_ID::FEAR_Perseus_Mandate:
+        config.window.dont_hook_wndproc             =  true;
+        config.compatibility.disable_debug_features =  true;
+        config.system.handle_crashes                = false;
+        break;
+
+      case SK_GAME_ID::AgeOfEmpires4:
+        // Needs this to avoid anti-debug issues
+        config.window.dont_hook_wndproc             = true;
+        config.compatibility.disable_debug_features = true;
+        break;
+
+      case SK_GAME_ID::eFootball_PES_2021:
+        // Required after an optimization for non-deferred games in 24.12.26.1
+        config.render.dxgi.deferred_isolation       =  true;
+        break;
+
+      // Game has an older version of InControl that does not understand DualSense (at all),
+      //   game will not recognize input at all if a DualSense controller is connected and
+      //     HID is not blocked.   So just emulate XInput and forcefully block DirectInput.
+      case SK_GAME_ID::PhoenixWright_Trilogy:
+        config.input.gamepad.xinput.emulate          =  true;
+        config.input.gamepad.hook_dinput8            = false;
+        config.input.gamepad.disable_hid             =  true;
+        input.gamepad.hook_dinput8->store (config.input.gamepad.hook_dinput8);
         break;
 
       case SK_GAME_ID::SilentHill_f:
@@ -4578,7 +4611,6 @@ auto DeclKeybind =
   // Load Parameters
   //
   compatibility.sdl_sanity_level->load      (config.compatibility.sdl_sanity_level);
-  compatibility.allow_fake_streamline->load (config.compatibility.allow_fake_streamline);
   compatibility.fsr3_mode->load             (config.compatibility.fsr3_mode);
   compatibility.reshade_mode->load          (config.compatibility.reshade_mode);
   compatibility.async_init->load            (config.compatibility.init_on_separate_thread);
@@ -4810,6 +4842,7 @@ auto DeclKeybind =
                                      ->load   (config.render.framerate.engine_overrides.allow_latency_wait);
   render.framerate.override_cpu_count->load   (config.render.framerate.override_num_cpus);
   render.framerate.max_timer_resolution->load (config.render.framerate.max_timer_resolution);
+  render.framerate.force_high_res_timers->load(config.render.framerate.force_high_res_timers);
 
   render.framerate.latent_sync.offset->load   (config.render.framerate.latent_sync.scanline_offset);
   render.framerate.latent_sync.resync->load   (config.render.framerate.latent_sync.scanline_resync);
@@ -4881,6 +4914,7 @@ auto DeclKeybind =
   nvidia.dlss.allow_scrgb->load              (config.nvidia.dlss.allow_scrgb);
   nvidia.dlss.allow_flip_metering->load      (config.nvidia.dlss.allow_flip_metering);
   nvidia.dlss.spoof_feature_support->load    (config.nvidia.dlss.spoof_support);
+  nvidia.dlss.streamline_dbg_out->load       (config.nvidia.dlss.streamline_dbg_out);
 
   render.hdr.enable_32bpc->load              (config.render.hdr.enable_32bpc);
   render.hdr.remaster_8bpc_as_unorm->load    (config.render.hdr.remaster_8bpc_as_unorm);
@@ -5161,7 +5195,6 @@ auto DeclKeybind =
 
   render.dxgi.enhanced_depth->load       (config.render.dxgi.enhanced_depth);
   render.dxgi.deferred_isolation->load   (config.render.dxgi.deferred_isolation);
-  render.dxgi.skip_present_test->load    (config.render.dxgi.present_test_skip);
   render.dxgi.msaa_samples->load         (config.render.dxgi.msaa_samples);
   render.dxgi.srgb_behavior->load        (config.render.dxgi.srgb_behavior);
   render.dxgi.low_spec_mode->load        (config.render.dxgi.low_spec_mode);
@@ -5267,6 +5300,7 @@ auto DeclKeybind =
   input.gamepad.disable_hid->load        (config.input.gamepad.disable_hid);
   input.gamepad.disable_winmm->load      (config.input.gamepad.disable_winmm);
   input.gamepad.hide_windows_gaming->load(config.input.gamepad.windows_gaming_input.blackout_api);
+  input.gamepad.hide_raw_input->load     (config.input.gamepad.raw_input.blackout_api);
   input.gamepad.rehook_xinput->load      (config.input.gamepad.rehook_xinput);
   input.gamepad.hook_xinput->load        (config.input.gamepad.hook_xinput);
   input.gamepad.hook_scepad->load        (config.input.gamepad.hook_scepad);
@@ -5952,7 +5986,6 @@ auto DeclKeybind =
 
   platform.log.silent->load                   (config.platform.silent);
   steam.drm.spoof_BLoggedOn->load             (config.steam.spoof_BLoggedOn);
-  eos.system.warned_online->load              (config.epic.warned_online);
 
   // We may already know the AppID before loading the game's config.
   if (config.steam.appid == 0)
@@ -6185,7 +6218,6 @@ auto DeclKeybind =
 
   silent->load              (config.system.silent);
   trace_libraries->load     (config.system.trace_load_library);
-  strict_compliance->load   (config.system.strict_compliance);
   log_level->load           (config.system.log_level);
   sk::logs::base_log_lvl  =  config.system.log_level;
   prefer_fahrenheit->load   (config.system.prefer_fahrenheit);
@@ -6217,7 +6249,28 @@ auto DeclKeybind =
   static bool do_win_verify_trust =
     (SK_Steam_GetAppID_NoAPI () != 0 && config.system.first_run) || SK_IsAdmin ();
 
-  SK_RunOnce (
+  struct {
+    int          ver     = 0;
+    int          sub_ver = 0;
+    int          build   = 0;
+    int          rev     = 0;
+    std::wstring str     = L"";
+  } static unity_dll;
+
+  SK_RunOnce
+  (
+    if ( SK_GetModuleHandleW (L"UnityPlayer.dll") ||
+             PathFileExistsW (L"UnityPlayer.dll") )
+    {
+      unity_dll.str =
+        SK_GetDLLVersionShort (L"UnityPlayer.dll");
+    }
+
+    if (! unity_dll.str.empty () && unity_dll.ver == 0)
+    {
+      swscanf (unity_dll.str.c_str (), L"%x.%x.%x.%x", &unity_dll.ver, &unity_dll.sub_ver, &unity_dll.build, &unity_dll.rev);
+    }
+
     if (version->load (config.system.version)) {
                        config.system.first_run = false;
                        do_win_verify_trust     = false;
@@ -6225,12 +6278,14 @@ auto DeclKeybind =
 
     else
     {
-      if ( SK_GetModuleHandleW (L"UnityPlayer.dll") ||
-               PathFileExistsW (L"UnityPlayer.dll") )
+      if (! unity_dll.str.empty ())
       {
         // Automatically disable Windows.Gaming.Input, because Unity's
         //   implementation sucks
-        config.input.gamepad.windows_gaming_input.blackout_api = true;
+        if (! GetModuleHandleW (L"Rewired_WindowsGamingInput.dll"))
+        {
+          config.input.gamepad.windows_gaming_input.blackout_api = true;
+        }
       }
     }
   );
@@ -6729,7 +6784,6 @@ SK_SaveConfig ( std::wstring name,
   compatibility.rehook_loadlibrary->store     (config.compatibility.rehook_loadlibrary);
   compatibility.using_wine->store             (config.compatibility.using_wine);
   compatibility.allow_dxdiagn->store          (config.compatibility.allow_dxdiagn);
-  compatibility.allow_fake_streamline->store  (config.compatibility.allow_fake_streamline);
   compatibility.sdl_sanity_level->store       (config.compatibility.sdl_sanity_level);
 
   compatibility.sdl.allow_xinput->store       (config.compatibility.sdl.allow_xinput);
@@ -6873,6 +6927,7 @@ SK_SaveConfig ( std::wstring name,
   input.gamepad.disable_hid->store            (config.input.gamepad.disable_hid);
   input.gamepad.disable_winmm->store          (config.input.gamepad.disable_winmm);
   input.gamepad.hide_windows_gaming->store    (config.input.gamepad.windows_gaming_input.blackout_api);
+  input.gamepad.hide_raw_input->store         (config.input.gamepad.raw_input.blackout_api);
   input.gamepad.rehook_xinput->store          (config.input.gamepad.rehook_xinput);
   input.gamepad.haptic_ui->store              (config.input.gamepad.haptic_ui);
 
@@ -7040,7 +7095,6 @@ SK_SaveConfig ( std::wstring name,
   window.unconfine_cursor->store              (config.window.unconfine_cursor);
   window.persistent_drag->store               (config.window.persistent_drag);
   window.fullscreen->store                    (config.window.fullscreen);
-  window.fix_mouse_coords->store              (config.window.res.override.fix_mouse);
   window.always_on_top->store                 (config.window.always_on_top);
   window.disable_screensaver->store           (config.window.disable_screensaver);
   window.fullscreen_no_saver->store           (config.window.fullscreen_no_saver);
@@ -7051,6 +7105,18 @@ SK_SaveConfig ( std::wstring name,
   window.allow_file_drops->store              (config.window.allow_file_drops);
   window.treat_fg_as_active->store            (config.window.treat_fg_as_active);
   window.fix_stuck_alt_tab_keys->store        (config.window.fix_stuck_keys);
+
+  // Hide this setting if it is the default value, because it hasn't been maintained
+  //   and I want to remove it.
+  if (! config.window.res.override.fix_mouse)
+  {
+    dll_ini->get_section (L"Window.System").remove_key (L"FixMouseCoords");
+  }
+
+  else
+  {
+    window.fix_mouse_coords->store (config.window.res.override.fix_mouse);
+  }
 
 #ifdef _VALIDATE_MONITOR_IDX
   if (config.display.monitor_handle != 0)
@@ -7142,12 +7208,12 @@ SK_SaveConfig ( std::wstring name,
 
   render.framerate.apply_streamline_pacing->
                                        store (config.render.framerate.streamline.enable_native_limit);
-  render.framerate.streamline_limit_policy->
-                                       store (config.render.framerate.streamline.enforcement_policy);
 
   render.framerate.override_cpu_count->store (config.render.framerate.override_num_cpus);
   render.framerate.max_timer_resolution->
                                        store (config.render.framerate.max_timer_resolution);
+  render.framerate.force_high_res_timers->
+                                       store (config.render.framerate.force_high_res_timers);
   render.framerate.engine.allow_latency_wait
                                      ->store (config.render.framerate.engine_overrides.allow_latency_wait);
 
@@ -7282,6 +7348,7 @@ SK_SaveConfig ( std::wstring name,
       nvidia.dlss.allow_scrgb->store              (config.nvidia.dlss.allow_scrgb);
       nvidia.dlss.allow_flip_metering->store      (config.nvidia.dlss.allow_flip_metering);
       nvidia.dlss.spoof_feature_support->store    (config.nvidia.dlss.spoof_support);
+      nvidia.dlss.streamline_dbg_out->store       (config.nvidia.dlss.streamline_dbg_out);
       render.framerate.max_delta_time->store      (config.render.framerate.max_delta_time);
       render.framerate.flip_discard->store        (config.render.framerate.flip_discard);
       render.framerate.flip_sequential->store     (config.render.framerate.flip_sequential);
@@ -7381,7 +7448,6 @@ SK_SaveConfig ( std::wstring name,
       render.dxgi.allow_d3d12_footguns->store (config.render.dxgi.allow_d3d12_footguns);
       render.dxgi.enhanced_depth->store       (config.render.dxgi.enhanced_depth);
       render.dxgi.deferred_isolation->store   (config.render.dxgi.deferred_isolation);
-      render.dxgi.skip_present_test->store    (config.render.dxgi.present_test_skip);
       render.dxgi.msaa_samples->store         (config.render.dxgi.msaa_samples);
       render.dxgi.srgb_behavior->store        (config.render.dxgi.srgb_behavior);
       render.dxgi.low_spec_mode->store        (config.render.dxgi.low_spec_mode);
@@ -7545,7 +7611,6 @@ SK_SaveConfig ( std::wstring name,
   steam.social.online_status->store            (config.steam.online_status);
 
   steam.drm.spoof_BLoggedOn->store             (config.steam.spoof_BLoggedOn);
-  eos.system.warned_online->store              (config.epic.warned_online);
 
   platform.system.notify_corner->store         (
                     SK_Steam_PopupOriginToWStr (config.platform.notify_corner));
@@ -7617,7 +7682,6 @@ SK_SaveConfig ( std::wstring name,
 
   debug_wait->store                            (config.system.wait_for_debugger);
   trace_libraries->store                       (config.system.trace_load_library);
-  strict_compliance->store                     (config.system.strict_compliance);
   init_delay->store                            (config.system.global_inject_delay);
   return_to_skif->store                        (config.system.return_to_skif);
   auto_load_asi_files->store                   (config.system.auto_load_asi_files);
