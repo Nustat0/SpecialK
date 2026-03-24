@@ -86,6 +86,7 @@ public:
 
   virtual std::wstring get_value_str (void)                    = 0;
   virtual value_type   get_value     (void)                    = 0;
+  virtual value_type&  get_cfg_ref   (void)                    = 0;
 
   virtual void         set_value     (      value_type    val) = 0;
   virtual void         set_value_str (const wchar_t*      str) = 0;
@@ -98,6 +99,7 @@ public:
 
 protected:
           value_type   value = { };
+          value_type*  cfg_p = { };
 };
 
 class ParameterInt : public Parameter <int>
@@ -109,6 +111,7 @@ public:
 
   std::wstring get_value_str (void)                     override;
   int          get_value     (void)                     override;
+  int&         get_cfg_ref   (void)                     override;
 
   void         set_value     (      int            val) override;
   void         set_value_str (const wchar_t       *str) override;
@@ -130,6 +133,7 @@ public:
 
   std::wstring get_value_str (void)                     override;
   int64_t      get_value     (void)                     override;
+  int64_t&     get_cfg_ref   (void)                     override;
 
   void         set_value     (      int64_t        val) override;
   void         set_value_str (const wchar_t       *str) override;
@@ -151,6 +155,7 @@ public:
 
   std::wstring get_value_str (void)                    override;
   bool         get_value     (void)                    override;
+  bool&        get_cfg_ref   (void)                    override;
 
   void         set_value     (      bool          val) override;
   void         set_value_str (const wchar_t*      str) override;
@@ -182,6 +187,7 @@ public:
 
   std::wstring get_value_str (void)                     override;
   float        get_value     (void)                     override;
+  float&       get_cfg_ref   (void)                     override;
 
   void         set_value     (      float          val) override;
   void         set_value_str (const wchar_t       *str) override;
@@ -203,6 +209,7 @@ public:
 
   std::wstring get_value_str (void)                     override;
   std::wstring get_value     (void)                     override;
+  std::wstring&get_cfg_ref   (void)                     override;
 
   void         set_value     (       std::wstring  str) override;
   void         set_value     (const wchar_t       *val);
@@ -230,6 +237,7 @@ public:
 
   std::wstring get_value_str (void)                     override;
   ImVec2       get_value     (void)                     override;
+  ImVec2&      get_cfg_ref   (void)                     override;
 
   void         set_value     (      ImVec2         val) override;
   void         set_value_str (const wchar_t       *str) override;

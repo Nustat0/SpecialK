@@ -93,6 +93,12 @@ sk::ParameterInt::get_value (void)
   return value;
 }
 
+int&
+sk::ParameterInt::get_cfg_ref (void)
+{
+  return *cfg_p;
+}
+
 void
 sk::ParameterInt::set_value (int val)
 {
@@ -139,6 +145,8 @@ sk::ParameterInt::store_str (const std::wstring& str)
 bool
 sk::ParameterInt::load (int& ref)
 {
+  cfg_p = &ref;
+
   bool bRet =
     iParameter::load ();
 
@@ -160,6 +168,12 @@ int64_t
 sk::ParameterInt64::get_value (void)
 {
   return value;
+}
+
+int64_t&
+sk::ParameterInt64::get_cfg_ref (void)
+{
+  return *cfg_p;
 }
 
 void
@@ -208,6 +222,8 @@ sk::ParameterInt64::store_str (const std::wstring& str)
 bool
 sk::ParameterInt64::load (int64_t& ref)
 {
+  cfg_p = &ref;
+
   bool bRet =
     iParameter::load ();
 
@@ -253,6 +269,12 @@ bool
 sk::ParameterBool::get_value (void)
 {
   return value;
+}
+
+bool&
+sk::ParameterBool::get_cfg_ref (void)
+{
+  return *cfg_p;
 }
 
 void
@@ -400,6 +422,8 @@ sk::ParameterBool::store_str (const std::wstring& str)
 bool
 sk::ParameterBool::load (bool& ref)
 {
+  cfg_p = &ref;
+
   bool bRet =
     iParameter::load ();
 
@@ -427,6 +451,12 @@ float
 sk::ParameterFloat::get_value (void)
 {
   return value;
+}
+
+float&
+sk::ParameterFloat::get_cfg_ref (void)
+{
+  return *cfg_p;
 }
 
 void
@@ -474,6 +504,8 @@ sk::ParameterFloat::store_str (const std::wstring& str)
 bool
 sk::ParameterFloat::load (float& ref)
 {
+  cfg_p = &ref;
+
   bool bRet =
     iParameter::load ();
 
@@ -500,6 +532,12 @@ std::wstring&
 sk::ParameterStringW::get_value_ref (void)
 {
   return value;
+}
+
+std::wstring&
+sk::ParameterStringW::get_cfg_ref (void)
+{
+  return *cfg_p;
 }
 
 void
@@ -550,6 +588,8 @@ sk::ParameterStringW::store_str (const std::wstring& str)
 bool
 sk::ParameterStringW::load (std::wstring& ref)
 {
+  cfg_p = &ref;
+
   bool bRet =
     iParameter::load ();
 
@@ -597,6 +637,12 @@ sk::ParameterVec2f::get_value (void)
   return value;
 }
 
+ImVec2&
+sk::ParameterVec2f::get_cfg_ref (void)
+{
+  return *cfg_p;
+}
+
 void
 sk::ParameterVec2f::set_value (ImVec2 val)
 {
@@ -639,6 +685,8 @@ sk::ParameterVec2f::store_str (const std::wstring& str)
 bool
 sk::ParameterVec2f::load (ImVec2& ref)
 {
+  cfg_p = &ref;
+
   const bool bRet =
     iParameter::load ();
 
