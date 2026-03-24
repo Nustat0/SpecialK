@@ -2412,7 +2412,7 @@ auto DeclKeybind =
     ConfigEntry (steam.drm.spoof_BLoggedOn,              L"Fix For Stupid Games That Don't Know How DRM Works",        dll_ini,         L"Steam.DRMWorks",        L"SpoofBLoggedOn"),
   };
 
-  std::vector <param_decl_s> params_to_build_old = { };
+  std::vector <param_decl_s> params_to_build_old;
 
   for ( auto& decl : params_to_build )
   {
@@ -6665,7 +6665,7 @@ auto DeclKeybind =
 
   if (! empty)
   {
-    for ( auto& decl : params_to_build_old )
+    /*for ( auto& decl : params_to_build_old )
     {
       if (*decl.parameter_->get_value_str ().empty ())
       {
@@ -6679,7 +6679,7 @@ auto DeclKeybind =
         decl.ini_->get_section (decl.section_)
                   .remove_key  (decl.key_old_);
       }
-    }
+    }*/
   }
 
   return (! empty);
