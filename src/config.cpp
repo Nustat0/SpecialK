@@ -1702,7 +1702,8 @@ auto DeclKeybind =
   reinterpret_cast <sk::iParameter **> (&(param)),      \
   std::type_index (              typeid ((param))),     \
                     (descrip),  (ini),                  \
-                    (sec),      (key),  (key_old)       \
+                    (sec),      (key),  (key_old),      \
+  reinterpret_cast <sk::iParameter **> (&(param))       \
 }
 
 #define Keybind(bind,descrip,ini,sec) {             \
@@ -1723,7 +1724,7 @@ auto DeclKeybind =
     const wchar_t          *section_     = nullptr;
     const wchar_t          *key_         = nullptr;
     const wchar_t          *key_old_     = nullptr;
-           sk::iParameter  *prm_old_     = nullptr;
+           sk::iParameter **prm_old_     = nullptr;
   };
 
   static const std::initializer_list <param_decl_s> params_to_build
@@ -2423,7 +2424,7 @@ auto DeclKeybind =
         SK_CreateINIParameter <sk::ParameterBool> (decl.description_, decl.ini_, decl.section_, decl.key_);
 
       if (decl.key_old_ != nullptr)
-      {   decl.prm_old_  =
+      {  *decl.prm_old_  =
         SK_CreateINIParameter <sk::ParameterBool> (decl.description_, decl.ini_, decl.section_, decl.key_old_);
         params_to_build_old.push_back (decl);
       }
@@ -2438,7 +2439,7 @@ auto DeclKeybind =
         SK_CreateINIParameter <sk::ParameterInt> (decl.description_, decl.ini_, decl.section_, decl.key_);
 
       if (decl.key_old_ != nullptr)
-      {   decl.prm_old_  =
+      {  *decl.prm_old_  =
         SK_CreateINIParameter <sk::ParameterInt> (decl.description_, decl.ini_, decl.section_, decl.key_old_);
         params_to_build_old.push_back (decl);
       }
@@ -2453,7 +2454,7 @@ auto DeclKeybind =
         SK_CreateINIParameter <sk::ParameterInt64> (decl.description_, decl.ini_, decl.section_, decl.key_);
 
       if (decl.key_old_ != nullptr)
-      {   decl.prm_old_  =
+      {  *decl.prm_old_  =
         SK_CreateINIParameter <sk::ParameterInt64> (decl.description_, decl.ini_, decl.section_, decl.key_old_);
         params_to_build_old.push_back (decl);
       }
@@ -2468,7 +2469,7 @@ auto DeclKeybind =
         SK_CreateINIParameter <sk::ParameterFloat> (decl.description_, decl.ini_, decl.section_, decl.key_);
 
       if (decl.key_old_ != nullptr)
-      {   decl.prm_old_  =
+      {  *decl.prm_old_  =
         SK_CreateINIParameter <sk::ParameterFloat> (decl.description_, decl.ini_, decl.section_, decl.key_old_);
         params_to_build_old.push_back (decl);
       }
@@ -2483,7 +2484,7 @@ auto DeclKeybind =
         SK_CreateINIParameter <sk::ParameterStringW> (decl.description_, decl.ini_, decl.section_, decl.key_);
 
       if (decl.key_old_ != nullptr)
-      {   decl.prm_old_  =
+      {  *decl.prm_old_  =
         SK_CreateINIParameter <sk::ParameterStringW> (decl.description_, decl.ini_, decl.section_, decl.key_old_);
         params_to_build_old.push_back (decl);
       }
@@ -2498,7 +2499,7 @@ auto DeclKeybind =
         SK_CreateINIParameter <sk::ParameterVec2f> (decl.description_, decl.ini_, decl.section_, decl.key_);
 
       if (decl.key_old_ != nullptr)
-      {   decl.prm_old_  =
+      {  *decl.prm_old_  =
         SK_CreateINIParameter <sk::ParameterVec2f> (decl.description_, decl.ini_, decl.section_, decl.key_old_);
         params_to_build_old.push_back (decl);
       }
@@ -6669,7 +6670,7 @@ auto DeclKeybind =
     {
       if (*decl.parameter_->get_value_str ().empty ())
       {
-        decl.prm_old_->load (*decl.parameter_->get_cfg_ref ());
+        *decl.prm_old_->load (*decl.parameter_->get_cfg_ref ());
       }
 
       if ( decl.ini_->contains_section (decl.section_) &&
