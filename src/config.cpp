@@ -1629,6 +1629,22 @@ SK_LoadConfigEx (std::wstring name, bool create)
   notify_config      =
     std::wstring (SK_GetInstallPath ()) + LR"(\Global\notifications.ini)";
 
+  //
+  // Create Parameters
+  //
+  struct param_decl_s {
+           sk::iParameter **parameter_   = nullptr;
+          std::type_index   type_;
+    const wchar_t          *description_ = nullptr;
+          iSK_INI          *ini_         = nullptr;
+    const wchar_t          *section_     = nullptr;
+    const wchar_t          *key_         = nullptr;
+    const wchar_t          *key_old_     = nullptr;
+           sk::iParameter **prm_old_     = nullptr;
+  };
+
+  std::vector <param_decl_s> params_to_build_old;
+
   if (init == FALSE || dll_ini == nullptr)
   {
     SK_RunOnce (     dll_ini   =
@@ -1702,7 +1718,8 @@ auto DeclKeybind =
   reinterpret_cast <sk::iParameter **> (&(param)),      \
   std::type_index (              typeid ((param))),     \
                     (descrip),  (ini),                  \
-                    (sec),      (key),  (key_old)       \
+                    (sec),      (key),  (key_old),      \
+  reinterpret_cast <sk::iParameter **> (&(param))       \
 }
 
 #define Keybind(bind,descrip,ini,sec) {             \
@@ -1711,20 +1728,6 @@ auto DeclKeybind =
                     (descrip),  (ini),              \
                     (sec),      ((bind)->short_name)\
 }
-
-  //
-  // Create Parameters
-  //
-  struct param_decl_s {
-           sk::iParameter **parameter_   = nullptr;
-          std::type_index   type_;
-    const wchar_t          *description_ = nullptr;
-          iSK_INI          *ini_         = nullptr;
-    const wchar_t          *section_     = nullptr;
-    const wchar_t          *key_         = nullptr;
-    const wchar_t          *key_old_     = nullptr;
-           sk::iParameter  *prm_old_     = nullptr;
-  };
 
   static const std::initializer_list <param_decl_s> params_to_build
   //// nb: If you want any hope of reading this table, turn line wrapping off.
@@ -2412,7 +2415,6 @@ auto DeclKeybind =
     ConfigEntry (steam.drm.spoof_BLoggedOn,              L"Fix For Stupid Games That Don't Know How DRM Works",        dll_ini,         L"Steam.DRMWorks",        L"SpoofBLoggedOn"),
   };
 
-  std::vector <param_decl_s> params_to_build_old;
 
   for ( auto& decl : params_to_build )
   {
@@ -2423,7 +2425,7 @@ auto DeclKeybind =
         SK_CreateINIParameter <sk::ParameterBool> (decl.description_, decl.ini_, decl.section_, decl.key_);
 
       if (decl.key_old_ != nullptr)
-      {   decl.prm_old_  =
+      {  *decl.prm_old_  =
         SK_CreateINIParameter <sk::ParameterBool> (decl.description_, decl.ini_, decl.section_, decl.key_old_);
         params_to_build_old.push_back (decl);
       }
@@ -2438,7 +2440,7 @@ auto DeclKeybind =
         SK_CreateINIParameter <sk::ParameterInt> (decl.description_, decl.ini_, decl.section_, decl.key_);
 
       if (decl.key_old_ != nullptr)
-      {   decl.prm_old_  =
+      {  *decl.prm_old_  =
         SK_CreateINIParameter <sk::ParameterInt> (decl.description_, decl.ini_, decl.section_, decl.key_old_);
         params_to_build_old.push_back (decl);
       }
@@ -2453,7 +2455,7 @@ auto DeclKeybind =
         SK_CreateINIParameter <sk::ParameterInt64> (decl.description_, decl.ini_, decl.section_, decl.key_);
 
       if (decl.key_old_ != nullptr)
-      {   decl.prm_old_  =
+      {  *decl.prm_old_  =
         SK_CreateINIParameter <sk::ParameterInt64> (decl.description_, decl.ini_, decl.section_, decl.key_old_);
         params_to_build_old.push_back (decl);
       }
@@ -2468,7 +2470,7 @@ auto DeclKeybind =
         SK_CreateINIParameter <sk::ParameterFloat> (decl.description_, decl.ini_, decl.section_, decl.key_);
 
       if (decl.key_old_ != nullptr)
-      {   decl.prm_old_  =
+      {  *decl.prm_old_  =
         SK_CreateINIParameter <sk::ParameterFloat> (decl.description_, decl.ini_, decl.section_, decl.key_old_);
         params_to_build_old.push_back (decl);
       }
@@ -2483,7 +2485,7 @@ auto DeclKeybind =
         SK_CreateINIParameter <sk::ParameterStringW> (decl.description_, decl.ini_, decl.section_, decl.key_);
 
       if (decl.key_old_ != nullptr)
-      {   decl.prm_old_  =
+      {  *decl.prm_old_  =
         SK_CreateINIParameter <sk::ParameterStringW> (decl.description_, decl.ini_, decl.section_, decl.key_old_);
         params_to_build_old.push_back (decl);
       }
@@ -2498,7 +2500,7 @@ auto DeclKeybind =
         SK_CreateINIParameter <sk::ParameterVec2f> (decl.description_, decl.ini_, decl.section_, decl.key_);
 
       if (decl.key_old_ != nullptr)
-      {   decl.prm_old_  =
+      {  *decl.prm_old_  =
         SK_CreateINIParameter <sk::ParameterVec2f> (decl.description_, decl.ini_, decl.section_, decl.key_old_);
         params_to_build_old.push_back (decl);
       }
@@ -6669,7 +6671,7 @@ auto DeclKeybind =
     {
       if ((*decl.parameter_)->get_value_str ().empty ())
       {
-        decl.prm_old_->load ((*decl.parameter_)->get_cfg_ref ());
+        (*decl.prm_old_)->load ((*decl.parameter_)->get_cfg_ref ());
       }
 
       if ( decl.ini_->contains_section (decl.section_) &&
