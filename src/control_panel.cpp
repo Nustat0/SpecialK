@@ -6326,12 +6326,14 @@ static constexpr uint32_t UPLAY_OVERLAY_PS_CRC32C  { 0x35ae281c };
 
             bFirstFrame = false;
 
+            static const char* szItemLabel = "Refresh Rate Factors";
+
             if (bBackgroundFPS)
             {
               ImGui::PushItemWidth (itemWidth);
 
               if  ( ImGui::Combo (
-                      "Refresh Rate Factors",
+                      szItemLabel,
                       &iFractSelBG,
                       strFractList.data ()
                     )
@@ -6364,10 +6366,10 @@ static constexpr uint32_t UPLAY_OVERLAY_PS_CRC32C  { 0x35ae281c };
                 ? config.render.framerate.tearing_mode
                 : SK_TearingMode::AlwaysOn;
 
-            bool bIsD3D9        =
+            bool bIsD3D9 =
               SK_API_IsDirect3D9 (rb.api);
 
-            bool bIsTearingD3D9 = [&]() -> bool
+            auto _IntervalEqualsD3D9 = [&](int interval) -> bool
             {
               if (bIsD3D9)
               {
@@ -6384,16 +6386,17 @@ static constexpr uint32_t UPLAY_OVERLAY_PS_CRC32C  { 0x35ae281c };
 
                     if (SUCCEEDED (pSwap9->GetPresentParameters (&pparams)))
                     {
-                      return
-                        pparams.PresentationInterval == D3DPRESENT_INTERVAL_IMMEDIATE ||
-                        pparams.PresentationInterval == D3DPRESENT_FORCEIMMEDIATE;
+                      return SK_D3D9_GetNominalPresentInterval (pparams.PresentationInterval) == interval;
                     }
                   }
                 }
               }
 
               return false;
-            }();
+            };
+
+            bool bIsTearingD3D9 =
+            _IntervalEqualsD3D9 (0);
 
             static bool bAsyncInitOrig =
               config.compatibility.init_on_separate_thread;
@@ -6551,8 +6554,12 @@ static constexpr uint32_t UPLAY_OVERLAY_PS_CRC32C  { 0x35ae281c };
                 );
               }
 
-              if ( ImGui::Combo ( "Scan Mode",
-                               &iMode, strModeList.data () ) )
+              if  ( ImGui::Combo (
+                      "Scan Mode",
+                      &iMode,
+                      strModeList.data ()
+                    )
+                  )
               {
                 float fTargetFPS = static_cast <float> (
                   dRefresh
@@ -6605,19 +6612,27 @@ static constexpr uint32_t UPLAY_OVERLAY_PS_CRC32C  { 0x35ae281c };
 
               if (bIsD3D9 && SK_IsInjected ())
               {
-                if ( bIsTearingD3D9 == (config.render.framerate.tearing_mode == SK_TearingMode::AlwaysOn) )
+                if (bIsTearingD3D9 == (config.render.framerate.tearing_mode == SK_TearingMode::AlwaysOn))
                 {
-                  if (config.compatibility.init_on_separate_thread != bAsyncInitOrig)
+                  switch (config.render.framerate.tearing_mode)
                   {
-                    config.compatibility.init_on_separate_thread = bAsyncInitOrig;
+                    case SK_TearingMode::AlwaysOff:
+                    case SK_TearingMode::AlwaysOff_LowLatency:
+                      if (! _IntervalEqualsD3D9 (config.render.framerate.latent_sync.present_interval))
+                      {
+                        break;
+                      }
+                      [[fallthrough]];
+                    default:
+                      if (config.compatibility.init_on_separate_thread != bAsyncInitOrig)
+                          config.compatibility.init_on_separate_thread  = bAsyncInitOrig;
+                      break;
                   }
                 }
               }
 
               if (iLastLatentSyncTearingMode != config.render.framerate.tearing_mode)
-              {
-                iLastLatentSyncTearingMode = config.render.framerate.tearing_mode;
-              }
+                  iLastLatentSyncTearingMode  = config.render.framerate.tearing_mode;
 
               ImGui::TreePop  (  );
             }
@@ -6632,26 +6647,52 @@ static constexpr uint32_t UPLAY_OVERLAY_PS_CRC32C  { 0x35ae281c };
 
               if ((! bReflexLimiter) && bIsVSync)
               {
-                itemWidth = std::max (
-                  ImGui::CalcTextSize (
-                    "Always Off (Low Latency)......."
-                  ).x,
-                  itemWidth
-                );
+                itemWidth  =  std::max
+               (itemWidth,  ImGui::CalcTextSize ("Always Off (Low Latency).......").x);
               }
 
               ImGui::PushItemWidth (itemWidth);
 
-              if ( ImGui::Combo ( "Refresh Rate Factors",
-                               &iFractSel, strFractList.data () ) )
+              if  ( ImGui::Combo (
+                      szItemLabel,
+                      &iFractSel,
+                      strFractList.data ()
+                    )
+                  )
               {
                 cp->ProcessCommandFormatted (
                   "%s %f", command, static_cast <float> (dFractList [iFractSel])
                 );
               }
 
+              float fItemWidth = ImGui::GetItemRectSize ().x,
+                    fItemSpace = ImGui::GetStyle        ().ItemSpacing.x / 2.0f;
+
               if (! bReflexLimiter)
               {
+                auto _PrintWarningTriangle = [](
+                  const char* szLabel,
+                  bool bBlueTriangle = false
+                ) -> void {
+                  ImGui::SameLine    (
+                    0.0f,
+                    std::max (
+                      ImGui::CalcTextSize ("Render Queue").x -
+                      ImGui::CalcTextSize (szLabel       ).x,
+                      0.0f
+                    )
+                  );
+
+                  ImGui::Dummy       (ImVec2 (0.0f, 0.0f));
+                  ImGui::SameLine    ();
+                  ImGui::TextColored (
+                    bBlueTriangle
+                      ? ImColor (0.0f, 1.0f, 1.0f)
+                      : ImColor (1.0f, 1.0f, 0.0f),
+                    ICON_FA_EXCLAMATION_TRIANGLE
+                  );
+                };
+
                 if (bIsVSync)
                 {
                   if (config.render.framerate.target_fps <= 0.0f)
@@ -6720,9 +6761,7 @@ static constexpr uint32_t UPLAY_OVERLAY_PS_CRC32C  { 0x35ae281c };
                          config.render.framerate.tearing_mode == SK_TearingMode::AdaptiveOff          )
                     {
                       if (config.render.framerate.present_interval == SK_NoPreference)
-                      {
-                        config.render.framerate.present_interval = 1;
-                      }
+                          config.render.framerate.present_interval  = 1;
 
                       if (__target_fps == 0.0f)
                       {
@@ -6778,21 +6817,14 @@ static constexpr uint32_t UPLAY_OVERLAY_PS_CRC32C  { 0x35ae281c };
                         config.compatibility.init_on_separate_thread = false;
                       }
 
-                      ImGui::SameLine    ();
-                      ImGui::TextColored (
-                        ImColor (1.0f, 1.0f, 0.0f),
-                        ICON_FA_EXCLAMATION_TRIANGLE
-                      );
-
+                      _PrintWarningTriangle ("Tearing Mode");
                       ImGui::SetItemTooltip ("Game Restart Required");
                     }
 
                     else if (SK_IsInjected ())
                     {
                       if (config.compatibility.init_on_separate_thread != bAsyncInitOrig)
-                      {
-                        config.compatibility.init_on_separate_thread = bAsyncInitOrig;
-                      }
+                          config.compatibility.init_on_separate_thread  = bAsyncInitOrig;
                     }
                   }
 
@@ -6800,12 +6832,7 @@ static constexpr uint32_t UPLAY_OVERLAY_PS_CRC32C  { 0x35ae281c };
                   {
                     if (config.render.framerate.tearing_mode == SK_TearingMode::AdaptiveOff)
                     {
-                      ImGui::SameLine    ();
-                      ImGui::TextColored (
-                        ImColor (0.0f, 1.0f, 1.0f),
-                        ICON_FA_EXCLAMATION_TRIANGLE
-                      );
-
+                      _PrintWarningTriangle ("Tearing Mode", true);
                       ImGui::SetItemTooltip ("Adaptive V-Sync works better in Fake Fullscreen or Windowed Mode");
                     }
                   }
@@ -6892,49 +6919,49 @@ static constexpr uint32_t UPLAY_OVERLAY_PS_CRC32C  { 0x35ae281c };
                   if (bIsD3D9 && SK_IsInjected ())
                   {
                     if (config.compatibility.init_on_separate_thread != bAsyncInitOrig)
-                    {
-                      config.compatibility.init_on_separate_thread = bAsyncInitOrig;
-                    }
+                        config.compatibility.init_on_separate_thread  = bAsyncInitOrig;
                   }
                 }
 
                 if (iLastNormalSyncTearingMode != config.render.framerate.tearing_mode)
-                {
-                  iLastNormalSyncTearingMode = config.render.framerate.tearing_mode;
-                }
+                    iLastNormalSyncTearingMode  = config.render.framerate.tearing_mode;
 
                 bool bIsLatencyReducingTearingMode = false;
+
+                bool bHideLatencyMode =
+                  config.render.framerate.present_interval >= 2;
 
                 switch (config.render.framerate.tearing_mode)
                 {
                   case SK_TearingMode::AdaptiveOff:
                   {
-                    bIsLatencyReducingTearingMode = true;
-
                     if (! rb.isTrueFullscreen ())
                     {
-                      break;
+                      bHideLatencyMode = true;
                     }
-                  }
+                  } [[fallthrough]];
 
                   case SK_TearingMode::AlwaysOff_LowLatency:
                   {
                     bIsLatencyReducingTearingMode = true;
 
-                    ImGui::Combo (
-                      "Latency Mode",
-                      &config.render.framerate.latency_mode,
-                      "Smooth\0"
-                      "Aggressive\0\0"
-                    );
-
-                    if (ImGui::BeginItemTooltip ())
+                    if (! bHideLatencyMode)
                     {
-                      ImGui::Text       ("Controls latency reduction behavior");
-                      ImGui::Separator  ();
-                      ImGui::BulletText ("Smooth mode is slower, but uses a parabola curve to minimize judder");
-                      ImGui::BulletText ("Aggressive mode causes more judder, but reduces latency much faster");
-                      ImGui::EndTooltip ();
+                      ImGui::Combo (
+                        "Latency Mode",
+                        &config.render.framerate.latency_mode,
+                        "Smooth\0"
+                        "Aggressive\0\0"
+                      );
+
+                      if (ImGui::BeginItemTooltip ())
+                      {
+                        ImGui::Text       ("Controls latency reduction behavior");
+                        ImGui::Separator  ();
+                        ImGui::BulletText ("Smooth mode is slower, but uses a parabola curve to minimize judder");
+                        ImGui::BulletText ("Aggressive mode causes more judder, but reduces latency much faster");
+                        ImGui::EndTooltip ();
+                      }
                     }
                   } break;
 
@@ -6943,36 +6970,178 @@ static constexpr uint32_t UPLAY_OVERLAY_PS_CRC32C  { 0x35ae281c };
                   } break;
                 }
 
-                if (bIsLatencyReducingTearingMode)
+                int iMultiplier = static_cast <int> (
+                  std::round (
+                    static_cast <double> (__target_fps) /
+                    rb.getActiveRefreshRate ()
+                  )
+                );
+
+                if (bIsLatencyReducingTearingMode && iMultiplier <= 1)
                 {
-                  if  ( ImGui::SliderInt (
-                          "Render Queue",
-                          &config.render.framerate.render_queue,
-                          SK_RenderBackend_V2::latency.stale ? 1 : 0,
-                          16,
-                          "%d Frame(s)"
-                        )
-                      )
+                  iMultiplier = static_cast <int> (
+                    std::round (
+                      rb.getActiveRefreshRate () /
+                      static_cast <double> (__target_fps)
+                    )
+                  );
+
+                  int iRenderQueue = std::abs (
+                    config.render.framerate.render_queue
+                  );
+
+                  bool bIsD3D12NoFootguns     =
+                    SK_API_IsLayeredOnD3D12 (rb.api) &&
+                    (! config.render.dxgi.allow_d3d12_footguns);
+
+                  bool bConsistentRenderQueue =
+                    config.render.framerate.render_queue < 0;
+
+                  bool bShowConsistentReQueue =
+                    iRenderQueue >= 1 &&
+                    iRenderQueue <= 7 &&
+                    iMultiplier  <= 4;
+
+                  if (bShowConsistentReQueue)
                   {
-                    if ( ! SK_RenderBackend_V2::latency.stale &&
-                         config.render.framerate.render_queue == 0 )
+                    if (ImGui::Checkbox ("Consistent", &bConsistentRenderQueue))
                     {
-                      config.render.framerate.enforcement_policy = 2;
+                      config.render.framerate.render_queue =
+                     -config.render.framerate.render_queue;
                     }
+
+                    ImGui::SetItemTooltip ("Allows increasing Render Latency until it matches the specified Render Queue");
+                    ImGui::SameLine       ();
+                    ImGui::PushItemWidth  (
+                        fItemWidth
+                      - fItemSpace
+                      - ImGui::CalcTextSize    ( szItemLabel ).x
+                      - ImGui::GetItemRectSize (             ).x
+                      - ImGui::GetStyle        ( ).ItemSpacing.x
+                    );
+                  }
+
+                  else
+                  {
+                    bConsistentRenderQueue = false;
+                  }
+
+                  if ( ImGui::InputInt ("Render Queue", &iRenderQueue) &&
+                       iRenderQueue >= (SK_RenderBackend_V2::latency.stale ? 1 : 0) )
+                  {
+                    static bool bWasConsistentRenderQueue = false;
+
+                    static int iLastEnforcementPolicy =
+                      config.render.framerate.enforcement_policy;
+
+                    if (iRenderQueue == 0)
+                    {
+                      bWasConsistentRenderQueue =
+                         bConsistentRenderQueue;
+
+                      iLastEnforcementPolicy = std::exchange (
+                        config.render.framerate.enforcement_policy,
+                        2
+                      );
+                    }
+
+                    else if (config.render.framerate.render_queue == 0)
+                    {
+                      if (bWasConsistentRenderQueue)
+                                       iRenderQueue =
+                                      -iRenderQueue;
+
+                      if (config.render.framerate.enforcement_policy == 2)
+                          config.render.framerate.enforcement_policy =
+                            iLastEnforcementPolicy;
+                    }
+
+                    config.render.framerate.render_queue =
+                    config.render.framerate.render_queue < 0
+                      ?  -iRenderQueue
+                      :   iRenderQueue;
+                  }
+
+                  if (bShowConsistentReQueue)
+                  {
+                    ImGui::PopItemWidth ();
                   }
 
                   ImGui::SetItemTooltip ("Maximum limit of queued frames before Render Latency is allowed to decrease");
 
-                  if ( config.render.framerate.enforcement_policy != 2 &&
-                       config.render.framerate.render_queue       == 0 &&
-                       ! SK_RenderBackend_V2::latency.stale            )
+                  if (bConsistentRenderQueue)
                   {
-                    ImGui::SameLine    ();
-                    ImGui::TextColored (
-                      ImColor (0.0f, 1.0f, 1.0f),
-                      ICON_FA_EXCLAMATION_TRIANGLE
-                    );
+                    int iRequiredRenderQueue =
+                                iRenderQueue + (config.render.framerate.enforcement_policy == 2 ? 1 : 0);
 
+                    bool bIsInvalidPresentInterval =
+                      config.render.framerate.present_interval != iMultiplier;
+
+                    bool bIsInvalidPreRenderLimit  =
+                      (! bIsD3D12NoFootguns) &&
+                      std::max (config.render.framerate.pre_render_limit, 1) < iRequiredRenderQueue;
+
+                    if (bIsInvalidPresentInterval || bIsInvalidPreRenderLimit)
+                    {
+                      _PrintWarningTriangle ("Render Queue");
+
+                      if (bIsInvalidPresentInterval && bIsInvalidPreRenderLimit)
+                      {
+                        ImGui::SetItemTooltip (
+                          ( bIsD3D9
+                            ? std::format     (
+                                "Please set \"PresentationInterval={}\" and \"PreRenderLimit={}\"",
+                                iMultiplier,
+                                iRequiredRenderQueue
+                            )
+                            : std::format     (
+                                "Please set Presentation Interval to {} and Max Device Latency to {}",
+                                iMultiplier,
+                                iRequiredRenderQueue
+                            )
+                          ).c_str             ()
+                        );
+                      }
+
+                      else
+                      {
+                        ImGui::SetItemTooltip (
+                          ( bIsD3D9
+                            ? std::format     (
+                                "Please set \"{}={}\"",
+                                bIsInvalidPresentInterval
+                                  ? "PresentationInterval"
+                                  : "PreRenderLimit",
+                                bIsInvalidPresentInterval
+                                  ? iMultiplier
+                                  : iRequiredRenderQueue
+                            )
+                            : std::format     (
+                                "Please set {} to {}",
+                                bIsInvalidPresentInterval
+                                  ? "Presentation Interval"
+                                  : "Max Device Latency",
+                                bIsInvalidPresentInterval
+                                  ? iMultiplier
+                                  : iRequiredRenderQueue
+                            )
+                          ).c_str             ()
+                        );
+                      }
+                    }
+
+                    else if (bIsD3D12NoFootguns && iRequiredRenderQueue > 3)
+                    {
+                      _PrintWarningTriangle ("Render Queue", true);
+                      ImGui::SetItemTooltip ("You may need to set \"AllowD3D12FootGuns=true\"");
+                    }
+                  }
+
+                  else if ( config.render.framerate.enforcement_policy != 2 &&
+                            config.render.framerate.render_queue       == 0 &&
+                            ! SK_RenderBackend_V2::latency.stale            )
+                  {
+                    _PrintWarningTriangle ("Render Queue", true);
                     ImGui::SetItemTooltip ("Render Queue of 0 is intended to be used with Low-Latency Limiter Mode");
                   }
                 }

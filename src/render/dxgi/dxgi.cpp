@@ -3398,6 +3398,12 @@ SK_DXGI_PresentBase ( IDXGISwapChain         *This,
       }
     }
 
+    bool bIsAboveRefresh = std::round (
+      static_cast <double> (
+        config.render.framerate.target_fps
+      ) / rb.getActiveRefreshRate ()
+    ) >= 2.0;
+
     int interval =
       config.render.framerate.present_interval;
 
@@ -3405,7 +3411,7 @@ SK_DXGI_PresentBase ( IDXGISwapChain         *This,
     {
       // Adaptive VSync
       if  ( config.render.framerate.present_interval > 0 &&
-            config.render.framerate.turn_vsync_off       &&
+            config.render.framerate.force_tearing        &&
             config.render.framerate.tearing_mode ==
               SK_TearingMode::AdaptiveOff                )
       {
@@ -3413,11 +3419,21 @@ SK_DXGI_PresentBase ( IDXGISwapChain         *This,
       }
 
       // Latent VSync...
-      else if ( config.render.framerate.present_interval == 0 &&
-               !config.render.dxgi.allow_tearing              &&
-                rb.isTrueFullscreen ()                        )
+      else if ( (! config.render.dxgi.allow_tearing)        &&
+                   config.render.framerate.present_interval == 0 )
       {
-        interval = 1;
+        if  ( (! bIsAboveRefresh)                  &&
+              config.render.framerate.tearing_mode !=
+                SK_TearingMode::AdaptiveOn )
+        {
+          interval =
+            config.render.framerate.latent_sync.present_interval;
+        }
+
+        else if (rb.isTrueFullscreen ())
+        {
+          interval = 1;
+        }
       }
     }
 
@@ -3463,7 +3479,8 @@ SK_DXGI_PresentBase ( IDXGISwapChain         *This,
 
     if (framerate_limited_flip_model)
     {
-      if (config.render.framerate.drop_late_flips && interval == 1)
+      if ( (! config.render.framerate.force_late_flips) &&
+              config.render.framerate.drop_late_flips   && interval == 1 )
       {
         // This may cause tearing on some drivers w/ user overrides.
         if (config.render.dxgi.allow_tearing && !rb.isTrueFullscreen ())
@@ -3523,7 +3540,7 @@ SK_DXGI_PresentBase ( IDXGISwapChain         *This,
     {
       if (__SK_LatentSyncSkip != 0 && (__SK_LatentSyncFrame % __SK_LatentSyncSkip) != 0)
         _SkipThisFrame = true;
-      else
+      else if (bIsAboveRefresh || interval == 0)
         flags |= DXGI_PRESENT_RESTART;
 
       if (interval == 0) flags |=  DXGI_PRESENT_ALLOW_TEARING;

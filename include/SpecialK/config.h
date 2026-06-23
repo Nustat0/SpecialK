@@ -770,7 +770,6 @@ struct sk_config_t
       int     tearing_mode        = SK_TearingMode::AppControlled;
       int     latency_mode        = SK_LatencyMode::Smooth;
       int     render_queue        =     1; // Max Render Latency for SK_TearingMode::AlwaysOff_LowLatency/AdaptiveOff
-      bool    turn_vsync_off      = false; // Turns VSync Off in Adaptive VSync mode
       bool    flip_discard        =  true; // Enabled by default (7/6/21)
       bool    flip_sequential     = false;
       bool    disable_flip        = false;
@@ -781,6 +780,8 @@ struct sk_config_t
       bool    enable_mmcss        =  true;
       bool    force_vk_mailbox    = false;
       bool    force_vk_adaptive   = false;
+      bool    force_tearing       = false; // Forces tearing in Adaptive VSync mode
+      bool    force_late_flips    = false; // Ignores drop_late_flips in Consistent Render Queue mode
       int     enforcement_policy  =     4; // Refer to framerate.cpp
       struct {
         bool  waiting             =  true; // VRR users have the limiter default to low-latency
@@ -824,6 +825,7 @@ struct sk_config_t
           };
         int   scanline_offset      =    -1;
         int   scanline_resync      = 30000;
+        int   present_interval     =     0;
         float delay_bias           =  0.0f;
         bool  auto_bias            = false;
         float max_auto_bias        =  0.5f;

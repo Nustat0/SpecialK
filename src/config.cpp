@@ -1012,7 +1012,7 @@ struct {
     {
       sk::ParameterInt*     offset                = nullptr;
       sk::ParameterInt*     resync                = nullptr;
-      sk::ParameterInt*     error                 = nullptr;
+      sk::ParameterInt*     interval              = nullptr;
       sk::ParameterFloat*   bias                  = nullptr;
       sk::ParameterBool*    auto_bias             = nullptr;
       sk::ParameterFloat*   max_auto_bias         = nullptr;
@@ -2148,6 +2148,7 @@ auto DeclKeybind =
     ConfigEntry (render.framerate.pace_game_thread,      L"Pace the game thread in supported engines (i.e. Unity)",    dll_ini,         L"FrameRate.Engine",      L"PaceGameThread"),
     ConfigEntry (render.framerate.latent_sync.offset,    L"Offset in Scanlines from Top of Screen to Steer Tearing",   dll_ini,         L"FrameRate.LatentSync",  L"TearlineOffset"),
     ConfigEntry (render.framerate.latent_sync.resync,    L"Frequency (in -frames or milliseconds) to Resync Timing",   dll_ini,         L"FrameRate.LatentSync",  L"ResyncFrequency"),
+    ConfigEntry (render.framerate.latent_sync.interval,  L"Presentation Interval for tear-free modes",                 dll_ini,         L"FrameRate.LatentSync",  L"PresentationInterval"),
     ConfigEntry (render.framerate.latent_sync.bias,      L"Controls Distribution of Idle Time Per-Delayed Frame",      dll_ini,         L"FrameRate.LatentSync",  L"DelayBias"),
     ConfigEntry (render.framerate.latent_sync.auto_bias, L"Automatically Sets Delay Bias For Minimum Latency",         dll_ini,         L"FrameRate.LatentSync",  L"AutoBias"),
     ConfigEntry (render.framerate.latent_sync.
@@ -5000,6 +5001,7 @@ auto DeclKeybind =
 
   render.framerate.latent_sync.offset->load   (config.render.framerate.latent_sync.scanline_offset);
   render.framerate.latent_sync.resync->load   (config.render.framerate.latent_sync.scanline_resync);
+  render.framerate.latent_sync.interval->load (config.render.framerate.latent_sync.present_interval);
   render.framerate.latent_sync.bias->load     (config.render.framerate.latent_sync.delay_bias);
   render.framerate.latent_sync.auto_bias->load(config.render.framerate.latent_sync.auto_bias);
   render.framerate.latent_sync.max_auto_bias
@@ -7448,6 +7450,7 @@ SK_SaveConfig ( std::wstring name,
 
     render.framerate.latent_sync.offset->store    (config.render.framerate.latent_sync.scanline_offset);
     render.framerate.latent_sync.resync->store    (config.render.framerate.latent_sync.scanline_resync);
+    render.framerate.latent_sync.interval->store  (config.render.framerate.latent_sync.present_interval);
     render.framerate.latent_sync.bias->store      (config.render.framerate.latent_sync.delay_bias);
     render.framerate.latent_sync.auto_bias->store (config.render.framerate.latent_sync.auto_bias);
     render.framerate.latent_sync.max_auto_bias
