@@ -1350,9 +1350,9 @@ SK_ImGui_LatentSyncConfig (void)
             config.render.framerate.render_queue < 0;
 
           bool bShowConsistentReQueue =
+            iMultiplier  <= 4 &&
             iRenderQueue >= 1 &&
-            iRenderQueue <= 7 &&
-            iMultiplier  <= 4;
+            iRenderQueue <= (bIsD3D9 ? 3 : 14);
 
           if (bShowConsistentReQueue)
           {
@@ -1404,54 +1404,68 @@ SK_ImGui_LatentSyncConfig (void)
 
           if (bConsistentRenderQueue)
           {
+            int iRequiredBufferCount =
+                iRenderQueue - 5;
+
             bool bIsInvalidPresentInterval =
               config.render.framerate.latent_sync.present_interval != iMultiplier;
 
             bool bIsInvalidPreRenderLimit  =
               (! bIsD3D12NoFootguns) &&
+              (! bIsD3D9)            &&
               std::max (config.render.framerate.pre_render_limit, 1) < iRenderQueue;
 
-            if (bIsInvalidPresentInterval || bIsInvalidPreRenderLimit)
+            bool bIsInvalidBufferCount     =
+              (! bIsD3D12NoFootguns)   &&
+              (! bIsD3D9)              &&
+              iRequiredBufferCount > 2 &&
+              config.render.framerate.buffer_count < iRequiredBufferCount;
+
+            if ( bIsInvalidPresentInterval ||
+                 bIsInvalidPreRenderLimit  ||
+                 bIsInvalidBufferCount     )
             {
               _PrintWarningTriangle ("Render Queue");
 
-              if (bIsInvalidPresentInterval && bIsInvalidPreRenderLimit)
+              if (ImGui::BeginItemTooltip ())
               {
-                ImGui::SetItemTooltip (
-                  ( bIsD3D9
-                    ? std::format     (
-                        "Please set Presentation Interval (PI) to {} and \"PreRenderLimit={}\"",
-                        iMultiplier,
-                        iRenderQueue
-                    )
-                    : std::format     (
-                        "Please set Presentation Interval (PI) to {} and Max Device Latency to {}",
-                        iMultiplier,
-                        iRenderQueue
-                    )
-                  ).c_str             ()
-                );
-              }
+                ImGui::Text         ("Please set the following settings to achieve the specified Render Queue");
+                ImGui::Separator    ();
 
-              else
-              {
-                ImGui::SetItemTooltip (
-                  ( bIsD3D9 && bIsInvalidPreRenderLimit
-                    ? std::format     (
-                        "Please set \"PreRenderLimit={}\"",
-                        iRenderQueue
-                    )
-                    : std::format     (
-                        "Please set {} to {}",
-                        bIsInvalidPresentInterval
-                          ? "Presentation Interval (PI)"
-                          : "Max Device Latency",
-                        bIsInvalidPresentInterval
-                          ? iMultiplier
-                          : iRenderQueue
-                    )
-                  ).c_str             ()
-                );
+                if (bIsD3D9 || bIsD3D12NoFootguns)
+                {
+                  ImGui::BulletText (
+                    std::format     (
+                      "Presentation Interval (PI) = {}",
+                      iMultiplier
+                    ).c_str         ()
+                  );
+                }
+
+                else if (iRequiredBufferCount > 2)
+                {
+                  ImGui::BulletText (
+                    std::format     (
+                      "Presentation Interval (PI) = {}\tBuffer Count = {}\tMax Device Latency = {}",
+                      iMultiplier,
+                      iRequiredBufferCount,
+                      iRenderQueue
+                    ).c_str         ()
+                  );
+                }
+
+                else
+                {
+                  ImGui::BulletText (
+                    std::format     (
+                      "Presentation Interval (PI) = {}\tMax Device Latency = {}",
+                      iMultiplier,
+                      iRenderQueue
+                    ).c_str         ()
+                  );
+                }
+
+                ImGui::EndTooltip   ();
               }
             }
 
@@ -1462,9 +1476,8 @@ SK_ImGui_LatentSyncConfig (void)
             }
           }
 
-          else if ( config.render.framerate.enforcement_policy != 2 &&
-                    config.render.framerate.render_queue       == 0 &&
-                    ! SK_RenderBackend_V2::latency.stale            )
+          else if ( config.render.framerate.render_queue == 0 &&
+                    ! SK_RenderBackend_V2::latency.stale      )
           {
             _PrintWarningTriangle ("Render Queue", true);
             ImGui::SetItemTooltip ("Render Queue of 0 is intended to be used with Low-Latency Limiter Mode");
@@ -3289,6 +3302,16 @@ SK::Framerate::Limiter::wait (void) noexcept
             _RevertACTION (true);
           }
 
+          bool bIsLowLatencyLimiter =
+            config.render.framerate.enforcement_policy == 2;
+
+          static bool        bWasLowLatencyLimiter = bIsLowLatencyLimiter;
+          if (std::exchange (bWasLowLatencyLimiter,  bIsLowLatencyLimiter) !=
+                                                     bIsLowLatencyLimiter)
+          {
+            _RevertACTION (true);
+          }
+
           static bool        bWasTrueFullscreen = bIsTrueFullscreen;
           if (std::exchange (bWasTrueFullscreen,  bIsTrueFullscreen) !=
                                                   bIsTrueFullscreen)
@@ -3326,13 +3349,18 @@ SK::Framerate::Limiter::wait (void) noexcept
               config.render.framerate.render_queue == 0)
               config.render.framerate.render_queue  = 1;
 
-          int iRenderQueue = bIsAboveRefresh ? 1 :
-            ( std::round
-              ( rb.getActiveRefreshRate () / fps ) > 4.0 &&
-              config.render.framerate.render_queue <   0  ) ||
-            ( config.render.framerate.render_queue <  -7  ) ?
-             -config.render.framerate.render_queue          :
-              config.render.framerate.render_queue;
+          int iMinRenderQueue =
+            std::round (rb.getActiveRefreshRate () / fps) > 4.0
+              ? 0
+              : (bIsD3D9 ? -3 : (bIsLowLatencyLimiter ? -13 : -14));
+
+          int iRenderQueue =
+            bIsAboveRefresh
+              ? 1
+              : ( config.render.framerate.render_queue < iMinRenderQueue ?
+                 -config.render.framerate.render_queue                   :
+                  config.render.framerate.render_queue
+                );
 
           static int         iLastRenderQueue = iRenderQueue;
           if (std::exchange (iLastRenderQueue,  iRenderQueue) !=
@@ -3400,8 +3428,8 @@ SK::Framerate::Limiter::wait (void) noexcept
               if (! bIsAboveRefresh)
               {
                 bIgnoreHighVariation |=
-                  config.render.framerate.enforcement_policy == 2 ||
-                  config.nvidia.reflex.use_limiter                ||
+                  bIsLowLatencyLimiter             ||
+                  config.nvidia.reflex.use_limiter ||
                   config.fps.getTimingMethod () ==
                     SK_FrametimeMeasures_NewFrameBegin;
               }
@@ -3461,9 +3489,11 @@ SK::Framerate::Limiter::wait (void) noexcept
                   (iRenderQueue);
 
               UINT uExtraFrame  =
-                iACTION == ACTION_HighRenderLatency        &&
-                __target_fps_temp > __target_fps           &&
-                config.render.framerate.enforcement_policy == 2 ? 1 : 0;
+                bIsLowLatencyLimiter                &&
+                iACTION == ACTION_HighRenderLatency &&
+                __target_fps_temp > __target_fps
+                  ? 1
+                  : 0;
 
               if (! SK_RenderBackend_V2::latency.stale)
               {

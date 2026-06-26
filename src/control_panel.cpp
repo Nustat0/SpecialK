@@ -6994,13 +6994,16 @@ static constexpr uint32_t UPLAY_OVERLAY_PS_CRC32C  { 0x35ae281c };
                     SK_API_IsLayeredOnD3D12 (rb.api) &&
                     (! config.render.dxgi.allow_d3d12_footguns);
 
+                  bool bIsLowLatencyLimiter   =
+                    config.render.framerate.enforcement_policy == 2;
+
                   bool bConsistentRenderQueue =
                     config.render.framerate.render_queue < 0;
 
                   bool bShowConsistentReQueue =
+                    iMultiplier  <= 4 &&
                     iRenderQueue >= 1 &&
-                    iRenderQueue <= 7 &&
-                    iMultiplier  <= 4;
+                    iRenderQueue <= (bIsD3D9 ? 3 : (bIsLowLatencyLimiter ? 13 : 14));
 
                   if (bShowConsistentReQueue)
                   {
@@ -7039,6 +7042,7 @@ static constexpr uint32_t UPLAY_OVERLAY_PS_CRC32C  { 0x35ae281c };
                       bWasConsistentRenderQueue =
                          bConsistentRenderQueue;
 
+                      bIsLowLatencyLimiter   = true;
                       iLastEnforcementPolicy = std::exchange (
                         config.render.framerate.enforcement_policy,
                         2
@@ -7051,9 +7055,11 @@ static constexpr uint32_t UPLAY_OVERLAY_PS_CRC32C  { 0x35ae281c };
                                        iRenderQueue =
                                       -iRenderQueue;
 
-                      if (config.render.framerate.enforcement_policy == 2)
-                          config.render.framerate.enforcement_policy =
-                            iLastEnforcementPolicy;
+                      if (bIsLowLatencyLimiter)
+                      {
+                        config.render.framerate.enforcement_policy =
+                          iLastEnforcementPolicy;
+                      }
                     }
 
                     config.render.framerate.render_queue =
@@ -7071,75 +7077,94 @@ static constexpr uint32_t UPLAY_OVERLAY_PS_CRC32C  { 0x35ae281c };
 
                   if (bConsistentRenderQueue)
                   {
-                    int iRequiredRenderQueue =
-                                iRenderQueue + (config.render.framerate.enforcement_policy == 2 ? 1 : 0);
+                    int iRequiredPreRenderLimit =
+                        iRenderQueue + (bIsLowLatencyLimiter ? 1 : 0);
+
+                    int iRequiredBufferCount    =
+                        iRequiredPreRenderLimit - 5;
 
                     bool bIsInvalidPresentInterval =
                       config.render.framerate.present_interval != iMultiplier;
 
                     bool bIsInvalidPreRenderLimit  =
                       (! bIsD3D12NoFootguns) &&
-                      std::max (config.render.framerate.pre_render_limit, 1) < iRequiredRenderQueue;
+                      (! bIsD3D9)            &&
+                      std::max (config.render.framerate.pre_render_limit, 1) < iRequiredPreRenderLimit;
 
-                    if (bIsInvalidPresentInterval || bIsInvalidPreRenderLimit)
+                    bool bIsInvalidBufferCount     =
+                      (! bIsD3D12NoFootguns)   &&
+                      (! bIsD3D9)              &&
+                      iRequiredBufferCount > 2 &&
+                      config.render.framerate.buffer_count < iRequiredBufferCount;
+
+                    if ( bIsInvalidPresentInterval ||
+                         bIsInvalidPreRenderLimit  ||
+                         bIsInvalidBufferCount     )
                     {
                       _PrintWarningTriangle ("Render Queue");
 
-                      if (bIsInvalidPresentInterval && bIsInvalidPreRenderLimit)
+                      if (ImGui::BeginItemTooltip ())
                       {
-                        ImGui::SetItemTooltip (
-                          ( bIsD3D9
-                            ? std::format     (
-                                "Please set \"PresentationInterval={}\" and \"PreRenderLimit={}\"",
-                                iMultiplier,
-                                iRequiredRenderQueue
-                            )
-                            : std::format     (
-                                "Please set Presentation Interval to {} and Max Device Latency to {}",
-                                iMultiplier,
-                                iRequiredRenderQueue
-                            )
-                          ).c_str             ()
-                        );
-                      }
+                        ImGui::Text         ("Please set the following settings to achieve the specified Render Queue");
+                        ImGui::Separator    ();
 
-                      else
-                      {
-                        ImGui::SetItemTooltip (
-                          ( bIsD3D9
-                            ? std::format     (
-                                "Please set \"{}={}\"",
-                                bIsInvalidPresentInterval
-                                  ? "PresentationInterval"
-                                  : "PreRenderLimit",
-                                bIsInvalidPresentInterval
-                                  ? iMultiplier
-                                  : iRequiredRenderQueue
-                            )
-                            : std::format     (
-                                "Please set {} to {}",
-                                bIsInvalidPresentInterval
-                                  ? "Presentation Interval"
-                                  : "Max Device Latency",
-                                bIsInvalidPresentInterval
-                                  ? iMultiplier
-                                  : iRequiredRenderQueue
-                            )
-                          ).c_str             ()
-                        );
+                        if (bIsD3D9)
+                        {
+                          ImGui::BulletText (
+                            std::format     (
+                              "PresentationInterval={}",
+                              iMultiplier
+                            ).c_str         ()
+                          );
+                        }
+
+                        else if (bIsD3D12NoFootguns)
+                        {
+                          ImGui::BulletText (
+                            std::format     (
+                              "Presentation Interval = {}",
+                              iMultiplier
+                            ).c_str         ()
+                          );
+                        }
+
+                        else if (iRequiredBufferCount > 2)
+                        {
+                          ImGui::BulletText (
+                            std::format     (
+                              "Presentation Interval = {}\tBuffer Count = {}\tMax Device Latency = {}",
+                              iMultiplier,
+                              iRequiredBufferCount,
+                              iRequiredPreRenderLimit
+                            ).c_str         ()
+                          );
+                        }
+
+                        else
+                        {
+                          ImGui::BulletText (
+                            std::format     (
+                              "Presentation Interval = {}\tMax Device Latency = {}",
+                              iMultiplier,
+                              iRequiredPreRenderLimit
+                            ).c_str         ()
+                          );
+                        }
+
+                        ImGui::EndTooltip   ();
                       }
                     }
 
-                    else if (bIsD3D12NoFootguns && iRequiredRenderQueue > 3)
+                    else if (bIsD3D12NoFootguns && iRequiredPreRenderLimit > 3)
                     {
                       _PrintWarningTriangle ("Render Queue", true);
                       ImGui::SetItemTooltip ("You may need to set \"AllowD3D12FootGuns=true\"");
                     }
                   }
 
-                  else if ( config.render.framerate.enforcement_policy != 2 &&
-                            config.render.framerate.render_queue       == 0 &&
-                            ! SK_RenderBackend_V2::latency.stale            )
+                  else if ( config.render.framerate.render_queue == 0 &&
+                            ! SK_RenderBackend_V2::latency.stale      &&
+                            ! bIsLowLatencyLimiter                    )
                   {
                     _PrintWarningTriangle ("Render Queue", true);
                     ImGui::SetItemTooltip ("Render Queue of 0 is intended to be used with Low-Latency Limiter Mode");
