@@ -7144,12 +7144,16 @@ static constexpr uint32_t UPLAY_OVERLAY_PS_CRC32C  { 0x35ae281c };
                         else
                         {
                           ImGui::BulletText (
-                            std::format     (
-                              "Presentation Interval = {1}\tMax Device Latency {0} {2}",
-                              u8"\u2265"
-                              iMultiplier,
-                              iRequiredPreRenderLimit
-                            ).c_str         ()
+                            "Presentation Interval = %d\tMax Device Latency %hs %d",
+                            iMultiplier,
+                            (const char*)u8"\u2265",
+                            iRequiredPreRenderLimit
+                            // std::format     (
+                            //   "Presentation Interval = {}\tMax Device Latency = {}",
+                            //   u8"\u2265"
+                            //   iMultiplier,
+                            //   iRequiredPreRenderLimit
+                            // ).c_str         ()
                           );
                         }
 
