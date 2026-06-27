@@ -7084,6 +7084,7 @@ static constexpr uint32_t UPLAY_OVERLAY_PS_CRC32C  { 0x35ae281c };
                         iRequiredPreRenderLimit - 5;
 
                     bool bIsInvalidPresentInterval =
+                      iRenderQueue > 1 &&
                       config.render.framerate.present_interval != iMultiplier;
 
                     bool bIsInvalidPreRenderLimit  =
@@ -7132,7 +7133,7 @@ static constexpr uint32_t UPLAY_OVERLAY_PS_CRC32C  { 0x35ae281c };
                         {
                           ImGui::BulletText (
                             std::format     (
-                              "Presentation Interval = {}\tBuffer Count = {}\tMax Device Latency = {}",
+                              "Presentation Interval = {}\tBuffer Count \u2265 {}\tMax Device Latency \u2265 {}",
                               iMultiplier,
                               iRequiredBufferCount,
                               iRequiredPreRenderLimit
@@ -7144,7 +7145,7 @@ static constexpr uint32_t UPLAY_OVERLAY_PS_CRC32C  { 0x35ae281c };
                         {
                           ImGui::BulletText (
                             std::format     (
-                              "Presentation Interval = {}\tMax Device Latency = {}",
+                              "Presentation Interval = {}\tMax Device Latency \u2265 {}",
                               iMultiplier,
                               iRequiredPreRenderLimit
                             ).c_str         ()

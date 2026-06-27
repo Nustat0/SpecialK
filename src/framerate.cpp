@@ -1408,6 +1408,7 @@ SK_ImGui_LatentSyncConfig (void)
                 iRenderQueue - 5;
 
             bool bIsInvalidPresentInterval =
+              iRenderQueue > 1 &&
               config.render.framerate.latent_sync.present_interval != iMultiplier;
 
             bool bIsInvalidPreRenderLimit  =
@@ -1446,7 +1447,7 @@ SK_ImGui_LatentSyncConfig (void)
                 {
                   ImGui::BulletText (
                     std::format     (
-                      "Presentation Interval (PI) = {}\tBuffer Count = {}\tMax Device Latency = {}",
+                      "Presentation Interval (PI) = {}\tBuffer Count \u2265 {}\tMax Device Latency \u2265 {}",
                       iMultiplier,
                       iRequiredBufferCount,
                       iRenderQueue
@@ -1458,7 +1459,7 @@ SK_ImGui_LatentSyncConfig (void)
                 {
                   ImGui::BulletText (
                     std::format     (
-                      "Presentation Interval (PI) = {}\tMax Device Latency = {}",
+                      "Presentation Interval (PI) = {}\tMax Device Latency \u2265 {}",
                       iMultiplier,
                       iRenderQueue
                     ).c_str         ()
