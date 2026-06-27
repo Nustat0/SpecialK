@@ -3357,10 +3357,9 @@ SK::Framerate::Limiter::wait (void) noexcept
           int iRenderQueue =
             bIsAboveRefresh
               ? 1
-              : ( config.render.framerate.render_queue < iMinRenderQueue ?
-                 -config.render.framerate.render_queue                   :
-                  config.render.framerate.render_queue
-                );
+              : ( config.render.framerate.render_queue >= iMinRenderQueue ?
+                  config.render.framerate.render_queue                    :
+                 -config.render.framerate.render_queue );
 
           static int         iLastRenderQueue = iRenderQueue;
           if (std::exchange (iLastRenderQueue,  iRenderQueue) !=
