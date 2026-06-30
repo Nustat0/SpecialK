@@ -1443,11 +1443,11 @@ SK_ImGui_LatentSyncConfig (void)
                   );
                 }
 
-                else if (bIsInvalidBufferCount)
+                else if (bIsInvalidBufferCount && bIsInvalidPreRenderLimit)
                 {
                   ImGui::BulletText (
                     std::format     (
-                      "Presentation Interval (PI) = {}\tBuffer Count >= {}\tMax Device Latency >= {}",
+                      "Presentation Interval (PI) = {}\tBuffer Count = {}\tMax Device Latency = {}",
                       iMultiplier,
                       iRequiredBufferCount,
                       iRenderQueue
@@ -1459,9 +1459,14 @@ SK_ImGui_LatentSyncConfig (void)
                 {
                   ImGui::BulletText (
                     std::format     (
-                      "Presentation Interval (PI) = {}\tMax Device Latency >= {}",
+                      "Presentation Interval (PI) = {}\t{} = {}",
                       iMultiplier,
-                      iRenderQueue
+                      bIsInvalidBufferCount
+                        ? "Buffer Count"
+                        : "Max Device Latency",
+                      bIsInvalidBufferCount
+                        ? iRequiredBufferCount
+                        : iRenderQueue
                     ).c_str         ()
                   );
                 }

@@ -7129,11 +7129,11 @@ static constexpr uint32_t UPLAY_OVERLAY_PS_CRC32C  { 0x35ae281c };
                           );
                         }
 
-                        else if (bIsInvalidBufferCount)
+                        else if (bIsInvalidBufferCount && bIsInvalidPreRenderLimit)
                         {
                           ImGui::BulletText (
                             std::format     (
-                              "Presentation Interval = {}\tBuffer Count >= {}\tMax Device Latency >= {}",
+                              "Presentation Interval = {}\tBuffer Count = {}\tMax Device Latency = {}",
                               iMultiplier,
                               iRequiredBufferCount,
                               iRequiredPreRenderLimit
@@ -7145,9 +7145,14 @@ static constexpr uint32_t UPLAY_OVERLAY_PS_CRC32C  { 0x35ae281c };
                         {
                           ImGui::BulletText (
                             std::format     (
-                              "Presentation Interval = {}\tMax Device Latency >= {}",
+                              "Presentation Interval = {}\t{} = {}",
                               iMultiplier,
-                              iRequiredPreRenderLimit
+                              bIsInvalidBufferCount
+                                ? "Buffer Count"
+                                : "Max Device Latency",
+                              bIsInvalidBufferCount
+                                ? iRequiredBufferCount
+                                : iRequiredPreRenderLimit
                             ).c_str         ()
                           );
                         }
