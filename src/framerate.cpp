@@ -1137,8 +1137,8 @@ SK_ImGui_LatentSyncConfig (void)
 
       bool bIsInvalidTearingMode = false;
 
-      if ( config.render.framerate.tearing_mode != SK_TearingMode::AlwaysOn &&
-                                    iMultiplier >= 2                        )
+      if ( iMultiplier >= 2                     &&
+           config.render.framerate.tearing_mode != SK_TearingMode::AlwaysOn )
       {
         bool bIsTearingModeAdaptiveOff =
           config.render.framerate.tearing_mode ==
@@ -1408,7 +1408,6 @@ SK_ImGui_LatentSyncConfig (void)
                 iRenderQueue - 5;
 
             bool bIsInvalidPresentInterval =
-              iRenderQueue > 1 &&
               config.render.framerate.latent_sync.present_interval != iMultiplier;
 
             bool bIsInvalidPreRenderLimit  =

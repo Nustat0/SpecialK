@@ -7084,7 +7084,6 @@ static constexpr uint32_t UPLAY_OVERLAY_PS_CRC32C  { 0x35ae281c };
                         iRequiredPreRenderLimit - 5;
 
                     bool bIsInvalidPresentInterval =
-                      iRenderQueue > 1 &&
                       config.render.framerate.present_interval != iMultiplier;
 
                     bool bIsInvalidPreRenderLimit  =
