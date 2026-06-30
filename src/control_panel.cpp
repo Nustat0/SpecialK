@@ -7003,7 +7003,11 @@ static constexpr uint32_t UPLAY_OVERLAY_PS_CRC32C  { 0x35ae281c };
                   bool bShowConsistentReQueue =
                     iMultiplier  <= 4 &&
                     iRenderQueue >= 1 &&
-                    iRenderQueue <= (bIsD3D9 ? 3 : (bIsLowLatencyLimiter ? 13 : 14));
+                    iRenderQueue <= (
+                      bIsD3D9
+                        ? (bIsLowLatencyLimiter ?  2 :  3)
+                        : (bIsLowLatencyLimiter ? 13 : 14)
+                    );
 
                   if (bShowConsistentReQueue)
                   {

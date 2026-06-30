@@ -3337,7 +3337,9 @@ SK::Framerate::Limiter::wait (void) noexcept
           int iMinRenderQueue =
             std::round (rb.getActiveRefreshRate () / fps) > 4.0
               ? 0
-              : (bIsD3D9 ? -3 : (bIsLowLatencyLimiter ? -13 : -14));
+              : ( bIsD3D9
+                    ? (bIsLowLatencyLimiter ?  -2 :  -3)
+                    : (bIsLowLatencyLimiter ? -13 : -14) );
 
           int iRenderQueue =
             bIsAboveRefresh
@@ -3473,11 +3475,12 @@ SK::Framerate::Limiter::wait (void) noexcept
                   (iRenderQueue);
 
               UINT uExtraFrame  =
-                bIsLowLatencyLimiter                &&
-                iACTION == ACTION_HighRenderLatency &&
-                __target_fps_temp > __target_fps
-                  ? 1
-                  : 0;
+                bIsLowLatencyLimiter &&
+                ( SK_RenderBackend_V2::latency.stale ||
+                  ( __target_fps_temp > __target_fps &&
+                    iACTION == ACTION_HighRenderLatency
+                  )
+                ) ? 1 : 0;
 
               if (! SK_RenderBackend_V2::latency.stale)
               {
@@ -3583,7 +3586,7 @@ SK::Framerate::Limiter::wait (void) noexcept
                 bBumpRenderLatency =
                    bConsistentRenderQueue && iRenderLatency < uRenderQueue + uExtraFrame;
 
-                return bBumpRenderLatency || dRenderLatency > uRenderQueue +
+                return bBumpRenderLatency || dRenderLatency > uRenderQueue + uExtraFrame +
                   ( __target_fps_temp > 0.0f &&
                       SK_LatencyMode::Smooth == iLatencyMode ? 0.55 : 0.64 );
               }
