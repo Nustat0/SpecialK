@@ -1432,44 +1432,24 @@ SK_ImGui_LatentSyncConfig (void)
               {
                 ImGui::Text         ("Please set the following settings to achieve the specified Render Queue");
                 ImGui::Separator    ();
-
-                if (bIsD3D9 || bIsD3D12NoFootguns)
-                {
-                  ImGui::BulletText (
-                    std::format     (
-                      "Presentation Interval (PI) = {}",
-                      iMultiplier
-                    ).c_str         ()
-                  );
-                }
-
-                else if (bIsInvalidBufferCount && bIsInvalidPreRenderLimit)
-                {
-                  ImGui::BulletText (
-                    std::format     (
-                      "Presentation Interval (PI) = {}\tBuffer Count = {}\tMax Device Latency = {}",
-                      iMultiplier,
-                      iRequiredBufferCount,
-                      iRenderQueue
-                    ).c_str         ()
-                  );
-                }
-
-                else
-                {
-                  ImGui::BulletText (
-                    std::format     (
-                      "Presentation Interval (PI) = {}\t{} = {}",
-                      iMultiplier,
-                      bIsInvalidBufferCount
-                        ? "Buffer Count"
-                        : "Max Device Latency",
-                      bIsInvalidBufferCount
-                        ? iRequiredBufferCount
-                        : iRenderQueue
-                    ).c_str         ()
-                  );
-                }
+                ImGui::BulletText   (
+                  std::format       (
+                    "Presentation Interval (PI) = {}{}{}",
+                    iMultiplier,
+                    bIsInvalidBufferCount
+                      ? std::format (
+                          "\tBuffer Count = {}",
+                          iRequiredBufferCount
+                        )
+                      : "",
+                    bIsInvalidPreRenderLimit
+                      ? std::format (
+                          "\tMax Device Latency = {}",
+                          iRenderQueue
+                        )
+                      : ""
+                  ).c_str           ()
+                );
 
                 ImGui::EndTooltip   ();
               }

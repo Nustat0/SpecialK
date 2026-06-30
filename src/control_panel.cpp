@@ -7108,54 +7108,32 @@ static constexpr uint32_t UPLAY_OVERLAY_PS_CRC32C  { 0x35ae281c };
                       {
                         ImGui::Text         ("Please set the following settings to achieve the specified Render Queue");
                         ImGui::Separator    ();
-
-                        if (bIsD3D9)
-                        {
-                          ImGui::BulletText (
-                            std::format     (
-                              "\"PresentationInterval={}\"",
-                              iMultiplier
-                            ).c_str         ()
-                          );
-                        }
-
-                        else if (bIsD3D12NoFootguns)
-                        {
-                          ImGui::BulletText (
-                            std::format     (
-                              "Presentation Interval = {}",
-                              iMultiplier
-                            ).c_str         ()
-                          );
-                        }
-
-                        else if (bIsInvalidBufferCount && bIsInvalidPreRenderLimit)
-                        {
-                          ImGui::BulletText (
-                            std::format     (
-                              "Presentation Interval = {}\tBuffer Count = {}\tMax Device Latency = {}",
-                              iMultiplier,
-                              iRequiredBufferCount,
-                              iRequiredPreRenderLimit
-                            ).c_str         ()
-                          );
-                        }
-
-                        else
-                        {
-                          ImGui::BulletText (
-                            std::format     (
-                              "Presentation Interval = {}\t{} = {}",
-                              iMultiplier,
-                              bIsInvalidBufferCount
-                                ? "Buffer Count"
-                                : "Max Device Latency",
-                              bIsInvalidBufferCount
-                                ? iRequiredBufferCount
-                                : iRequiredPreRenderLimit
-                            ).c_str         ()
-                          );
-                        }
+                        ImGui::BulletText   (
+                          std::format       (
+                            "{}{}{}",
+                            bIsD3D9
+                              ? std::format (
+                                  "\"PresentationInterval={}\"",
+                                  iMultiplier
+                                )
+                              : std::format (
+                                  "Presentation Interval = {}",
+                                  iMultiplier
+                                ),
+                            bIsInvalidBufferCount
+                              ? std::format (
+                                  "\tBuffer Count = {}",
+                                  iRequiredBufferCount
+                                )
+                              : "",
+                            bIsInvalidPreRenderLimit
+                              ? std::format (
+                                  "\tMax Device Latency = {}",
+                                  iRequiredPreRenderLimit
+                                )
+                              : ""
+                          ).c_str           ()
+                        );
 
                         ImGui::EndTooltip   ();
                       }
