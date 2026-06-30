@@ -815,8 +815,8 @@ SK_ImGui_LatentSyncConfig (void)
         latency_avg.getDisplay ()
       ).c_str                  ();
 
-      ImGui::TextUnformatted (szInputDisplayMs);
-      ImGui::SameLine        (
+      ImGui::Text     (szInputDisplayMs);
+      ImGui::SameLine (
         0.0f,
           fItemWidth
         - fItemSpace
