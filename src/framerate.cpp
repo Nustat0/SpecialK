@@ -3474,13 +3474,14 @@ SK::Framerate::Limiter::wait (void) noexcept
               UINT uRenderQueue = std::abs
                   (iRenderQueue);
 
-              UINT uExtraFrame  =
-                bIsLowLatencyLimiter &&
-                ( SK_RenderBackend_V2::latency.stale ||
-                  ( __target_fps_temp > __target_fps &&
-                    iACTION == ACTION_HighRenderLatency
-                  )
-                ) ? 1 : 0;
+              UINT uExtraFrames =
+                bIsLowLatencyLimiter
+                  ? (!  bIsD3D9                        &&
+                        bConsistentRenderQueue         &&
+                      __target_fps_temp > __target_fps &&
+                      iACTION == ACTION_HighRenderLatency ? 1 : 0) +
+                      (SK_RenderBackend_V2::latency.stale ? 1 : 0)
+                  : 0;
 
               if (! SK_RenderBackend_V2::latency.stale)
               {
@@ -3490,7 +3491,7 @@ SK::Framerate::Limiter::wait (void) noexcept
                 if (! (bIsAboveRefresh && !bIsPreRenderLimit1))
                 {
                   bBumpRenderLatency =
-                     bConsistentRenderQueue && iRenderLatency < uRenderQueue + uExtraFrame;
+                     bConsistentRenderQueue && iRenderLatency < uRenderQueue + uExtraFrames;
 
                   return bBumpRenderLatency || iRenderLatency > uRenderQueue;
                 }
@@ -3584,9 +3585,9 @@ SK::Framerate::Limiter::wait (void) noexcept
                 );
 
                 bBumpRenderLatency =
-                   bConsistentRenderQueue && iRenderLatency < uRenderQueue + uExtraFrame;
+                   bConsistentRenderQueue && iRenderLatency < uRenderQueue + uExtraFrames;
 
-                return bBumpRenderLatency || dRenderLatency > uRenderQueue + uExtraFrame +
+                return bBumpRenderLatency || dRenderLatency > uRenderQueue + uExtraFrames +
                   ( __target_fps_temp > 0.0f &&
                       SK_LatencyMode::Smooth == iLatencyMode ? 0.55 : 0.64 );
               }
