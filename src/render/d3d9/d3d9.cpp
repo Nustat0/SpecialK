@@ -1405,7 +1405,8 @@ SK_D3D9_SetFPSTarget ( D3DPRESENT_PARAMETERS* pPresentationParameters,
             config.render.framerate.tearing_mode ==
               SK_TearingMode::AlwaysOff_LowLatency         ) )
     {
-      presentationInterval = 1;
+      presentationInterval =
+        std::max (config.render.framerate.latent_sync.present_interval, 1);
     }
 
     if (                           presentationInterval != SK_NoPreference &&
@@ -1663,7 +1664,7 @@ SK_D3D9_Present_GrandCentral ( sk_d3d9_swap_dispatch_s* dispatch )
       pSwapChain->GetPresentParameters (&pparams);
 
       // This silently fails in fullscreen
-      if (! pparams.Windowed)
+      if ((! config.render.framerate.force_late_flips) && (! pparams.Windowed))
         dispatch->dwFlags |= D3DPRESENT_FORCEIMMEDIATE;
     }
 

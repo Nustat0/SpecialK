@@ -1177,7 +1177,7 @@ SK::ControlPanel::D3D11::Draw (void)
                     ? "Enable Tearing (Adaptive)"
                     : "Enable Tearing",
                   (! bReflexLimiter) && (bIsAdaptiveVSync)
-                    ? &config.render.framerate.turn_vsync_off
+                    ? &config.render.framerate.force_tearing
                     : &config.render.dxgi.allow_tearing
                 )
               )
@@ -1228,26 +1228,31 @@ SK::ControlPanel::D3D11::Draw (void)
                 ImGui::BulletText ("Disable SK's framerate limit to allow screen tearing.");
               }
             }
+
             else
             {
               if (bIsAdaptiveVSync)
               {
                 ImGui::Text     ("Tearing is currently managed by \"Adaptive V-Sync\" mode");
               }
+
               else
               {
                 if (config.render.framerate.tearing_mode == SK_TearingMode::AdaptiveOn)
                 {
                   ImGui::Text   ("Tearing is currently managed by \"Adaptive (Prefer On)\" mode");
                 }
+
                 else
                 {
                   ImGui::Text   ("Tearing is currently managed by \"Adaptive (Prefer Off)\" mode");
                 }
               }
+
               ImGui::Separator  ();
               ImGui::BulletText ("For manual control, change Tearing Mode to \"Always On/Off\"");
             }
+
             ImGui::EndTooltip   ();
           }
 
@@ -1353,9 +1358,8 @@ SK::ControlPanel::D3D11::Draw (void)
 
           else
           {
-            if (config.render.framerate.buffer_count > 0)
-                config.render.framerate.pre_render_limit = std::min ( config.render.framerate.pre_render_limit,
-                                                                        config.render.framerate.buffer_count + 1 );
+            config.render.framerate.pre_render_limit = std::min
+           (config.render.framerate.pre_render_limit, 16);
 
             SK_ComQIPtr <IDXGISwapChain>
                 pSwapChain (rb.swapchain);
