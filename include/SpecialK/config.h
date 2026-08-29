@@ -1145,6 +1145,7 @@ struct sk_config_t
       int     forced_multiframe   = SK_NoPreference;
       bool    allow_flip_metering =   true;
       bool    streamline_dbg_out  =  false;
+      bool    slop_stop_5000      =  false;
       struct {
         float performance         =   0.0f;
         float balanced            =   0.0f;
