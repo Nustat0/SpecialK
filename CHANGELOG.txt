@@ -1,4 +1,13 @@
-﻿26.8.29
+﻿26.8.29.2
+=========
+ + Make Slop Shading disable setting accessible by right-clicking the DLSS
+     feature in the DLSS section of the control panel.
+
+26.8.29.1
+=========
+ + Force SK_SleepEx (...) inline to prevent signin crash in Genshin Impact.
+
+26.8.29
 =======
  + Added support for forcing DLSS Ray Reconstruction Preset F when using a
      sufficiently up-to-date DLSS-D DLL (310.7.128+).
