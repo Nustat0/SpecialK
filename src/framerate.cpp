@@ -429,7 +429,7 @@ CreateWaitableTimerW_Detour ( _In_opt_ LPSECURITY_ATTRIBUTES lpTimerAttributes,
   if (high_res_flag != 0 && (sk::NVAPI::nvwgf2umx == nullptr ||
                              sk::NVAPI::nvwgf2umx != SK_GetCallingDLL ()))
   {
-    SK_LOGi1 (
+    SK_LOGi0 (
       L"Promoting Waitable Timer %hs%ws%hs to a High-Resolution %hstimer -- [ %ws, tid=%04x ]",
         lpTimerName != nullptr ? "'"             :  "",
         lpTimerName != nullptr ? lpTimerName     : L"",
@@ -450,14 +450,17 @@ CreateWaitableTimerW_Detour ( _In_opt_ LPSECURITY_ATTRIBUTES lpTimerAttributes,
 
   if (! SK_IsHandleValid (hRet))
   {
-    high_res_flag = 0;
-
     hRet =
       CreateWaitableTimerW_Original ( lpTimerAttributes,
                                         bManualReset,
                                           lpTimerName );
 
-    SK_LOGi0 (L"Waitable Timer Upgrade Unsupported!");
+    if (SK_IsHandleValid (hRet))
+    {
+      high_res_flag = 0;
+
+      SK_LOGi0 (L"Waitable Timer Upgrade Unsupported!");
+    }
   }
 
   return hRet;
@@ -482,8 +485,8 @@ CreateWaitableTimerA_Detour ( _In_opt_ LPSECURITY_ATTRIBUTES lpTimerAttributes,
   if (high_res_flag != 0 && (sk::NVAPI::nvwgf2umx == nullptr ||
                              sk::NVAPI::nvwgf2umx != SK_GetCallingDLL ()))
   {
-    SK_LOGi1 (
-      L"Promoting Waitable Timer %hs%ws%hsto a High-Resolution %hstimer -- [ %ws, tid=%04x ]",
+    SK_LOGi0 (
+      L"Promoting Waitable Timer %hs%hs%hsto a High-Resolution %hstimer -- [ %ws, tid=%04x ]",
         lpTimerName != nullptr ? "'"             : "",
         lpTimerName != nullptr ? lpTimerName     : "",
         lpTimerName != nullptr ? "' "            : "",
@@ -503,14 +506,17 @@ CreateWaitableTimerA_Detour ( _In_opt_ LPSECURITY_ATTRIBUTES lpTimerAttributes,
 
   if (! SK_IsHandleValid (hRet))
   {
-    high_res_flag = 0;
-
     hRet =
       CreateWaitableTimerA_Original ( lpTimerAttributes,
                                         bManualReset,
                                           lpTimerName );
 
-    SK_LOGi0 (L"Waitable Timer Upgrade Unsupported!");
+    if (SK_IsHandleValid (hRet))
+    {
+      high_res_flag = 0;
+
+      SK_LOGi0 (L"Waitable Timer Upgrade Unsupported!");
+    }
   }
 
   return hRet;
@@ -528,15 +534,30 @@ CreateWaitableTimerExA_Detour ( _In_opt_ LPSECURITY_ATTRIBUTES lpTimerAttributes
   {
     SK_LOG_FIRST_CALL
 
-    SK_LOGi0 (
-      L"%ws %wsWaitable Timer {%ws} Created by CreateWaitableTimerExA (...) -- [ %ws, tid=%04x ]",
-                     lpTimerName != nullptr ?
-                     lpTimerName : "Unnamed",
-        (dwFlags & CREATE_WAITABLE_TIMER_HIGH_RESOLUTION) != 0 ? L"High Resolution " : L"",
-        (dwFlags & CREATE_WAITABLE_TIMER_MANUAL_RESET)    != 0 ? L"Manual Reset "    : L"",
-        SK_GetCallerName      ().c_str (),
-        SK_GetCurrentThreadId ()
-    );
+    static int
+        num_calls = 0;
+    if (num_calls++ < 10)
+    {
+      SK_LOGi0 (
+        L"%hs %wsWaitable Timer {%ws} Created by CreateWaitableTimerExA (...) -- [ %ws, tid=%04x ]",
+                       lpTimerName != nullptr ?
+                       lpTimerName : "Unnamed",
+          (dwFlags & CREATE_WAITABLE_TIMER_HIGH_RESOLUTION) != 0 ? L"High Resolution " : L"",
+          (dwFlags & CREATE_WAITABLE_TIMER_MANUAL_RESET)    != 0 ? L"Manual Reset "    : L"",
+          SK_GetCallerName      ().c_str (),
+          SK_GetCurrentThreadId ()
+      );
+    }
+
+    else
+    {
+      SK_RunOnce (
+        SK_LOGi0 (
+          L"CreateWaitableTimerExA (...) called too many times... ignoring",
+          SK_GetCallerName ().c_str ()
+        );
+      );
+    }
   }
 
   return
@@ -557,15 +578,30 @@ CreateWaitableTimerExW_Detour ( _In_opt_ LPSECURITY_ATTRIBUTES lpTimerAttributes
   {
     SK_LOG_FIRST_CALL
 
-    SK_LOGi0 (
-      L"%ws %wsWaitable Timer {%ws} Created by CreateWaitableTimerExA (...) -- [ %ws, tid=%04x ]",
-                     lpTimerName != nullptr ?
-                     lpTimerName : L"Unnamed",
-        (dwFlags & CREATE_WAITABLE_TIMER_HIGH_RESOLUTION) != 0 ? L"High Resolution " : L"",
-        (dwFlags & CREATE_WAITABLE_TIMER_MANUAL_RESET)    != 0 ? L"Manual Reset "    : L"",
-        SK_GetCallerName      ().c_str (),
-        SK_GetCurrentThreadId ()
-    );
+    static int
+        num_calls = 0;
+    if (num_calls++ < 10)
+    {
+      SK_LOGi0 (
+        L"%ws %wsWaitable Timer {%ws} Created by CreateWaitableTimerExA (...) -- [ %ws, tid=%04x ]",
+                       lpTimerName != nullptr ?
+                       lpTimerName : L"Unnamed",
+          (dwFlags & CREATE_WAITABLE_TIMER_HIGH_RESOLUTION) != 0 ? L"High Resolution " : L"",
+          (dwFlags & CREATE_WAITABLE_TIMER_MANUAL_RESET)    != 0 ? L"Manual Reset "    : L"",
+          SK_GetCallerName      ().c_str (),
+          SK_GetCurrentThreadId ()
+      );
+    }
+
+    else
+    {
+      SK_RunOnce (
+        SK_LOGi0 (
+          L"CreateWaitableTimerExW (...) called too many times... ignoring",
+          SK_GetCallerName ().c_str ()
+        );
+      );
+    }
   }
 
   return
@@ -574,7 +610,30 @@ CreateWaitableTimerExW_Detour ( _In_opt_ LPSECURITY_ATTRIBUTES lpTimerAttributes
                 dwFlags, dwDesiredAccess );
 }
 
+using SetProcessInformation_pfn = BOOL (WINAPI *)(
+    _In_                                     HANDLE                    hProcess,
+    _In_                                     PROCESS_INFORMATION_CLASS  ProcessInformationClass,
+    _In_reads_bytes_(ProcessInformationSize) LPVOID                     ProcessInformation,
+    _In_                                     DWORD                      ProcessInformationSize);
 
+BOOL
+WINAPI
+SK_SetProcessInformation (HANDLE hProcess, PROCESS_INFORMATION_CLASS ProcessInformationClass, LPVOID ProcessInformation, DWORD ProcessInformationSize)
+{
+  static SetProcessInformation_pfn
+        _SetProcessInformation =
+        (SetProcessInformation_pfn)SK_GetProcAddress (SK_GetModuleHandle (L"kernel32.dll"),
+        "SetProcessInformation");
+
+  if (_SetProcessInformation == nullptr)
+  {
+    return FALSE;
+  }
+
+  return
+    _SetProcessInformation ( hProcess, ProcessInformationClass,
+                              ProcessInformation, ProcessInformationSize );
+}
 
 void
 SK_ImGui_LatentSyncConfig (void)
@@ -1900,7 +1959,7 @@ SK::Framerate::Init (void)
     state.ControlMask = PROCESS_POWER_THROTTLING_IGNORE_TIMER_RESOLUTION;
     state.StateMask   = 0;
 
-  SetProcessInformation (
+  SK_SetProcessInformation (
     SK_GetCurrentProcess (),
      ProcessPowerThrottling, &state,
                       sizeof (state) );
@@ -2480,7 +2539,7 @@ void SK_Framerate_SetPowerThrottlingPolicy (bool always_high_res)
 
   if (std::exchange (last_policy, always_high_res) != always_high_res)
   {
-    SetProcessInformation (
+    SK_SetProcessInformation (
       SK_GetCurrentProcess (),
        ProcessPowerThrottling, &state,
                         sizeof (state) );

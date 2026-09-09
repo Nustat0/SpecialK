@@ -1,4 +1,22 @@
-﻿26.9.6
+﻿26.9.9.1
+========
+ + Add Windows 7 fallback for kernel32.dll SetProcessInformation (...).
+
+26.9.9
+======
+ + Eliminated CreateWaitableTimer log spam in Resonance: A Plague Tale Legacy.
+
+26.9.8.1
+========
+ + Changed ReShade AddOn helper code to use EnumProcessModules (...) from
+     psapi.dll instead of kernel32.dll, for proper Windows 7 support.
+
+26.9.8
+======
+ + Rewrote various COM dependencies to load functions at runtime instead of
+     depending on DLL entry-points that do not exist on Windows 7.
+
+26.9.6
 ======
  + Notifications for switching HDR presets no longer display in SDR mode, or
      in native HDR games.
