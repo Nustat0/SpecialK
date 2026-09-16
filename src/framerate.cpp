@@ -5100,7 +5100,7 @@ bool sk_config_t::render_s::framerate_s::streamline_s::wantNativePacing (void)
   }
 
   return enable_native_limit;
-}                               
+}
 
 extern volatile NvU32 SK_Reflex_LastNativeSleepTime;
 
