@@ -129,6 +129,12 @@ SK_YieldProcessor (INT64 qpcTarget = 0)
   else YieldProcessor ();
 }
 
+void
+SK_Scheduler_YieldProcessor (INT64 qpcTarget = 0)
+{
+  SK_YieldProcessor (qpcTarget);
+}
+
 struct {
 #define _MAX_WAIT_SAMPLES 120
   LONGLONG busy          = 0LL;
@@ -4602,7 +4608,7 @@ SK::Framerate::Limiter::wait (void) noexcept
               auto qpc_t0 =
                 SK_QueryPerf ();
 
-              std::scoped_lock <std::recursive_mutex>
+              std::scoped_lock <std::mutex>
                   adapter_lock (rb.adapter.lock);
 
               if (rb.adapter.d3dkmt == 0)
