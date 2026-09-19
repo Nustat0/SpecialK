@@ -1,6 +1,4 @@
-﻿// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: https://pvs-studio.com
-/**
+﻿/**
  * This file is part of Special K.
  *
  * Special K is free software : you can redistribute it
@@ -396,7 +394,7 @@ void SK_HID_SetupPlayStationControllers (void)
                       if ( container_id.vt == VT_CLSID &&
                            IsEqualGUID (controller.container_id, *reinterpret_cast <GUID*> (container_id.puuid)) )
                       {
-                        controller.audio_endpoint = pAudioDevice;
+                        controller.audio_endpoint = std::move (pAudioDevice);
 
                         PropVariantClear (&container_id);
                         break;
@@ -1718,15 +1716,18 @@ SK_HID_PlayStationDevice::request_input_report (void)
                 {
                   ULONG value;
 
+                  auto& value_cap =
+                    pDevice->value_caps [i];
+
                   if ( HIDP_STATUS_SUCCESS ==
-                    SK_HidP_GetUsageValue ( HidP_Input, pDevice->value_caps [i].UsagePage,   0,
-                                                        pDevice->value_caps [i].Range.UsageMin,
-                                                                                           &value,
+                    SK_HidP_GetUsageValue ( HidP_Input, value_cap.UsagePage,   0,
+                                                        value_cap.Range.UsageMin,
+                                                       &value,
                                                         pDevice->pPreparsedData,
                                                (PCHAR) (pDevice->input_report.data ()),
                                    static_cast <ULONG> (pDevice->input_report.size ()) ) )
                   {
-                    switch (pDevice->value_caps [i].Range.UsageMin)
+                    switch (value_cap.Range.UsageMin)
                     {
                       case 0x30: // X-axis
                         pDevice->xinput.report.Gamepad.sThumbLX =

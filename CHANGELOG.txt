@@ -1,4 +1,20 @@
-﻿26.9.16.6
+﻿26.9.19
+=======
+ + Adjusted the size of the PNG mDCV chunk to use 16-bit unsigned integers
+     for the color primary coordinates instead of 32-bit signed integers,
+       to match the finalized PNG spec.
+ + Static analysis cleanup
+
+26.9.18.1
+=========
+ + Default games with missing DebugLevel INI parameter to level 1.
+
+26.9.18
+=======
+ + Added limit to number of times (10) SK logs timer upgrades, to prevent
+     gigabytes worth of log spam in Deltarune.
+
+26.9.16.6
 =========
  + Blacklisted Dispatch's Unreal Engine launcher.
  + Changed Windows Game Config (Game Bar - "Remember this is a Game") to

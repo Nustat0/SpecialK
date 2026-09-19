@@ -4803,7 +4803,7 @@ auto DeclKeybind =
   compatibility.rehook_loadlibrary->load    (config.compatibility.rehook_loadlibrary);
   compatibility.using_wine->load            (config.compatibility.using_wine);
   compatibility.allow_dxdiagn->load         (config.compatibility.allow_dxdiagn);
-  int                                        debug_level = 0;
+  int                                        debug_level = 1;
   compatibility.debug_level->load           (debug_level);
 
   if ((debug_level & 0xffffffff) == 0)
@@ -8485,8 +8485,10 @@ SK_AppCache_Manager::loadAppCacheForExe (const wchar_t* wszExe)
                                mancpn.is_open ())
               {
                 char                     szLine [512] = { };
-                while (! mancpn.fail                      () &&
-                       ! mancpn.getline (szLine, 511).eof ())
+                auto& line =
+                         mancpn.getline (szLine, 511);
+                while (! line.fail () &&
+                       ! line.eof  ())
                 {
                   if (StrStrIA (szLine, "\"AppName\"") != nullptr)
                   {
@@ -8826,8 +8828,10 @@ SK_AppCache_Manager::getConfigPathFromAppPath (const wchar_t* wszPath) const
                              mancpn.is_open ())
             {
               char                     szLine [512] = { };
-              while (! mancpn.fail                      () &&
-                     ! mancpn.getline (szLine, 511).eof ())
+              auto& line =
+                       mancpn.getline (szLine, 511);
+              while (! line.fail () &&
+                     ! line.eof  ())
               {
                 if (StrStrIA (szLine, "\"AppName\"") != nullptr)
                 {

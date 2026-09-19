@@ -1,6 +1,4 @@
-﻿// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: https://pvs-studio.com
-/**
+﻿/**
  * This file is part of Special K.
  *
  * Special K is free software : you can redistribute it
@@ -128,7 +126,7 @@ public:
     // If the user wants a screenshot, but no popups (why?!), this is when
     //   the screenshot needs to be taken.
     if (       config.platform.achievements.take_screenshot )
-    {  if ( (! config.platform.achievements.popup.show) )
+    {  if ( (! config.platform.achievements.popup.show) && achievement != nullptr )
        {
          SK::SteamAPI::TakeScreenshot (
            SK_ScreenshotStage::EndOfFrame, false,
@@ -1692,8 +1690,10 @@ SK::EOS::AppName (void)
                 bool skip       = false;
 
                 char                     szLine [512] = { };
-                while (! mancpn.fail                      () &&
-                       ! mancpn.getline (szLine, 511).eof ())
+                auto& line =
+                         mancpn.getline (szLine, 511);
+                while (! line.fail () &&
+                       ! line.eof  ())
                 {
                   if (StrStrIA (szLine, "\"DisplayName\"") != nullptr)
                   {
