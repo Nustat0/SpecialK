@@ -285,6 +285,12 @@ EnterSpinLock (VOID)
         backoff < 64 ?
         backoff << 1 : 64;
 
+      if (backoff == 64)
+      {
+        MicroSleep ();
+        backoff = 1;
+      }
+
     } while (InterlockedCompareExchange (&g_isLocked, TRUE, FALSE) != FALSE);
   }
 }

@@ -1,4 +1,20 @@
-﻿26.9.20.3
+﻿26.9.25
+=======
+ + Fixed infinite loop in Epic Games Store manifest parser.
+
+26.9.24.2
+=========
+ + Add nullptr check on backbuffer to GL/DXGI interop presentation thread.
+
+26.9.24.1
+=========
+ + Minor log cleanup and optimized SK_LOG_FIRST_EXTERNAL_CALL (...).
+
+26.9.24
+=======
+ + Added Sleep to MinHook spinlock under contention to prevent deadlock.
+
+26.9.20.3
 =========
  + Handle hexadecimal values assigned to the environment variable SteamGameId.
 
