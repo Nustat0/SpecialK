@@ -172,6 +172,10 @@ static constexpr constexpr_module_s::list_type __blacklist = {
   L"wrath-epic.exe",  // 32-bit Launcher  (EGS)
   L"wrath-steam.exe", // 32-bit Launcher  (Steam)
 
+  L"uplaywebcore.exe",
+  L"upc.exe",
+  L"battle.net.exe",
+
   // OBS Stuff
   L"get-graphics-offsets32.exe",
   L"obs32.exe",
@@ -295,7 +299,7 @@ static constexpr constexpr_module_s::list_type __blacklist = {
   L"galaxyclient helper.exe",
 
 
-  L"applicationframehost.exe",
+//  L"applicationframehost.exe",
   L"servicehub.host.clr.x86.exe",
   L"servicehub.settingshost.exe",
   L"servicehub.identityhost.exe",
