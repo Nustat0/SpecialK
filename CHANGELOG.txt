@@ -1,4 +1,17 @@
-﻿26.9.28
+﻿26.9.29
+=======
+ + Allow SK to acquire D3D12 Command Queues with no debug name, instead of
+     the standard "3D Queue (GPU..." name assigned by D3D12 when injecting
+       code into a game that is already running or otherwise initialized
+         after a game creates a SwapChain.
+
+    * Fixes MIO: Memory In Orbit compatibility.
+
+26.9.28.1
+=========
+ + Fixed potential deadlock in DXGI init code if AsyncInit=false.
+
+26.9.28
 =======
  + Hook timeBeginPeriod and timeEndPeriod from winmm.dll if it does not exist
      in kernel32.dll; this is needed for Windows 7 support.
