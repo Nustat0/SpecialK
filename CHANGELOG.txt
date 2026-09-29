@@ -1,4 +1,9 @@
-﻿26.9.29.1
+﻿26.9.29.2
+=========
+ + Fixed Epic achievement unlock not taking screenshots if configured to do so.
+ + Assign GOG achievements unlock time manually, because Galaxy often does not.
+
+26.9.29.1
 =========
  + Default CONTROL Resonant to using "Low-Latency" DLSS FG pacing mode; the
      other two options have judder due to the game's input code.
