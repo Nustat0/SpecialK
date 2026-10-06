@@ -1,4 +1,14 @@
-﻿26.10.2.1
+﻿26.10.6.1
+=========
+ + Add SlashZero's overlay framework (gp) to known dummy window classes,
+     to prevent hooking its fake SwapChains created using "gpdcw".
+
+26.10.6
+=======
+ + Apply workaround for MinHook memory protection problems in SlashZero.
+   * https://github.com/TsudaKageyu/minhook/pull/176 (FransBouma)
+
+26.10.2.1
 =========
  + Rewrite dbghelp.dll locking code to prevent lock inversion.
 
