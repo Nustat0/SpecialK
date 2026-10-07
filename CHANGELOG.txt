@@ -1,4 +1,21 @@
-﻿26.10.6.1
+﻿26.10.7.1
+=========
+ + Revert 26.10.7, too much important window management functionality will
+     be lost.
+ + Add workaround for Helldivers 2, so it will not use window management hooks.
+
+26.10.7
+=======
+ + Change DontHookWndProc's default value to true, because new hook memory
+     protection changes allow hooks in weak anti-cheat scenarios and this
+       setting restores original behavior.
+
+26.10.6.2
+=========
+ + Re-enable loader lock code in Special K's fork of MinHook, because the
+     DirectInput 8 problems mentioned in 25.5.22.2 for KEX are gone.
+
+26.10.6.1
 =========
  + Add SlashZero's overlay framework (gp) to known dummy window classes,
      to prevent hooking its fake SwapChains created using "gpdcw".

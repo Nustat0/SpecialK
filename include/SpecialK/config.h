@@ -1981,6 +1981,7 @@ enum class SK_GAME_ID
   Dispatch,                     // Dispatch-Win64-Shipping.exe, DispatchEGS-Win64-Shipping.exe
   Timberborn,                   // Timberborn.exe
   CONTROL_Resonant,             // CONTROLResonant.exe
+  Helldivers2,                  // Helldivers2.exe
 
   UNKNOWN_GAME               = 0xffff
 };
