@@ -9443,7 +9443,9 @@ IDXGISwapChain4_SetHDRMetaData ( IDXGISwapChain4*        This,
 
   if (config.render.dxgi.hdr_metadata_override >= 0)
   {
-    SK_LOGi0 (L"Invalid HDR metadata override, ignoring...");
+    SK_RunOnce (
+        SK_LOGi0 (L"Invalid HDR metadata override, ignoring...")
+    );
   }
 
   else
@@ -9454,7 +9456,7 @@ IDXGISwapChain4_SetHDRMetaData ( IDXGISwapChain4*        This,
 
   if (Type == DXGI_HDR_METADATA_TYPE_NONE || (Size == sizeof (DXGI_HDR_METADATA_HDR10) && Type == DXGI_HDR_METADATA_TYPE_HDR10))
   {
-    if (Size == sizeof (DXGI_HDR_METADATA_HDR10) && Type == DXGI_HDR_METADATA_TYPE_HDR10)
+    if (Size == sizeof (DXGI_HDR_METADATA_HDR10) && Type == DXGI_HDR_METADATA_TYPE_HDR10 && pMetaData != nullptr)
     {
       metadata =
         *(DXGI_HDR_METADATA_HDR10 *)pMetaData;
@@ -9476,16 +9478,18 @@ IDXGISwapChain4_SetHDRMetaData ( IDXGISwapChain4*        This,
 
       if (display.gamut.maxLocalY == 0.0f)
       {
-        This->SetFullscreenState (FALSE, nullptr);
+        //This->SetFullscreenState (FALSE, nullptr);
 
-        reshade::UnwrapObject (&This);
+        SK_ComPtr <IDXGISwapChain4>
+                                pUnwrap = This;
+        reshade::UnwrapObject (&pUnwrap);
 
         // Make sure we're not screwed over by NVIDIA Streamline
-        SK_ComPtr <IDXGIOutput>                      pOutput;
-        SK_ComPtr <IDXGISwapChain4>                  pNativeSwap4;
-        if (SK_slGetNativeInterface (This, (void **)&pNativeSwap4.p) == sl::Result::eOk)
-                                                     pNativeSwap4->GetContainingOutput (&pOutput.p);
-        else                                                 This->GetContainingOutput (&pOutput.p);
+        SK_ComPtr <IDXGIOutput>                         pOutput;
+        SK_ComPtr <IDXGISwapChain4>                     pNativeSwap4;
+        if (SK_slGetNativeInterface (pUnwrap, (void **)&pNativeSwap4.p) == sl::Result::eOk)
+                                                        pNativeSwap4->GetContainingOutput (&pOutput.p);
+        else                                                    This->GetContainingOutput (&pOutput.p);
 
         SK_ComQIPtr <IDXGIOutput6>
             pOutput6 (   pOutput);
@@ -9534,7 +9538,7 @@ IDXGISwapChain4_SetHDRMetaData ( IDXGISwapChain4*        This,
         )
       );
 
-      if (Size == sizeof (DXGI_HDR_METADATA_HDR10) && Type == DXGI_HDR_METADATA_TYPE_HDR10)
+      if (Size == sizeof (DXGI_HDR_METADATA_HDR10) && Type == DXGI_HDR_METADATA_TYPE_HDR10 && pMetaData != nullptr)
         *(DXGI_HDR_METADATA_HDR10 *)pMetaData = metadata;
       else
       {
@@ -10638,7 +10642,7 @@ HookDXGI (LPVOID user)
 {
   initializing_dxgi = true;
 
-  static SK_AutoCOMInit _autocom;
+  SK_AutoCOMInit _autocom;
 
   SetCurrentThreadDescription (L"[SK] DXGI Hook Crawler");
 
@@ -10779,7 +10783,7 @@ HookDXGI (LPVOID user)
     if (config.render.dxgi.debug_layer)
     {
       static const char* D3D12SDKPath =
-        (const char *)GetProcAddress (nullptr, "D3D12SDKPath");
+        *(const char **)GetProcAddress (nullptr, "D3D12SDKPath");
 
       wchar_t    wszD3D12CorePath [MAX_PATH] = {};
       wcsncpy_s (wszD3D12CorePath, MAX_PATH, SK_GetHostPath (), _TRUNCATE);
@@ -10844,7 +10848,7 @@ HookDXGI (LPVOID user)
         CreateDXGIFactory2_Import ( factory_flags,
                iids [std::clamp (SK_DXGI_HighestFactorySupported, 0, 7)],
                          (void **)&pFactory.p );
-      else
+      else if (CreateDXGIFactory1_Import != nullptr)
         CreateDXGIFactory1_Import (
                iids [std::clamp (SK_DXGI_HighestFactorySupported, 0, 7)],
                          (void **)&pFactory.p );
