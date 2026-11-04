@@ -3509,7 +3509,7 @@ SK_DXGI_PresentBase ( IDXGISwapChain         *This,
     if (config.render.framerate.swapchain_wait > 0)
     {
       SK_AutoHandle hWaitHandle (rb.getSwapWaitHandle ());
-      if ((intptr_t)hWaitHandle.m_h > 0)
+      if (          hWaitHandle.isValid ())
       {
         if (SK_WaitForSingleObject (hWaitHandle.m_h, 0) == WAIT_TIMEOUT)
         {
@@ -6179,7 +6179,7 @@ SK_DXGI_CreateSwapChain_PostInit (
       {
         // Immediately following creation, wait on the SwapChain to get the semaphore initialized.
         SK_AutoHandle hWaitHandle (rb.getSwapWaitHandle ());
-        if ((intptr_t)hWaitHandle.m_h > 0 )
+        if (          hWaitHandle.isValid ())
         {
           SK_WaitForSingleObject (
                 hWaitHandle.m_h, 15
@@ -6735,6 +6735,9 @@ DXGIFactory_CreateSwapChain_Override (
   _In_  const DXGI_SWAP_CHAIN_DESC  *pDesc,
   _Out_       IDXGISwapChain       **ppSwapChain )
 {
+  // Need to know which GPU vendors APIs are supported before allowing this to proceed.
+  WaitForGPUInit ();
+
   auto& rb =
     SK_GetCurrentRenderBackend ();
 
@@ -7421,6 +7424,9 @@ _In_opt_       DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pFullscreenDesc,
 _In_opt_       IDXGIOutput                     *pRestrictToOutput,
    _Out_       IDXGISwapChain1                 **ppSwapChain )
 {
+  // Need to know which GPU vendors APIs are supported before allowing this to proceed.
+  WaitForGPUInit ();
+
   SK_ReleaseAssert (pDesc   != nullptr);
   SK_ReleaseAssert (pDevice != nullptr);
 
@@ -8580,6 +8586,9 @@ HRESULT
 WINAPI CreateDXGIFactory (REFIID   riid,
                     _Out_ void   **ppFactory)
 {
+  // Need to know which GPU vendors APIs are supported before allowing this to proceed.
+  WaitForGPUInit ();
+
   std::string iname = SK_GetDXGIFactoryInterfaceEx  (riid);
   int         iver  = SK_GetDXGIFactoryInterfaceVer (riid);
 
@@ -8616,6 +8625,9 @@ WINAPI CreateDXGIFactory1 (REFIID   riid,
                      _Out_ void   **ppFactory)
 
 {
+  // Need to know which GPU vendors APIs are supported before allowing this to proceed.
+  WaitForGPUInit ();
+
   std::wstring iname = SK_UTF8ToWideChar (SK_GetDXGIFactoryInterfaceEx  (riid));
   int          iver  = SK_GetDXGIFactoryInterfaceVer (riid);
 
@@ -8839,6 +8851,9 @@ WINAPI CreateDXGIFactory2 (UINT     Flags,
                            REFIID   riid_,
                      _Out_ void   **ppFactory)
 {
+  // Need to know which GPU vendors APIs are supported before allowing this to proceed.
+  WaitForGPUInit ();
+
   if (ppFactory == nullptr)
     return E_INVALIDARG;
 
